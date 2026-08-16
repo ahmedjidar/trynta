@@ -5,7 +5,7 @@ the **single source of truth for every visual decision** in the product.
 
 Implementing agents: read the relevant handoff before styling anything. If a screen has no handoff,
 build it functionally, leave it unstyled, mark it `// UNSTYLED: awaiting handoff <screen-name>`,
-and say so when you report the work. Do not improvise styling to fill the gap — placeholder
+and say so when you report the work. Do not improvise styling to fill the big gaps/screens, you are allowed to improvise only when it concerns an abscent design reference for a small fractions such as a Modal, sub-window or tab. — placeholder
 styling never gets replaced, it gets shipped.
 
 ---

@@ -1,6 +1,5 @@
 # ─────────────────────────────────────────────────────────────
 # Keyring — .gitignore
-# Rename this file to `.gitignore` at the repo root.
 # ─────────────────────────────────────────────────────────────
 
 # ── Private working material (NEVER commit) ──────────────────
@@ -13,6 +12,9 @@
 /handoffs/*
 !/handoffs/README.md
 !/handoffs/MANIFEST.md
+
+# Claude Code local state
+.claude/settings.local.json
 
 # Scratch space for anything you don't want tracked
 /.scratch/
@@ -64,6 +66,7 @@ test-results/
 
 # ── Rust / Tauri ─────────────────────────────────────────────
 /src-tauri/target/
+/src-tauri/gen/
 /target/
 **/*.rs.bk
 *.pdb

@@ -33,16 +33,21 @@ telemetry. Do not add any of it. Do not add a "Pro" flag, a feature-flag stub fo
 | Styling | **Tailwind CSS v4** + CSS custom properties | Chosen so design handoffs drop in with minimal translation, and so themes are runtime-swappable. |
 | State | Zustand for app state; TanStack Query for anything async over IPC | No Redux. |
 | Storage | SQLite via `rusqlite`, field-level encryption | The DB file is not the security boundary; the ciphertext is. |
-| Tests | `cargo test` + `proptest` (Rust), Vitest (TS), Playwright (E2E) | |
+| Tests | `cargo test` + `proptest` (Rust), Vitest (TS), **WebdriverIO + `@wdio/tauri-service`** (E2E) | Not Playwright — it drives browsers, not a Tauri binary hosting WKWebView. |
 
-**Crate identities** (resolve current versions at install time; pin exact versions in
-`Cargo.lock`, never use a wildcard): `argon2`, `chacha20poly1305`, `x25519-dalek`,
-`ed25519-dalek`, `hkdf`, `sha2`, `rand_core` (OS RNG only), `zeroize`, `secrecy`, `rusqlite`,
-`serde`, `thiserror`, `tokio`, `totp-rs`, `zxcvbn`, `uuid` (v7), `time`.
+**Crypto crates are pinned to one stable RustCrypto generation.** Exactly one copy of `digest`,
+`sha2`, `rand_core`, `aead`, and `curve25519-dalek` in the tree — enforced by `cargo deny` with
+`multiple-versions = "deny"` on those crates. No release candidates anywhere in the crypto path.
+The approved set and the full dependency list live in `ADD-002`; do not deviate from it without
+asking.
 
 Before adding **any** new dependency that touches secrets, memory, serialization, or the network:
 stop and ask. Every new crate is new attack surface. `cargo deny check` and `cargo audit` must
 pass in CI.
+
+`opt-level = 3` in release, never `"s"` or `"z"`. Size-optimised Argon2 is slower per unit of
+work, so KDF calibration compensates by choosing a smaller memory cost — optimising for binary
+size silently weakens the KDF.
 
 ---
 
@@ -91,14 +96,19 @@ Violating any of these is a build-breaking bug, not a code review nit.
 4. **Reveal is the only plaintext path to the frontend.** It returns exactly one field, for one
    item, on explicit user action. The frontend must not persist it, cache it, put it in a store,
    or include it in any log/error/analytics path, and must clear it on blur, navigation, or lock.
-5. **Zeroize everything.** All key and plaintext buffers use `Zeroizing`/`Secret`. Attempt
-   `mlock`-equivalent for long-lived key material on both platforms; log a warning if unavailable,
-   never fail silently.
+5. **Zeroize everything.** All key and plaintext buffers use `Zeroizing`/`Secret`, pre-sized so
+   growth can't orphan copies. `mlock`/`VirtualLock` the 32-byte keys on both platforms; log a
+   warning if unavailable, never fail silently. **The Argon2 memory buffer is a documented
+   exception** — it is far larger than the lockable working set and may be paged. Zeroization is
+   best-effort by nature; never claim otherwise in the product or the specs.
 6. **No secret ever reaches a log, a panic message, a `Debug` impl, or an error string.** Manually
    implement `Debug` as a redacting impl for every type holding secrets. Test this.
-7. **Nothing phones home about vault contents.** Breach checking uses HIBP k-anonymity (SHA-1
-   prefix, 5 hex chars, nothing more). Brand icons are bundled, not fetched (see `ADD-001`). No
-   crash reporter that could capture memory. No analytics in pre-1.0.
+7. **Nothing phones home about vault contents.** There are exactly **three** permitted outbound
+   requests in the entire product, and adding a fourth requires a spec change: (a) HIBP range
+   queries, k-anonymous, 5 hex characters, `Add-Padding: true`; (b) the signed update manifest
+   check; (c) nothing else. Brand icons are bundled, never fetched (`ADD-001`). The app never
+   probes a user's sites — not for favicons, not for `/.well-known/change-password`. No crash
+   reporter that could capture memory. No analytics in pre-1.0.
 8. **Autofill matches on registrable domain (eTLD+1) via the Public Suffix List.** Never substring
    or `contains()` matching. This is the difference between a password manager and a phishing
    accessory.
@@ -116,7 +126,13 @@ Violating any of these is a build-breaking bug, not a code review nit.
 
 ## 5. Architecture
 
+Rust is a **Cargo workspace**, not one crate. `keyring-crypto` is a separate member with no
+dependency on Tauri, SQLite, or anything else in the tree — so its isolation is compiler-enforced
+rather than a convention, and its tests compile in seconds.
+
 ```
+crates/
+  keyring-crypto/             kdf, aead, envelope, keys, hierarchy, manifest — zero app deps
 src/                          React + TypeScript
   app/                        shell, routing, providers
   features/<domain>/          vertical slices: items, generator, security, sharing, settings
@@ -138,10 +154,14 @@ addendums/     (gitignored)   amendments to specs — read these, they override
 handoffs/                     design source of truth — read these before styling anything
 ```
 
-**Layering rule:** `commands/` orchestrates and never contains business logic. `crypto/` depends
-on nothing else in the app and is independently testable with known-answer tests. Frontend
-`features/` never call `invoke()` directly — always through `src/ipc/`, so the whole IPC surface is
-typed in one place and mockable in tests.
+**Layering rule:** `commands/` orchestrates and never contains business logic. `keyring-crypto`
+depends on nothing else in the workspace. Frontend `features/` never call `invoke()` directly —
+always through `src/ipc/`, so the whole IPC surface is typed in one place and mockable in tests.
+An eslint rule enforces that `invoke` appears in exactly one file.
+
+**Rust types are the source of truth across IPC.** TS types are generated with `ts-rs`
+(dev-dependency, emits during `cargo test`) and committed. CI regenerates and fails on any diff.
+Never hand-edit generated types.
 
 **IPC discipline:** every command has a typed request and response. Item lists return decrypted
 *metadata only* (title, subtitle, icon key, badges) — never secret fields. Secret fields are
