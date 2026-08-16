@@ -1,0 +1,12 @@
+{
+  "name": "keyring",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "verify:v1": "node scripts/verify-v1.mjs"
+  }
+}

@@ -1,0 +1,22 @@
+[package]
+name = "keyring-acceptance"
+version = "0.0.0"
+edition = "2021"
+publish = false
+description = "SPEC-V1 §11 acceptance tests. Frozen — see API.md."
+
+[lib]
+name = "keyring_acceptance"
+path = "src/lib.rs"
+
+[dependencies]
+keyring-crypto = { path = "../../crates/keyring-crypto" }
+# Aliased so the acceptance tests do not care which crate ends up owning storage.
+store = { package = "keyring-store", path = "../../crates/keyring-store" }
+uuid = { workspace = true }
+
+[dev-dependencies]
+# Used to simulate an attacker with write access to the vault file. Deliberately
+# bypasses our own API — a tamper test that goes through the writer proves nothing.
+rusqlite = { workspace = true }
+tempfile = { workspace = true }
