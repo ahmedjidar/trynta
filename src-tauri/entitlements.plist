@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Hardened Runtime, minimum entitlements. Keyring is not App Sandboxed:
+	     it is distributed with Developer ID, not through the App Store.
+
+	     Deliberately absent:
+	       com.apple.security.cs.allow-unsigned-executable-memory
+	       com.apple.security.cs.disable-library-validation
+	       com.apple.security.cs.allow-dyld-environment-variables
+	     Each of those widens the process to code we did not sign. -->
+
+	<!-- Keychain access for the biometric-unlock wrap (SPEC-V1 §5.1). -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)app.keyring.desktop</string>
+	</array>
+</dict>
+</plist>

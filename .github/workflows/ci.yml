@@ -1,0 +1,112 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: '-D warnings'
+
+jobs:
+  # ── The gate. Everything SPEC-V1 §11 asks for, on both platforms. ──────────
+  # A green build on one platform is not a green build (CLAUDE.md §6).
+  verify:
+    name: verify-v1 (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: '1.94.1'
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny,cargo-audit
+
+      - run: pnpm install --frozen-lockfile
+
+      # tauri-build reads frontendDist, so the frontend is built before any cargo
+      # command that touches src-tauri.
+      - run: pnpm build
+
+      - name: pnpm verify:v1
+        run: pnpm verify:v1
+
+  # ── Supply chain, once. Platform-independent, so it does not need the matrix.
+  supply-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: '1.94.1'
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny,cargo-audit
+      - run: cargo deny check
+      - run: cargo audit --deny warnings
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --audit-level high
+
+  # ── A shippable bundle on both platforms, with the size budget enforced. ────
+  bundle:
+    name: bundle (${{ matrix.os }})
+    needs: [verify]
+    if: github.event_name == 'push'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: '1.94.1'
+          # macos-latest is arm64: a default build ships nothing that runs on an
+          # Intel Mac (SPEC-V1 §8).
+          targets: ${{ matrix.os == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+      - uses: Swatinem/rust-cache@v2
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build bundle
+        run: pnpm tauri build ${{ matrix.os == 'macos-latest' && '--target universal-apple-darwin' || '' }}
+
+      - name: Installer size budget (20 MB target, 25 MB ceiling)
+        run: pnpm check:bundle-size 20 25
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: keyring-${{ matrix.os }}
+          path: target/**/bundle/**
+          if-no-files-found: error

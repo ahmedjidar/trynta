@@ -1,0 +1,6 @@
+[toolchain]
+# Pinned so CI, macOS and Windows all compile the crypto with the same codegen.
+# Bump deliberately, and re-run the known-answer tests when you do.
+channel = "1.94.1"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

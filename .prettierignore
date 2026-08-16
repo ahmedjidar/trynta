@@ -1,0 +1,24 @@
+dist
+coverage
+target
+.tsbuild
+src-tauri/target
+src-tauri/gen
+src-tauri/icons
+pnpm-lock.yaml
+Cargo.lock
+
+# Received design artifacts are never reformatted — they are a delivery, not source.
+handoffs/HO-*
+
+# Documents owned by their authors, not by a formatter.
+CLAUDE.md
+README.md
+handoffs/
+specs/
+addendums/
+
+# FROZEN once committed: the acceptance verifier and suite are never edited, and
+# that includes reformatting them. See tests/acceptance/API.md.
+scripts/verify-v1.mjs
+tests/acceptance/

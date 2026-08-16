@@ -1,0 +1,18 @@
+/*
+ * UNSTYLED: awaiting handoff HO-001 (token layer).
+ *
+ * This file is owned by design, not by engineering. It is where `tokens.css` from
+ * a Claude Design handoff lands, verbatim, and it is the ONLY file in the
+ * codebase permitted to contain raw colour, spacing, radius, type or duration
+ * values — `scripts/check-tokens.mjs` allows them here and nowhere else.
+ *
+ * It is deliberately empty. Inventing placeholder values would be designing the
+ * product, and placeholder styling never gets replaced — it gets shipped
+ * (CLAUDE.md §3, handoffs/README.md). Until the first handoff arrives the app
+ * renders with browser defaults, which is the honest signal that it is unstyled.
+ *
+ * When HO-001 arrives:
+ *   1. drop its tokens.css in here
+ *   2. add the dark and light value sets under src/theme/themes/
+ *   3. check WCAG AA contrast in both modes before wiring anything to them
+ */

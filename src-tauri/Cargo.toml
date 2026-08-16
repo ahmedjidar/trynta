@@ -1,0 +1,41 @@
+[package]
+name = "keyring"
+description = "Keyring — a password manager for credentials that belong to more than one person."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+default-run = "keyring"
+
+[lib]
+name = "keyring_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = "2.6.3"
+
+[dependencies]
+keyring-crypto = { path = "../crates/keyring-crypto" }
+keyring-store = { path = "../crates/keyring-store" }
+
+tauri = "2.11.5"
+tauri-plugin-dialog = "2.7.2"            # backup export/restore, theme import (§7.5, §7.8)
+tauri-plugin-opener = "2.5.4"            # open URLs in the default browser (§7.2, §7.4)
+tauri-plugin-single-instance = "2.4.3"   # two processes on one SQLite file is a corruption path
+
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+zeroize = { workspace = true }
+
+# Deliberately absent, and each absence is a decision:
+#   tauri-plugin-clipboard-manager — exposes clipboard write to JavaScript, and
+#     implements neither Windows clipboard-history exclusion nor the macOS
+#     concealed type. Clipboard is hand-written in platform/ (SPEC-V1 §8).
+#   arboard — same two gaps.
+#   tauri-plugin-log — a file logger in a password manager is a leak channel that
+#     only has to fail once.
+#   tauri-plugin-os — one app_platform_info() command replaces it and costs one
+#     fewer capability grant.
+# The `devtools` feature is absent so DevTools compile out of release builds.

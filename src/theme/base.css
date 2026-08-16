@@ -1,0 +1,57 @@
+/*
+ * Token layer — structure only.
+ *
+ * This file declares WHICH tokens exist and maps them into Tailwind's theme. It
+ * declares no values: every value arrives from a design handoff in
+ * `src/theme/tokens.css`. A value here would be design, and design is not ours
+ * to invent (CLAUDE.md §3).
+ *
+ * A theme is data: a named set of values for exactly these custom properties,
+ * loadable at runtime without a reload. The loader lands in run 2 and uses
+ * constructible stylesheets (`CSSStyleSheet` + `document.adoptedStyleSheets`),
+ * because the production CSP is `style-src 'self'` with no `unsafe-inline`
+ * (SPEC-V1 §7.6).
+ */
+
+@theme {
+  --color-surface: var(--kr-color-surface);
+  --color-surface-raised: var(--kr-color-surface-raised);
+  --color-surface-sunken: var(--kr-color-surface-sunken);
+  --color-border: var(--kr-color-border);
+  --color-border-strong: var(--kr-color-border-strong);
+  --color-text: var(--kr-color-text);
+  --color-text-muted: var(--kr-color-text-muted);
+  --color-text-inverted: var(--kr-color-text-inverted);
+  --color-accent: var(--kr-color-accent);
+  --color-accent-hover: var(--kr-color-accent-hover);
+  --color-accent-text: var(--kr-color-accent-text);
+  --color-danger: var(--kr-color-danger);
+  --color-warning: var(--kr-color-warning);
+  --color-success: var(--kr-color-success);
+  --color-focus-ring: var(--kr-color-focus-ring);
+
+  --radius-sm: var(--kr-radius-sm);
+  --radius-md: var(--kr-radius-md);
+  --radius-lg: var(--kr-radius-lg);
+  --radius-full: var(--kr-radius-full);
+
+  --font-sans: var(--kr-font-sans);
+  --font-mono: var(--kr-font-mono);
+
+  --ease-standard: var(--kr-ease-standard);
+  --ease-emphasised: var(--kr-ease-emphasised);
+}
+
+/*
+ * Motion is a token too, and reduced motion is not optional (SPEC-V1 §10).
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

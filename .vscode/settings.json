@@ -1,0 +1,15 @@
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer"
+  },
+  "rust-analyzer.check.command": "clippy",
+  "rust-analyzer.check.extraArgs": ["--all-targets", "--", "-W", "clippy::pedantic"],
+  "files.eol": "\n",
+  "search.exclude": {
+    "**/target": true,
+    "**/dist": true,
+    "**/.tsbuild": true
+  }
+}

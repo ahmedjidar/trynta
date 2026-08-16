@@ -1,0 +1,6 @@
+edition = "2021"
+max_width = 100
+
+# `ignore` is nightly-only, so the frozen acceptance suite cannot be excluded from
+# `cargo fmt --all --check`. It is therefore committed already rustfmt-clean, and
+# stays that way: the freeze baseline is the formatted text.

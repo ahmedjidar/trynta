@@ -1,0 +1,11 @@
+/*
+ * Entry stylesheet. Order matters:
+ *   1. Tailwind, which reads the token layer through @theme
+ *   2. the token layer itself — the ONLY place raw values may appear
+ *
+ * Zero hardcoded colour, spacing, radius, type or duration values below this
+ * line, or anywhere else in the codebase. `pnpm check:tokens` enforces it.
+ */
+@import 'tailwindcss';
+@import './theme/base.css';
+@import './theme/tokens.css';

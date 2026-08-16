@@ -1,0 +1,14 @@
+# One line ending everywhere. A cross-platform project where Windows checks out
+# CRLF and macOS checks out LF will disagree about `cargo fmt --check` and
+# `prettier --check` forever.
+* text=auto eol=lf
+
+*.png binary
+*.ico binary
+*.icns binary
+*.dmg binary
+*.msi binary
+*.svg text eol=lf
+
+pnpm-lock.yaml linguist-generated=true
+Cargo.lock linguist-generated=true
