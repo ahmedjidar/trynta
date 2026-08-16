@@ -1,0 +1,96 @@
+# ─────────────────────────────────────────────────────────────
+# Keyring — .gitignore
+# Rename this file to `.gitignore` at the repo root.
+# ─────────────────────────────────────────────────────────────
+
+# ── Private working material (NEVER commit) ──────────────────
+# Specs and addendums contain product strategy, threat models,
+# and unreleased plans. They are agent input, not repo history.
+/specs/
+/addendums/
+
+# Design handoffs: keep the index, drop the payloads.
+/handoffs/*
+!/handoffs/README.md
+!/handoffs/MANIFEST.md
+
+# Scratch space for anything you don't want tracked
+/.scratch/
+/tmp/
+
+# ── Secrets & signing material ───────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.mobileprovision
+*.cer
+*.jks
+*.keystore
+tauri-signing-*.key*
+.tauri/
+!src-tauri/tauri.conf.json
+
+# ── Vault data / anything that could hold real secrets ───────
+*.vault
+*.kdbx
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+/fixtures/real/
+**/vault-dump*
+**/*.export.json
+**/*.export.csv
+
+# ── Node / frontend ──────────────────────────────────────────
+node_modules/
+dist/
+dist-ssr/
+build/
+.vite/
+*.local
+.eslintcache
+.turbo/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+
+# ── Rust / Tauri ─────────────────────────────────────────────
+/src-tauri/target/
+/target/
+**/*.rs.bk
+*.pdb
+
+# ── OS / editor ──────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.idea/
+*.swp
+*.swo
+
+# VS Code: share settings, hide personal state
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+
+# ── Logs ─────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
