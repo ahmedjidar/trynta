@@ -1,0 +1,59 @@
+# cargo-audit configuration.
+#
+# `verify:v1` runs `cargo audit --deny warnings`, which fails on *unmaintained*
+# and *unsound* advisories as well as vulnerabilities. That is the right default
+# for a password manager, and it means the exceptions below have to be argued
+# rather than assumed.
+#
+# RULES FOR THIS FILE — they matter more than the list:
+#
+#   1. A `vulnerability` advisory is NEVER ignored. Not once, not temporarily.
+#      Everything below is `unmaintained` or `unsound`.
+#   2. Every entry names why the crate cannot reach a shipped macOS or Windows
+#      binary. "It's only a warning" is not a reason.
+#   3. The list is re-reviewed on every dependency bump. An entry that no longer
+#      appears in `cargo tree` is deleted, not left to rot.
+#   4. Ignoring an ID does not hide new advisories against the same crate.
+#
+# Current state: 17 advisories, 0 vulnerabilities.
+
+[advisories]
+ignore = [
+    # ── gtk-rs GTK3 bindings, unmaintained ───────────────────────────────────
+    # Linux-only. Keyring ships macOS and Windows only (SPEC-V1 §8), and
+    # `cargo tree -i gtk` returns nothing for our targets — these crates are in
+    # Cargo.lock but never compiled into a binary we distribute. cargo-audit
+    # reads the lockfile without target filtering, which is why they appear at
+    # all; `deny.toml` does filter by target and does not flag them.
+    # They leave the tree entirely when Tauri completes its GTK4 migration.
+    "RUSTSEC-2024-0411", # gdkwayland-sys
+    "RUSTSEC-2024-0412", # gdk
+    "RUSTSEC-2024-0413", # atk
+    "RUSTSEC-2024-0414", # gdkx11-sys
+    "RUSTSEC-2024-0415", # gtk
+    "RUSTSEC-2024-0416", # atk-sys
+    "RUSTSEC-2024-0417", # gdkx11
+    "RUSTSEC-2024-0418", # gdk-sys
+    "RUSTSEC-2024-0419", # gtk3-macros
+    "RUSTSEC-2024-0420", # gtk-sys
+
+    # ── glib, unsound ────────────────────────────────────────────────────────
+    # Unsoundness in glib::VariantStrIter. Same Linux-only GTK path as above:
+    # not compiled on macOS or Windows, and nothing in Keyring calls it.
+    "RUSTSEC-2024-0429",
+
+    # ── proc-macro-error, unmaintained ───────────────────────────────────────
+    # A build-time proc-macro dependency. It runs on the build host and emits no
+    # code into the shipped binary. Not reachable at runtime by definition.
+    "RUSTSEC-2024-0370",
+
+    # ── unic-* family, unmaintained ──────────────────────────────────────────
+    # Reached through urlpattern → tauri-utils → tauri-build, i.e. a build
+    # dependency that parses capability and permission files at compile time.
+    # No vault data ever passes through it, and it is not linked into the app.
+    "RUSTSEC-2025-0075", # unic-char-range
+    "RUSTSEC-2025-0080", # unic-common
+    "RUSTSEC-2025-0081", # unic-char-property
+    "RUSTSEC-2025-0098", # unic-ucd-version
+    "RUSTSEC-2025-0100", # unic-ucd-ident
+]

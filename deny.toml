@@ -17,7 +17,19 @@ all-features = true
 [advisories]
 version = 2
 yanked = "deny"
-ignore = []
+# Kept in step with .cargo/audit.toml, which carries the full reasoning. Short
+# version: every entry is `unmaintained`, none is a vulnerability, and all of
+# them are build-time only — urlpattern → tauri-utils → tauri-build, which parses
+# capability files at compile time and links nothing into the app. The GTK
+# advisories that cargo-audit reports do not appear here at all, because
+# `[graph] targets` above already filters out Linux.
+ignore = [
+    "RUSTSEC-2025-0075", # unic-char-range
+    "RUSTSEC-2025-0080", # unic-common
+    "RUSTSEC-2025-0081", # unic-char-property
+    "RUSTSEC-2025-0098", # unic-ucd-version
+    "RUSTSEC-2025-0100", # unic-ucd-ident
+]
 
 [bans]
 # Warn broadly: a Tauri tree legitimately carries duplicates of leaf crates.
@@ -55,6 +67,20 @@ deny-multiple-versions = true
 name = "getrandom"
 deny-multiple-versions = true
 
+# getrandom is the one crate in ADD-002 Q1's list we cannot hold to a single
+# version, and the reason is outside our control: `tauri` pins 0.3 and `uuid`
+# pins 0.4, while our crypto stack reaches 0.2 through rand_core 0.6. All three
+# are thin shims over the same OS CSPRNG, so SPEC-V1 §3.2 ("OS CSPRNG only") holds
+# either way, and the crypto path itself still uses exactly one of them.
+#
+# These skips are version-pinned deliberately: a *fourth* version appearing still
+# fails the build. Re-check on every Tauri or uuid bump, and delete a line the
+# moment its version leaves the tree.
+[[bans.skip]]
+crate = "getrandom@0.3.4" # via tauri
+[[bans.skip]]
+crate = "getrandom@0.4.3" # via uuid
+
 # ── Crates that must never appear ────────────────────────────────────────────
 [[bans.deny]]
 name = "openssl"
@@ -71,6 +97,10 @@ wrappers = ["rustls", "rustls-webpki", "webpki", "ureq"]
 [licenses]
 version = 2
 confidence-threshold = 0.93
+# Our own workspace crates are `publish = false` and carry no SPDX expression —
+# README.md records the licence as TBD before first public release. This skips
+# them, and only them; every third-party crate still has to match the allow-list.
+private = { ignore = true }
 allow = [
     "MIT",
     "Apache-2.0",
