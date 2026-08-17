@@ -19,6 +19,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "wdio run e2e/wdio.conf.ts",
+    "e2e:setup": "node scripts/check-e2e-ready.mjs",
     "check:tokens": "node scripts/check-tokens.mjs",
     "check:unsafe": "node scripts/check-unsafe.mjs",
     "check:network": "node scripts/check-network.mjs",
