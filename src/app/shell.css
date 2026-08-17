@@ -19,6 +19,10 @@
 }
 
 .window {
+  /* The containing block for every overlay. §14 gives all of them `inset: 0`, which
+     without this resolves against the viewport — so the lock screen covered the desk
+     instead of the window and lost the rounded corners with it. */
+  position: relative;
   display: flex;
   flex-direction: column;
   width: min(var(--window-width), 100%);

@@ -9,6 +9,10 @@
  *   decrypted cache — it does not stop being one because it holds no passwords.
  * - **No `refetchOnWindowFocus`.** Focus fires on every alt-tab, and each refetch is
  *   a full index query. Nothing here changes without the app changing it.
+ * - **`unlocked` gates every query.** Without it these fire during the locked window on
+ *   every boot, fail, and — with `retry: false` — hold that rejection until something
+ *   clears the cache. The visible symptom was an unlocked vault showing "Nothing here
+ *   yet", which is a lie about the contents rather than a loading glitch.
  */
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -34,8 +38,13 @@ const LOCAL = {
   retry: false,
 } as const;
 
-/** The list for the current source, filters, sort and search. */
-export function useItems() {
+/**
+ * The list for the current source, filters, sort and search.
+ *
+ * @param unlocked - Whether the vault is open. False keeps the query idle rather than
+ * letting it fail against a locked vault.
+ */
+export function useItems(unlocked = true) {
   const source = useNavigation((s) => s.source);
   const filters = useNavigation((s) => s.filters);
   const sort = useNavigation((s) => s.sort);
@@ -44,15 +53,17 @@ export function useItems() {
   return useQuery<ItemSummaryDto[]>({
     queryKey: keys.items(source, filters, sort, search),
     queryFn: () => itemsList({ source, filters, sort, search }),
+    enabled: unlocked,
     ...LOCAL,
   });
 }
 
 /** Every vault, for the sidebar. */
-export function useVaults() {
+export function useVaults(unlocked = true) {
   return useQuery<VaultSummaryDto[]>({
     queryKey: keys.vaults,
     queryFn: () => vaultsList(),
+    enabled: unlocked,
     ...LOCAL,
   });
 }

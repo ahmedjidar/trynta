@@ -22,3 +22,7 @@
 @import './features/items/detail.css';
 @import './features/generator/generator.css';
 @import './features/security/security.css';
+@import './features/settings/settings.css';
+@import './features/account/lock.css';
+@import './features/palette/palette.css';
+@import './features/items/sheet.css';

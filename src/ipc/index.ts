@@ -35,10 +35,13 @@ export {
   itemRestore,
   itemRevealField,
   itemsList,
+  passwordStrength,
   itemToggleFavorite,
   itemUpsert,
   securityBreachCheck,
   securityReportRun,
+  settingsGet,
+  settingsSet,
   vaultAdd,
   vaultDelete,
   vaultRename,
@@ -86,8 +89,12 @@ export type { ReuseGroupDto } from './generated/ReuseGroupDto';
 export type { RiskDto } from './generated/RiskDto';
 export type { RiskKindDto } from './generated/RiskKindDto';
 export type { SecretPresence } from './generated/SecretPresence';
+export type { DensityDto } from './generated/DensityDto';
 export type { SecurityReportDto } from './generated/SecurityReportDto';
+export type { SettingsDto } from './generated/SettingsDto';
+export type { SettingsPatch } from './generated/SettingsPatch';
 export type { SortOrderDto } from './generated/SortOrderDto';
+export type { StrengthDto } from './generated/StrengthDto';
 export type { ThemeCatalogDto } from './generated/ThemeCatalogDto';
 export type { ThemeDto } from './generated/ThemeDto';
 export type { ThemeModeDto } from './generated/ThemeModeDto';

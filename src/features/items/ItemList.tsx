@@ -20,7 +20,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 
-import { useNavigation } from '../../app/navigation';
+import { NO_FILTERS, sourceLabel, useNavigation } from '../../app/navigation';
 import { IdentityTile } from '../../components/IdentityTile';
 import { Spacer } from '../../components/Spacer';
 import type { ItemSummaryDto, SortOrderDto } from '../../ipc';
@@ -41,14 +41,18 @@ export interface ItemListProps {
   items: readonly ItemSummaryDto[];
   /** Item ids the last security report flagged, for the risk dot. */
   risks: Readonly<Record<string, 'breached' | 'weak'>>;
+  /** Vault names by id, so a vault source can title the column with its own name. */
+  vaultNames: Readonly<Record<string, string>>;
   /** Copy the selected item's primary secret, in Rust. */
   onCopy: (id: string) => void;
   /** Open the new-item sheet. */
   onNew: () => void;
 }
 
-export function ItemList({ items, risks, onCopy, onNew }: ItemListProps) {
+export function ItemList({ items, risks, vaultNames, onCopy, onNew }: ItemListProps) {
   const selectedId = useNavigation((s) => s.selectedId);
+  const source = useNavigation((s) => s.source);
+  const setFilters = useNavigation((s) => s.setFilters);
   const select = useNavigation((s) => s.select);
   const filters = useNavigation((s) => s.filters);
   const toggleFilter = useNavigation((s) => s.toggleFilter);
@@ -139,11 +143,16 @@ export function ItemList({ items, risks, onCopy, onNew }: ItemListProps) {
   };
 
   const currentSort = SORTS.find((s) => s.value === sort) ?? SORTS[0];
+  const anyFilter = filters.weak || filters.hasTotp || filters.shared;
 
   return (
     <section className="list-column" aria-label="Items">
       <header className="list-header">
-        <h1 className="list-header__title">Items</h1>
+        {/* The design's `listTitle` is the selected source's own name, not a fixed
+            word: "All items", "Logins", or the vault's name. */}
+        <h1 className="list-header__title">
+          {sourceLabel(source, source.source === 'vault' ? vaultNames[source.id] : undefined)}
+        </h1>
         <span className="list-header__count">{items.length}</span>
         <button
           type="button"
@@ -165,6 +174,20 @@ export function ItemList({ items, risks, onCopy, onNew }: ItemListProps) {
       {/* Quick filters (§7.1). `shared` is V2 and is deliberately absent rather than
           present and inert — "never a toggle that does nothing" (§7.5). */}
       <div className="filter-bar" role="group" aria-label="Quick filters">
+        {/* The design's filter bar opens with an "All" chip. Its own logic makes the
+            filters exclusive, but §7.1 says "combinable", and the spec wins on
+            behaviour — so the others toggle and this one clears them. */}
+        <button
+          type="button"
+          className="filter-chip"
+          aria-pressed={!anyFilter}
+          data-selected={!anyFilter || undefined}
+          onClick={() => {
+            setFilters(NO_FILTERS);
+          }}
+        >
+          All
+        </button>
         <button
           type="button"
           className="filter-chip"

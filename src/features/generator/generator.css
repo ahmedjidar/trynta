@@ -95,3 +95,12 @@
   justify-content: flex-end;
   margin-top: var(--space-3);
 }
+
+/* Shown when the value could not be recorded, so Copy is unavailable. */
+.output-card__note {
+  margin-top: var(--space-2);
+  color: var(--text-caption-aa);
+  font-size: var(--text-chip);
+  line-height: var(--leading-caption);
+  text-wrap: pretty;
+}

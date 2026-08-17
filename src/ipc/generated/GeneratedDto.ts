@@ -17,4 +17,13 @@ value: string,
  * `floor(log2(|sample space|))`, by inclusion–exclusion. Never the inflated
  * `length × log2(charset)` (SPEC-V1 §7.3).
  */
-entropyBits: number, };
+entropyBits: number, 
+/**
+ * Whether the value was recorded in the generator history.
+ *
+ * `false` when the vault is locked: generating needs no key, but the history lives in
+ * the encrypted `app_cache`, so it cannot be written. Copying goes through
+ * `generator_history_copy`, so a caller must disable Copy when this is `false` rather
+ * than offering a button that cannot work.
+ */
+recorded: boolean, };

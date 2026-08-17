@@ -36,7 +36,18 @@ use crate::session::VaultState;
 #[tauri::command]
 pub fn account_status(state: State<'_, AppState>) -> Result<AccountStatus, AppError> {
     let session = &state.session;
-    let state_now = session.state();
+
+    // The state machine starts at `Uninitialised` and only reaches `Locked` once a file
+    // is attached, which `account_unlock` does lazily — nothing opens the vault at
+    // startup. So the machine's own state cannot answer the question the lock screen
+    // asks, which is "does this device have a vault?", and answering it wrong is not
+    // cosmetic: it offers *create* to someone who needs *unlock*, and `account_create`
+    // then refuses with `InvalidState` because the file is right there. Found by opening
+    // the lock screen twice.
+    let state_now = match session.state() {
+        VaultState::Uninitialised if state.vault_path.exists() => VaultState::Locked,
+        other => other,
+    };
 
     let (vault_count, item_count) = if state_now == VaultState::Unlocked {
         let vaults = session

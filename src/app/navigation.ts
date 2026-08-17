@@ -36,6 +36,8 @@ export interface NavigationState {
   go: (surface: Surface) => void;
   setSource: (source: ItemSourceDto) => void;
   toggleFilter: (filter: keyof QuickFiltersDto) => void;
+  /** Replace the whole filter set. Used by the design's "All" chip to clear them. */
+  setFilters: (filters: QuickFiltersDto) => void;
   setSort: (sort: SortOrderDto) => void;
   setSearch: (search: string) => void;
   select: (id: string | null) => void;
@@ -65,6 +67,10 @@ export const useNavigation = create<NavigationState>((set) => ({
       filters: { ...state.filters, [filter]: !state.filters[filter] },
       selectedId: null,
     }));
+  },
+
+  setFilters: (filters) => {
+    set({ filters, selectedId: null });
   },
 
   setSort: (sort) => {

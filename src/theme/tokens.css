@@ -17,8 +17,8 @@
    Two notes on structure, because they are not obvious:
 
    - The base theme in `:root` is DARK. `[data-theme="light"]` overrides colour
-     only. That is inverted from the usual convention and it is deliberate —
-     the source system is dark-native.
+     only. That is inverted from the usual convention and it is deliberate: the
+     source system is dark-native.
    - There is no `prefers-color-scheme` block, and there should not be one here.
      `system` mode is resolved in `src/theme/mode.ts`, which sets or clears
      `data-theme` from the OS. Doing it in CSS would make the stored preference

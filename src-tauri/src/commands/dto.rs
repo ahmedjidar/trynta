@@ -986,6 +986,13 @@ pub struct GeneratedDto {
     /// `floor(log2(|sample space|))`, by inclusion–exclusion. Never the inflated
     /// `length × log2(charset)` (SPEC-V1 §7.3).
     pub entropy_bits: u32,
+    /// Whether the value was recorded in the generator history.
+    ///
+    /// `false` when the vault is locked: generating needs no key, but the history lives in
+    /// the encrypted `app_cache`, so it cannot be written. Copying goes through
+    /// `generator_history_copy`, so a caller must disable Copy when this is `false` rather
+    /// than offering a button that cannot work.
+    pub recorded: bool,
 }
 
 /// Password generator options, on the wire.
@@ -1544,4 +1551,126 @@ impl From<icons::Icon> for IconDto {
             icons::Icon::Monogram { initials, tone } => Self::Monogram { initials, tone },
         }
     }
+}
+
+// ── Settings (SPEC-V1 §7.5) ─────────────────────────────────────────────────
+
+/// List row density.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub enum DensityDto {
+    /// `--row-item`, 60px. The design's default.
+    Comfortable,
+    /// `--row-item-compact`, 40px.
+    Compact,
+}
+
+/// Answer to `settings_get` (SPEC-V1 §6, §7.5).
+///
+/// One object spanning both stores, because that is what a settings screen is. Which
+/// store each field lives in is the command's problem, not the UI's.
+///
+/// `clippy::struct_excessive_bools` is allowed here deliberately. A settings screen is a
+/// list of independent switches, and the lint's alternatives — bitflags, or a state enum
+/// per group — would make the generated TypeScript worse: the frontend would decode flags
+/// instead of reading named fields, and ts-rs cannot express a bitflag as anything a UI
+/// wants to consume. Grouping them into sub-structs to get under three would be shaping a
+/// wire type around a heuristic rather than around what a settings screen is.
+#[allow(clippy::struct_excessive_bools)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub struct SettingsDto {
+    /// Whether a copied secret is cleared automatically.
+    pub clear_clipboard: bool,
+    /// How long a copied secret stays on the clipboard.
+    pub clipboard_seconds: u32,
+    /// Whether the daily HIBP check may run.
+    pub watch_for_breaches: bool,
+    /// Whether every reveal requires the master password.
+    pub require_master_on_reveal: bool,
+    /// List row density.
+    pub density: DensityDto,
+    /// Whether biometric unlock is enrolled.
+    pub biometric_enabled: bool,
+    /// Whether this machine has a biometric at all.
+    ///
+    /// Separate from `biometric_enabled` so the screen can disable the row with a reason
+    /// rather than offering a switch that fails when pressed.
+    pub biometric_available: bool,
+    /// Whether the screen-capture mitigation is on (ADD-002 Q11; off by default).
+    pub content_protection: bool,
+    /// Whether unattended update checks are permitted (§7.7).
+    pub update_checks_enabled: bool,
+    /// Whether autofill exists in this build.
+    ///
+    /// Always `false`: autofill is V3. Reported as a fact so §7.5's *"honest 'not
+    /// available yet' state"* can be rendered without a dead toggle.
+    pub autofill_available: bool,
+    /// How many imported themes are stored, for the appearance row's summary.
+    pub imported_theme_count: u32,
+}
+
+/// A settings patch. Absent fields are left alone.
+///
+/// A patch rather than a whole object so two screens editing different rows cannot
+/// overwrite each other, and so a write from a stale UI cannot silently revert a field it
+/// never knew about.
+///
+/// There is deliberately **no diagnostics field**: CLAUDE.md §1 bans telemetry pre-1.0
+/// and §4.7 bans a crash reporter, so the design's "Share anonymous diagnostics" row has
+/// nothing to write to. Absence is the enforcement.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase", default)]
+pub struct SettingsPatch {
+    /// See [`SettingsDto::clear_clipboard`].
+    #[ts(optional)]
+    pub clear_clipboard: Option<bool>,
+    /// See [`SettingsDto::clipboard_seconds`]. Clamped before it reaches disk.
+    #[ts(optional)]
+    pub clipboard_seconds: Option<u32>,
+    /// See [`SettingsDto::watch_for_breaches`].
+    #[ts(optional)]
+    pub watch_for_breaches: Option<bool>,
+    /// See [`SettingsDto::require_master_on_reveal`].
+    #[ts(optional)]
+    pub require_master_on_reveal: Option<bool>,
+    /// See [`SettingsDto::density`].
+    #[ts(optional)]
+    pub density: Option<DensityDto>,
+    /// See [`SettingsDto::biometric_enabled`]. Refused when no biometric is available.
+    #[ts(optional)]
+    pub biometric_enabled: Option<bool>,
+    /// See [`SettingsDto::content_protection`].
+    #[ts(optional)]
+    pub content_protection: Option<bool>,
+    /// See [`SettingsDto::update_checks_enabled`].
+    #[ts(optional)]
+    pub update_checks_enabled: Option<bool>,
+}
+
+// ── Strength (SPEC-V1 §7.2) ─────────────────────────────────────────────────
+
+/// One password's strength, for the meter beside a field the user is typing into.
+///
+/// Carries no password and no reversible derivative of one: a band, a label and a
+/// saturating crack estimate. The *request* carries the plaintext, which is the
+/// same exposure `item_upsert` already has and §2 documents — the user typed it
+/// into a form, and scoring it is the reason they are looking at the field.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub struct StrengthDto {
+    /// 0–4: how many of the meter's four segments fill. 0 for an empty field.
+    pub band: u8,
+    /// The label the design prints beside the meter.
+    pub label: String,
+    /// Whether this counts as weak by §7.4's threshold — the same verdict the
+    /// security report uses, so the meter and the risk list cannot disagree.
+    pub weak: bool,
+    /// Seconds to crack at the documented rate, saturating.
+    #[ts(type = "number")]
+    pub crack_seconds: u64,
 }

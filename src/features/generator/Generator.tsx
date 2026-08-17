@@ -145,7 +145,9 @@ export function Generator({ onCopied, onFailed }: GeneratorProps) {
         setUnavailable(
           kind === 'featureUnavailable'
             ? 'Passphrases need the EFF wordlist, which is not bundled in this build.'
-            : 'Could not generate.',
+            : kind === 'locked' || kind === 'noVault'
+              ? 'Unlock the vault to generate.'
+              : 'Could not generate.',
         );
       },
     );
@@ -174,6 +176,11 @@ export function Generator({ onCopied, onFailed }: GeneratorProps) {
           <output className="output-card__secret" data-selectable>
             {unavailable ?? generated?.value ?? ''}
           </output>
+          {generated !== null && !generated.recorded ? (
+            <p className="output-card__note">
+              Not saved to history — the vault is locked. Select the value above to copy it by hand.
+            </p>
+          ) : null}
           <div className="output-card__footer">
             <div className="output-card__meter">
               <StrengthMeter filled={strength.band} label={strength.label} />
@@ -191,7 +198,7 @@ export function Generator({ onCopied, onFailed }: GeneratorProps) {
               onClick={() => {
                 const first = history[0];
                 if (!first) {
-                  onFailed('Nothing to copy');
+                  onFailed('Unlock the vault to copy');
                   return;
                 }
                 generatorHistoryCopy(first.id).then(
@@ -203,7 +210,11 @@ export function Generator({ onCopied, onFailed }: GeneratorProps) {
                   },
                 );
               }}
-              disabled={generated === null}
+              // Copying goes through the history entry, which cannot be written while the
+              // vault is locked — generating needs no key, the encrypted history does. A
+              // disabled button with the value still on screen and selectable beats one
+              // that fails when pressed.
+              disabled={generated === null || !generated.recorded}
             >
               Copy
             </Button>

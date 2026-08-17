@@ -7,9 +7,11 @@ the design it implements.
 | ------ | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ---------- | ---------- | ----------- |
 | HO-001 | Shell, list, detail, generator, security, settings, palette, lock | https://claude.ai/design/p/8e6f8326-9501-41e2-b1c9-94094ba0af1f?file=Keyring.dc.html | 2026-08-17 | —          | partial     |
 
-HO-001 — partial. Token layer, shell, sidebar, item list and item detail (with TOTP and toast) are
-built. Generator, security report, settings, command palette, new-item sheet, lock screen and the
-backup/updater surfaces are not.
+HO-001 — partial. Built: token layer, shell, sidebar, item list, item detail (with TOTP and toast),
+generator, security report, settings, lock screen, command palette, new-item sheet and the updater
+surface. **Not built: backup and restore** — `keyring-store` has the format but no command exposes
+it, and doing so needs a file-dialog capability, which is a permission grant rather than a screen.
+Also not built: item **edit mode** (§6's header Edit button and `.inline-input` states).
 
 **Access.** The project is reachable through the `claude_design` MCP, not by fetching the share URL
 — a plain fetch returns 403. `DesignSync` with `projectId: 8e6f8326-9501-41e2-b1c9-94094ba0af1f`
@@ -28,7 +30,7 @@ When marking `partial`, note what's missing:
 
 ## Outstanding request — HO-002
 
-Five things HO-001 cannot answer, recorded here rather than in `addendums/` because that directory
+Eight things HO-001 cannot answer, recorded here rather than in `addendums/` because that directory
 is gitignored and none of this should die with a working copy. Each names what was shipped in the
 meantime, so nothing is silently waiting.
 
@@ -101,3 +103,41 @@ syncs"*, *"Connected to Safari 18 and Chrome 141 on this Mac"*, and a sidebar fo
 Windows is the verified platform (ADD-005) and there is no sync in V1 (SPEC-V1 §1). Shipped: the
 footer reads **"This device only"**, which is true. Platform-neutral phrasing for the rest — or
 phrasing that resolves from `app_platform_info` — would avoid every future surface re-deciding this.
+
+### 6. No create-vault screen
+
+§14 draws one lock screen, for a vault that already exists ("Vault locked" · "Your keys were wiped
+from memory"). First run has no design: there is no vault, so there is nothing to unlock, and the
+user has to choose a master password that **cannot be reset** — losing it loses every credential.
+
+Shipped: §14's exact layout with the copy swapped and **one extra confirm row**, because a vault
+created from a single unconfirmed field loses everything to one typo. A designed first-run screen
+would settle whether the confirmation is a second field, a re-type step, or something else, and what
+the warning about irreversibility should say.
+
+### 7. Three type and geometry steps the token layer has no name for
+
+Each is a value §14 states that the extracted token layer does not carry, so each was mapped onto
+the nearest existing token rather than written as a literal:
+
+| §14 value | Where | Shipped as |
+| --- | --- | --- |
+| 52px | palette query row | `--row-option` (52px, "generator grouped row") |
+| 14px | new-item name input | `--text-body-lg` (13.5px) |
+| 26px | vault chips | `--size-chip` (24px) |
+
+The first is exact and only lacks a name; the other two are 0.5px and 2px off. Either add the steps
+or confirm the substitutions.
+
+### 8. §6's detail header actions, and item edit mode
+
+§6's header carries an outline **Edit** (76×32) and a primary **Autofill** (92×32). Neither is
+shipped:
+
+- **Autofill** is V3 (SPEC-V1 §7.5), and §7.5 forbids *"a toggle that does nothing"*.
+- **Edit** would need §6's whole edit mode — `.inline-input` with its focus, error and disabled
+  states — which is not built.
+
+So the detail pane currently has **no header actions at all**, and no close control either, since
+§6 draws none: Escape closes it. A keyboard user has a way out; a mouse user has to pick another
+item. Worth confirming that is intended, or drawing the affordance.

@@ -22,6 +22,7 @@ import { call, callVoid } from './client';
 import type { AccountStatus } from './generated/AccountStatus';
 import type { BreachCheckDto } from './generated/BreachCheckDto';
 import type { GeneratedDto } from './generated/GeneratedDto';
+import type { StrengthDto } from './generated/StrengthDto';
 import type { HistoryEntryDto } from './generated/HistoryEntryDto';
 import type { PassphraseOptionsDto } from './generated/PassphraseOptionsDto';
 import type { PasswordOptionsDto } from './generated/PasswordOptionsDto';
@@ -38,6 +39,8 @@ import type { ListQueryDto } from './generated/ListQueryDto';
 import type { PlatformInfo } from './generated/PlatformInfo';
 import type { SecretFieldDto } from './generated/SecretFieldDto';
 import type { SecurityReportDto } from './generated/SecurityReportDto';
+import type { SettingsDto } from './generated/SettingsDto';
+import type { SettingsPatch } from './generated/SettingsPatch';
 import type { VaultStateDto } from './generated/VaultStateDto';
 import type { VaultSummaryDto } from './generated/VaultSummaryDto';
 
@@ -413,6 +416,28 @@ export function generatorPin(length: number): Promise<GeneratedDto> {
 }
 
 /**
+ * Score a password the user is typing, for §14's live strength row.
+ *
+ * Needs no unlocked vault — scoring is arithmetic over the string. The response
+ * carries a band, a label and a crack estimate, never the password.
+ *
+ * @param password - The typed value. Already exposed to the webview by the form it
+ * came from; nothing here stores it.
+ * @param context - The item's own non-secret fields (title, username, website), which
+ * lower the estimate for a password built out of them.
+ *
+ * @example
+ * ```ts
+ * const { band, label } = await passwordStrength(typed, [title, username]);
+ * ```
+ *
+ * @beta
+ */
+export function passwordStrength(password: string, context: string[]): Promise<StrengthDto> {
+  return call<StrengthDto>('password_strength', { password, context });
+}
+
+/**
  * The retained generator history, newest first, **without values**.
  *
  * Entries carry a kind, an entropy figure and a timestamp. The values stay in
@@ -631,4 +656,39 @@ export function themeImport(document: string): Promise<ThemeDto> {
  */
 export function themeDelete(id: string): Promise<void> {
   return callVoid('theme_delete', { id });
+}
+
+// ── Settings (SPEC-V1 §7.5) ─────────────────────────────────────────────────
+
+/**
+ * Everything the settings screen shows.
+ *
+ * Spans both stores — the encrypted blob and §4.5's plaintext carve-out — because that is
+ * what a settings screen is. Requires an unlocked vault.
+ *
+ * `autofillAvailable` is always `false` in V1. Render §7.5's honest "not available yet"
+ * state from it rather than a switch: "never a toggle that does nothing".
+ *
+ * @throws {IpcError} `locked`, `storage`.
+ *
+ * @beta
+ */
+export function settingsGet(): Promise<SettingsDto> {
+  return call<SettingsDto>('settings_get');
+}
+
+/**
+ * Apply a patch. Absent fields are left alone.
+ *
+ * Returns the settings as they are **after** the write, not what was asked for — the two
+ * differ whenever a value is clamped, and rendering the request would show the user a
+ * number that is not stored.
+ *
+ * @throws {IpcError} `biometric` if biometric unlock is switched on where no biometric
+ * exists, `locked`, `storage`.
+ *
+ * @beta
+ */
+export function settingsSet(patch: SettingsPatch): Promise<SettingsDto> {
+  return call<SettingsDto>('settings_set', { patch });
 }

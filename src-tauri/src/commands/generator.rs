@@ -46,7 +46,7 @@ pub fn generator_password(
     options: PasswordOptionsDto,
 ) -> Result<GeneratedDto, AppError> {
     let generated = generator::password(options.into())?;
-    finish(&state, generated, GeneratedKind::Password)
+    Ok(finish(&state, generated, GeneratedKind::Password))
 }
 
 /// Generate a passphrase from the bundled EFF long wordlist (SPEC-V1 §7.3).
@@ -64,7 +64,7 @@ pub fn generator_passphrase(
 ) -> Result<GeneratedDto, AppError> {
     let words = generator::bundled_wordlist().ok_or(AppError::FeatureUnavailable)?;
     let generated = generator::passphrase(&options.into(), &words)?;
-    finish(&state, generated, GeneratedKind::Passphrase)
+    Ok(finish(&state, generated, GeneratedKind::Passphrase))
 }
 
 /// Generate a numeric PIN (SPEC-V1 §7.3).
@@ -75,7 +75,7 @@ pub fn generator_passphrase(
 #[tauri::command]
 pub fn generator_pin(state: State<'_, AppState>, length: usize) -> Result<GeneratedDto, AppError> {
     let generated = generator::pin(length)?;
-    finish(&state, generated, GeneratedKind::Pin)
+    Ok(finish(&state, generated, GeneratedKind::Pin))
 }
 
 /// Record a generated value in the history and project it for the wire.
@@ -83,11 +83,7 @@ pub fn generator_pin(state: State<'_, AppState>, length: usize) -> Result<Genera
 /// The `Zeroizing` buffer is consumed here: one copy goes into the history that
 /// is about to be sealed, one crosses IPC, and the original is wiped when it
 /// drops at the end of this function.
-fn finish(
-    state: &State<'_, AppState>,
-    generated: Generated,
-    kind: GeneratedKind,
-) -> Result<GeneratedDto, AppError> {
+fn finish(state: &State<'_, AppState>, generated: Generated, kind: GeneratedKind) -> GeneratedDto {
     let entry = HistoryEntry {
         id: Uuid::new_v4(),
         value: generated.value.to_string(),
@@ -97,16 +93,28 @@ fn finish(
     };
     let now = state.session.now_ms();
 
-    state.session.with_session(|s| {
-        let mut history = load(s)?;
-        history.record(entry, now);
-        save(s, &history)
-    })?;
+    // Best-effort, and deliberately not `?`. Generating a password needs no key at all;
+    // only the *history* does, because it lives in the encrypted `app_cache`. Propagating
+    // this error meant a locked vault could not generate a password — which rendering the
+    // surface made obvious, and which is backwards: the value is what the user asked for
+    // and the history entry is a convenience.
+    let recorded = state
+        .session
+        .with_session(|s| {
+            let mut history = load(s)?;
+            history.record(entry, now);
+            save(s, &history)
+        })
+        .is_ok();
 
-    Ok(GeneratedDto {
+    GeneratedDto {
         value: generated.value.to_string(),
         entropy_bits: generated.entropy_bits,
-    })
+        // Reported so the UI can disable Copy with a reason rather than offering a button
+        // that fails: copying goes through `generator_history_copy`, which needs the entry
+        // this call may not have been able to write.
+        recorded,
+    }
 }
 
 /// Read the history, pruning anything that has aged out.
@@ -185,5 +193,56 @@ pub fn generator_history_clear(state: State<'_, AppState>) -> Result<(), AppErro
         // nothing about how much was there survives.
         s.app_cache_clear(AppCacheKey::GeneratorHistory)
             .map_err(AppError::from)
+    })
+}
+
+/// Score a password the user is typing (SPEC-V1 §7.2).
+///
+/// Needs no vault: scoring is pure arithmetic over the string. That matters for the
+/// new-item sheet, where the meter has to move while the user types and a command
+/// that required an unlocked session would make the meter a lie about *why* it was
+/// empty.
+///
+/// `context` is the item's own non-secret fields — title, username, website. Passing
+/// them lowers the estimate for a password built out of them, which is the estimate
+/// an attacker looking at the item would work from.
+///
+/// The password arrives as an owned `String` because a Tauri command parameter must
+/// be owned. It is moved into a `Zeroizing` buffer on arrival so the copy this
+/// function holds is wiped, and nothing here logs, stores or returns it.
+///
+/// # Errors
+///
+/// Never fails.
+#[tauri::command]
+pub fn password_strength(
+    password: String,
+    context: Vec<String>,
+) -> Result<crate::commands::dto::StrengthDto, AppError> {
+    use crate::services::strength::{self, Band};
+    use zeroize::Zeroizing;
+
+    let password = Zeroizing::new(password);
+    let borrowed: Vec<&str> = context.iter().map(String::as_str).collect();
+    let assessed = strength::assess_secret(&password, &borrowed);
+
+    let (band, label) = match assessed.band {
+        Band::VeryWeak => (1_u8, "Very weak"),
+        Band::Weak => (2, "Weak"),
+        Band::Fair => (3, "Fair"),
+        Band::Strong => (4, "Strong"),
+    };
+
+    Ok(crate::commands::dto::StrengthDto {
+        // An empty field has no band at all: the meter is empty and the label says
+        // nothing, rather than reporting "very weak" for a password not yet typed.
+        band: if password.is_empty() { 0 } else { band },
+        label: if password.is_empty() {
+            String::new()
+        } else {
+            label.to_owned()
+        },
+        weak: assessed.weak,
+        crack_seconds: assessed.crack_seconds,
     })
 }

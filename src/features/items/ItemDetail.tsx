@@ -67,13 +67,22 @@ export interface ItemDetailProps {
   detail: ItemDetailDto;
   /** Band 0–4 and its label, from the last security report. */
   strength: { band: number; label: string };
+  /** Owning vault's name, for §6's "{sub} · {vaultName}" subtitle. */
+  vaultName: string;
   /** Report a copy to the toast. */
   onCopied: (what: string) => void;
   /** Report a failure to the toast. */
   onFailed: (message: string) => void;
 }
 
-export function ItemDetail({ summary, detail, strength, onCopied, onFailed }: ItemDetailProps) {
+export function ItemDetail({
+  summary,
+  detail,
+  strength,
+  vaultName,
+  onCopied,
+  onFailed,
+}: ItemDetailProps) {
   /**
    * Which secret is revealed, and its plaintext. At most one at a time.
    *
@@ -98,6 +107,22 @@ export function ItemDetail({ summary, detail, strength, onCopied, onFailed }: It
       globalThis.removeEventListener('blur', clear);
     };
   }, []);
+
+  // Escape closes the pane. §6 draws no close control — its header actions are Edit and
+  // Autofill — so this is the whole affordance rather than a shortcut for a button, and
+  // without it a keyboard user has no way out. A behaviour, not a layout invention.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setHeld(null);
+        select(null);
+      }
+    };
+    globalThis.addEventListener('keydown', onKey);
+    return () => {
+      globalThis.removeEventListener('keydown', onKey);
+    };
+  }, [select]);
 
   const copy = useCallback(
     (field: SecretFieldDto, what: string) => {
@@ -143,7 +168,11 @@ export function ItemDetail({ summary, detail, strength, onCopied, onFailed }: It
           <IdentityTile icon={summary.icon} size="lg" title={summary.title} />
           <div className="detail-header__labels">
             <h1 className="detail-header__name">{detail.title}</h1>
-            <p className="detail-header__sub">{summary.subtitle ?? ''}</p>
+            <p className="detail-header__sub">
+              {/* §6's header subtitle is "{sub} · {vaultName}" — which vault an item
+                  lives in is part of identifying it, not decoration. */}
+              {[summary.subtitle, vaultName].filter((part) => part).join(' · ')}
+            </p>
           </div>
         </header>
 
@@ -263,18 +292,6 @@ export function ItemDetail({ summary, detail, strength, onCopied, onFailed }: It
             </p>
           </article>
         )}
-
-        <footer className="detail-footer">
-          <button
-            type="button"
-            className="link-button"
-            onClick={() => {
-              select(null);
-            }}
-          >
-            Close
-          </button>
-        </footer>
       </div>
     </section>
   );

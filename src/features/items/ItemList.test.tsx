@@ -41,7 +41,16 @@ const ITEMS = [item('a', 'Acme'), item('b', 'Bank'), item('c', 'Cloud')];
 function setup(overrides: Partial<Parameters<typeof ItemList>[0]> = {}) {
   const onCopy = vi.fn();
   const onNew = vi.fn();
-  render(<ItemList items={ITEMS} risks={{}} onCopy={onCopy} onNew={onNew} {...overrides} />);
+  render(
+    <ItemList
+      items={ITEMS}
+      risks={{}}
+      vaultNames={{}}
+      onCopy={onCopy}
+      onNew={onNew}
+      {...overrides}
+    />,
+  );
   return { onCopy, onNew };
 }
 
@@ -150,12 +159,14 @@ describe('item list', () => {
 
   it('names the query in the empty state, and does not when there is none', () => {
     useNavigation.setState({ search: 'zzz' });
-    const { unmount } = render(<ItemList items={[]} risks={{}} onCopy={vi.fn()} onNew={vi.fn()} />);
+    const { unmount } = render(
+      <ItemList items={[]} risks={{}} vaultNames={{}} onCopy={vi.fn()} onNew={vi.fn()} />,
+    );
     expect(screen.getByText(/No items match/)).toBeInTheDocument();
     unmount();
 
     useNavigation.setState({ search: '' });
-    render(<ItemList items={[]} risks={{}} onCopy={vi.fn()} onNew={vi.fn()} />);
+    render(<ItemList items={[]} risks={{}} vaultNames={{}} onCopy={vi.fn()} onNew={vi.fn()} />);
     expect(screen.getByText(/Nothing here yet/)).toBeInTheDocument();
   });
 
@@ -164,6 +175,7 @@ describe('item list', () => {
       <ItemList
         items={[item('a', 'Acme')]}
         risks={{ a: 'breached' }}
+        vaultNames={{}}
         onCopy={vi.fn()}
         onNew={vi.fn()}
       />,
