@@ -43,6 +43,12 @@ Used by the passphrase generator (SPEC-V1 §7.3). 7,776 words, bundled, never fe
 | ------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | Source  | _to be filled in when the list is vendored_                                                                                           |
 | Licence | _to be confirmed: the EFF publishes the list under CC BY 3.0 US — record the exact terms and attribution string here before shipping_ |
+| Path    | `src-tauri/assets/eff_large_wordlist.txt`, one entry per line as `<5 dice digits>\t<word>`                                            |
+
+Not yet vendored. `services::generator::passphrase` is implemented and refuses any list that is not
+exactly 7,776 entries, so the feature fails closed rather than quietly generating weaker
+passphrases; `pnpm check:wordlist` reports the file as absent today and validates it strictly
+(count, distinctness, lowercase a–z) the moment it lands.
 
 ## Two-factor directory — run 3
 

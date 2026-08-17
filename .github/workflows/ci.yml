@@ -67,11 +67,17 @@ jobs:
       - name: pnpm verify:v1
         run: pnpm verify:v1
 
-      # AC22 asks for `ts-rs` no-diff. scripts/verify-v1.mjs is frozen and
-      # records that row as deferred, so the check runs here instead — on both
-      # platforms, and still before anything ships.
+      # AC22's ts-rs row now executes inside verify:v1 as well. Kept here too:
+      # two places checking one property is cheap, and this one runs even if the
+      # verifier's own invocation is ever changed.
       - name: ts-rs generated types match
         run: pnpm check:ts-rs
+
+      # §7.3's entropy claim is only true if the vendored wordlist really has
+      # 7,776 distinct entries. Passes with a notice while the asset is absent,
+      # and strictly once it lands.
+      - name: EFF wordlist is intact
+        run: pnpm check:wordlist
 
   # ── Supply chain, once. Platform-independent, so it does not need the matrix.
   supply-chain:

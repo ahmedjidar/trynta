@@ -62,7 +62,7 @@ fn activity_row_count(path: &std::path::Path, id: Uuid) -> i64 {
 // ── Activity is written, and only to its own table ──────────────────────────
 
 #[test]
-fn a_reveal_records_activity_and_leaves_the_item_row_untouched() {
+fn reveal_does_not_mutate_item_row() {
     let (_guard, path) = vault();
     let file = VaultFile::create(&path, MASTER, KdfParams::floor()).expect("create");
     let session = file.unlock(MASTER).expect("unlock");

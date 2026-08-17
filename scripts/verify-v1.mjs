@@ -33,6 +33,9 @@ import process from 'node:process';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
+/** CRLF or LF, for splitting captured output on either platform. */
+const NEWLINE = /\r?\n/;
+
 // ── argument parsing ─────────────────────────────────────────────────────────
 
 const argv = process.argv.slice(2);
@@ -63,6 +66,11 @@ function exec(command, { cwd = ROOT, timeoutMs = 30 * 60_000 } = {}) {
   if (r.error) return { ok: false, detail: `${command}\n${r.error.message}` };
   if (r.status !== 0) return { ok: false, detail: `${command}\n${tail(out, 24)}` };
   return { ok: true, detail: command, output: out };
+}
+
+/** Split captured output into lines, whatever the platform's line ending. */
+function splitLines(text) {
+  return String(text).split(NEWLINE);
 }
 
 /** Last `n` non-empty lines, for readable failure output. */
@@ -103,6 +111,37 @@ function ensureFrontendBuilt() {
 // A Rust acceptance test lives in tests/acceptance and is addressed by target
 // name, so it stays stable regardless of which crate ends up owning the code.
 const acceptance = (target) => `cargo test -p keyring-acceptance --test ${target} -- --nocapture`;
+
+/**
+ * Run a `cargo test` command and require that it actually ran a test.
+ *
+ * `cargo test <target> <filter>` exits 0 when the filter matches nothing, and
+ * `cargo test --test <name>` on a target that has been renamed or deleted is the
+ * same shape of nothing. Either would read as a pass here.
+ *
+ * That is the one way this gate can be defeated without editing this file, so it
+ * is checked rather than trusted: a missing test is a FAIL, not a quiet success.
+ */
+function cargoTest(command) {
+  const r = exec(command);
+  if (!r.ok) return r;
+
+  const output = r.output ?? '';
+  const ran = [...output.matchAll(/running (\d+) tests?/g)].reduce(
+    (total, match) => total + Number(match[1]),
+    0,
+  );
+  if (ran === 0) {
+    return {
+      ok: false,
+      detail:
+        `${command}\n` +
+        'the command succeeded but ran zero tests — the target or the test name does ' +
+        'not exist, so this row proves nothing. A missing test is a failure.',
+    };
+  }
+  return r;
+}
 
 // ── the criteria ─────────────────────────────────────────────────────────────
 //
@@ -164,14 +203,21 @@ const CRITERIA = [
     id: 'AC09',
     title: 'Auto-lock fires on idle and sleep; heap sentinel scan after lock finds no key material',
     checks: [
-      { name: 'auto-lock triggers', run: 2, skip: 'requires the session and lock state machine' },
-      { name: 'heap sentinel scan after lock', run: 2, skip: 'requires the session and lock state machine' },
+      { name: 'auto-lock triggers', run: 2, cargoTest: 'cargo test -p keyring --test lock_state' },
+      { name: 'heap sentinel scan after lock', run: 2, cargoTest: 'cargo test -p keyring --test lock_zeroize' },
     ],
   },
   {
     id: 'AC10',
     title: 'Reveal does not bump revision or updated_at',
-    checks: [{ name: 'reveal leaves the item row untouched', run: 2, skip: 'requires item_reveal_field and the activity writer' }],
+    checks: [
+      {
+        name: 'reveal leaves the item row untouched',
+        run: 2,
+        cargoTest:
+          'cargo test -p keyring-store --test activity_and_vaults reveal_does_not_mutate_item_row',
+      },
+    ],
   },
   {
     id: 'AC11',
@@ -202,7 +248,9 @@ const CRITERIA = [
   {
     id: 'AC15',
     title: 'Backup export → wipe → restore → identical vault',
-    checks: [{ name: 'keyringbackup v1 round-trip', run: 2, skip: 'requires the backup export/restore feature (SPEC-V1 §7.8)' }],
+    checks: [
+      { name: 'keyringbackup v1 round-trip', run: 2, cargoTest: 'cargo test -p keyring --test backup_roundtrip' },
+    ],
   },
   {
     id: 'AC16',
@@ -225,12 +273,30 @@ const CRITERIA = [
   {
     id: 'AC19',
     title: 'A theme containing url() is rejected by the Rust validator',
-    checks: [{ name: 'theme validator rejects url()', run: 2, skip: 'requires services/theme validation' }],
+    checks: [
+      { name: 'theme validator rejects url()', run: 2, cargoTest: 'cargo test -p keyring --test theme_validator' },
+    ],
   },
   {
     id: 'AC20',
     title: 'Search p95 under 16 ms at 5,000 items',
-    checks: [{ name: 'search benchmark', run: 2, skip: 'requires the in-memory index and the search stage' }],
+    checks: [
+      {
+        name: 'search benchmark',
+        run: 2,
+        // AC20 is a number, not a yes/no. The measured p95 is echoed on success
+        // as well as failure, so a run that squeaks in at 15.9 ms is visibly
+        // different from one that comes in at 2 ms. Release mode because a debug
+        // Rust timing would be meaningless.
+        fn: () => {
+          const r = cargoTest('cargo test -p keyring --release --test search_p95 -- --nocapture');
+          for (const line of splitLines(r.output ?? '')) {
+            if (/search p95/i.test(line)) console.log(`           ${line.trim()}`);
+          }
+          return r;
+        },
+      },
+    ],
   },
   {
     id: 'AC21',
@@ -290,13 +356,13 @@ const CRITERIA = [
       },
       { name: 'cargo test (debug)', run: 1, exec: 'cargo test --workspace --all-features' },
       { name: 'redaction test in release', run: 1, exec: 'cargo test -p keyring-crypto --release --test redaction' },
-      { name: 'lock/zeroize test in release', run: 2, skip: 'requires the session and lock state machine' },
+      { name: 'lock/zeroize test in release', run: 2, cargoTest: 'cargo test -p keyring --test lock_zeroize --release' },
       { name: 'cargo deny', run: 1, exec: 'cargo deny check' },
       { name: 'cargo audit', run: 1, exec: 'cargo audit --deny warnings' },
       { name: 'tsc', run: 1, exec: 'pnpm run --silent typecheck' },
       { name: 'eslint', run: 1, exec: 'pnpm run --silent lint' },
       { name: 'prettier', run: 1, exec: 'pnpm run --silent format:check' },
-      { name: 'ts-rs generated types match', run: 2, skip: 'requires the IPC surface that ts-rs generates from' },
+      { name: 'ts-rs generated types match', run: 2, exec: 'pnpm check:ts-rs' },
     ],
   },
 ];
@@ -312,7 +378,10 @@ function wanted(criterion, check) {
 function runCheck(check) {
   if (check.skip) return { status: 'SKIP', detail: `${check.skip} (run ${check.run})` };
   try {
-    const r = check.fn ? check.fn() : exec(check.exec);
+    let r;
+    if (check.fn) r = check.fn();
+    else if (check.cargoTest) r = cargoTest(check.cargoTest);
+    else r = exec(check.exec);
     return { status: r.ok ? 'PASS' : 'FAIL', detail: r.detail ?? '' };
   } catch (err) {
     return { status: 'FAIL', detail: `check threw: ${err?.message ?? String(err)}` };
