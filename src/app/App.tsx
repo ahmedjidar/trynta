@@ -25,10 +25,13 @@ import { TitleBar } from './TitleBar';
 import { useNavigation } from './navigation';
 import { Toast } from '../components/Toast';
 import { Generator } from '../features/generator/Generator';
+import { SecurityReport } from '../features/security/SecurityReport';
+import { useBreachCheck, useSecurityReport } from '../features/security/useSecurity';
 import { ItemDetail } from '../features/items/ItemDetail';
 import { ItemList } from '../features/items/ItemList';
 import { useClearCache, useItemDetail, useItems, useVaults } from '../features/items/useItems';
 import { accountLock, appPlatformInfo, itemCopyField, revealWindow } from '../ipc';
+import type { ItemSummaryDto } from '../ipc';
 import { useThemeStore } from '../theme/store';
 
 /**
@@ -146,6 +149,8 @@ function Shell() {
             </>
           ) : surface === 'generator' ? (
             <Generator onCopied={onCopied} onFailed={onFailed} />
+          ) : surface === 'security' ? (
+            <SecurityPane items={items.data ?? []} onCopied={onCopied} onFailed={onFailed} />
           ) : (
             <PanePlaceholder surface={surface} />
           )}
@@ -204,6 +209,46 @@ function DetailPane({ onCopied, onFailed }: DetailPaneProps) {
       strength={{ band: 0, label: 'Not checked' }}
       onCopied={onCopied}
       onFailed={onFailed}
+    />
+  );
+}
+
+interface SecurityPaneProps {
+  items: readonly ItemSummaryDto[];
+  onCopied: (what: string) => void;
+  onFailed: (message: string) => void;
+}
+
+function SecurityPane({ items, onCopied, onFailed }: SecurityPaneProps) {
+  // Gated on the surface being open: the report decrypts every login's password to score
+  // them, so running it because a sidebar row exists would decrypt the whole vault on
+  // launch.
+  const report = useSecurityReport(true);
+  const check = useBreachCheck();
+
+  if (!report.data) {
+    return <section className="pane pane--wide" aria-label="Security report" />;
+  }
+
+  return (
+    <SecurityReport
+      report={report.data}
+      items={items}
+      canCheck={report.data.breachRefreshAvailable}
+      onCheckNow={() => {
+        check.mutate(undefined, {
+          onSuccess: (result) => {
+            onCopied(
+              result.ran
+                ? `Checked ${String(result.prefixesFetched)} of ${String(result.prefixesRequested)}`
+                : 'Already checked in the last 24 hours',
+            );
+          },
+          onError: () => {
+            onFailed('Could not reach the breach service');
+          },
+        });
+      }}
     />
   );
 }
