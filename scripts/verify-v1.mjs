@@ -300,13 +300,13 @@ const CRITERIA = [
     title: 'Dark and light both render; pnpm check:tokens finds zero hardcoded colours',
     checks: [
       { name: 'no hardcoded colour values in the codebase', run: 1, exec: 'pnpm run --silent check:tokens' },
-      { name: 'dark and light both render', run: 2, skip: 'requires the theme layer and a rendered shell' },
+      { name: 'dark and light both render', run: 3, skip: 'requires the theme layer and a rendered shell' },
     ],
   },
   {
     id: 'AC18',
     title: 'Runtime theme swap works under production CSP on both WKWebView and WebView2',
-    checks: [{ name: 'adoptedStyleSheets swap under production CSP', run: 2, skip: 'requires the theme loader and an E2E harness' }],
+    checks: [{ name: 'adoptedStyleSheets swap under production CSP', run: 3, skip: 'requires the theme loader and an E2E harness' }],
   },
   {
     id: 'AC19',

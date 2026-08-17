@@ -1,18 +1,18 @@
 /**
- * E2E harness — WebdriverIO against the real Tauri binary (SPEC-V1 §11, AC17, AC18).
+ * E2E harness — WebdriverIO against the real Tauri binary (SPEC-V1 §11, AC17b, AC18).
  *
  * ## Why this exists and why it cannot be jsdom
  *
  * Two acceptance criteria are unreachable any other way:
  *
- * - **AC17**: *"Dark and light both render."* A unit test can assert that
+ * - **AC17b**: *"Dark and light both render."* A unit test can assert that
  *   `applyTheme('light')` sets an attribute. Only a real engine resolves
  *   `var(--surface-panel)` through the cascade and reports a computed colour, which is
- *   the thing the criterion is about.
- * - **AC18**: *"Runtime theme swap works under production CSP on both WKWebView and
- *   WebView2."* happy-dom enforces no CSP at all, so a passing unit test proves
- *   nothing. The whole question is whether `adoptedStyleSheets` survives
- *   `style-src 'self'` — and the only way to know is to run under it.
+ *   what the criterion is actually about.
+ * - **AC18**: *"Runtime theme swap works under production CSP."* happy-dom enforces no
+ *   CSP, so a passing unit test proves nothing. The whole question is whether
+ *   `adoptedStyleSheets` survives `style-src 'self'`, and the only way to know is to run
+ *   under it.
  *
  * ADD-005 makes Windows the verified platform, so this runs against **WebView2**. The
  * WKWebView half of AC18 stays unverified and `MACOS-UNVERIFIED.md` carries it.
@@ -20,18 +20,11 @@
  * ## Not Playwright
  *
  * CLAUDE.md §2 names WebdriverIO with `@wdio/tauri-service` and gives the reason:
- * Playwright drives browsers, not a Tauri binary hosting a webview. There is no
- * browser process here to attach to.
- *
- * ## Prerequisites
- *
- * - `cargo install tauri-driver`
- * - `msedgedriver.exe` on PATH, matching the installed WebView2 runtime. Windows ships
- *   WebView2 evergreen, so the driver has to be refreshed when the runtime updates —
- *   a mismatch reports as a session-creation failure, not as a test failure.
- * - a built binary: `pnpm tauri build --debug`, or `cargo build` for the debug exe.
+ * Playwright drives browsers, not a Tauri binary hosting a webview. There is no browser
+ * process here to attach to.
  */
 
+import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -42,19 +35,76 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 /**
  * The binary under test.
  *
- * Debug by default: a release build takes minutes and nothing here measures
- * performance. `KEYRING_E2E_BINARY` overrides it, which is what CI uses after
- * `tauri build`.
+ * Debug by default: a release build takes minutes and nothing here measures performance.
+ * `KEYRING_E2E_BINARY` overrides it, which is what CI uses after `tauri build`.
  */
 const BINARY = process.env.KEYRING_E2E_BINARY ?? join(ROOT, 'target', 'debug', 'keyring.exe');
 
-if (!existsSync(BINARY)) {
-  throw new Error(
-    `E2E binary not found at ${BINARY}. Run \`cargo build\` first, or set ` +
-      'KEYRING_E2E_BINARY. The harness drives the real app, not a dev server, ' +
-      'because AC18 is about the production CSP.',
-  );
+/** Whether a command resolves on PATH. */
+function onPath(command: string): boolean {
+  try {
+    execFileSync(process.platform === 'win32' ? 'where' : 'which', [command], {
+      stdio: 'ignore',
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
+
+/**
+ * Fail on a missing prerequisite with a sentence, not a stack trace.
+ *
+ * Without this, a missing `msedgedriver.exe` surfaces as a WebDriver session-creation
+ * error several frames deep inside the service — which reads as "the E2E suite is broken"
+ * rather than "one tool is not installed". AC17b and AC18 are gated on this harness, so
+ * this message is the only thing that tells anyone which of the two it is.
+ */
+function requirePrerequisites(): void {
+  const problems: string[] = [];
+
+  if (!existsSync(BINARY)) {
+    problems.push(
+      [
+        `app binary missing at ${BINARY}`,
+        '  Fix: cargo build   (or set KEYRING_E2E_BINARY to a release build)',
+      ].join('\n'),
+    );
+  }
+
+  if (!onPath('tauri-driver')) {
+    problems.push(
+      ['tauri-driver missing', '  Fix: cargo install tauri-driver --locked'].join('\n'),
+    );
+  }
+
+  if (!onPath('msedgedriver')) {
+    problems.push(
+      [
+        'msedgedriver missing — run `pnpm e2e:setup`',
+        '  Fix: pnpm e2e:setup prints the exact version to match this machine',
+        '       WebView2 runtime, and the download URL.',
+      ].join('\n'),
+    );
+  }
+
+  if (problems.length > 0) {
+    throw new Error(
+      [
+        '',
+        'E2E prerequisites are not met, so AC17b and AC18 cannot run.',
+        '',
+        ...problems,
+        '',
+        'Neither criterion is reachable in happy-dom: it resolves no cascade and',
+        'enforces no CSP, so a passing unit test would prove nothing.',
+        '',
+      ].join('\n'),
+    );
+  }
+}
+
+requirePrerequisites();
 
 export const config: WebdriverIO.Config = {
   runner: 'local',
