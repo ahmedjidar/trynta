@@ -26,6 +26,7 @@ use rusqlite::Connection;
 use uuid::Uuid;
 use zeroize::Zeroizing;
 
+use crate::activity::{self, ActivityEvent, ActivityKind};
 use crate::app_state::{self, AppStateKey};
 use crate::backoff;
 use crate::error::{StoreError, TamperKind, UnlockError};
@@ -659,6 +660,63 @@ impl Session<'_> {
         repository::vaults_list(&conn, &self.keys.muk)
     }
 
+    /// Rename a vault.
+    ///
+    /// # Errors
+    ///
+    /// [`StoreError::VaultNotFound`], [`StoreError::Database`], or
+    /// [`StoreError::Crypto`].
+    ///
+    /// # Panics
+    ///
+    /// If an internal lock is poisoned, which can only happen if another thread
+    /// panicked while holding it.
+    pub fn vault_rename(&self, id: Uuid, name: &str) -> Result<(), StoreError> {
+        let conn = self.file.conn.lock().expect("connection lock");
+        repository::vault_rename(&conn, &self.keys.muk, id, name, now_ms())
+    }
+
+    /// Change a vault's colour token.
+    ///
+    /// The token is a *name* such as `vault.accent.3`, never a colour value
+    /// (SPEC-V1 §4.2) — the store does not validate that, because the set of
+    /// valid token names belongs to the theme layer, not to storage.
+    ///
+    /// # Errors
+    ///
+    /// [`StoreError::VaultNotFound`], [`StoreError::Database`], or
+    /// [`StoreError::Crypto`].
+    ///
+    /// # Panics
+    ///
+    /// If an internal lock is poisoned, which can only happen if another thread
+    /// panicked while holding it.
+    pub fn vault_set_color(&self, id: Uuid, color_token: &str) -> Result<(), StoreError> {
+        let conn = self.file.conn.lock().expect("connection lock");
+        repository::vault_set_color(&conn, &self.keys.muk, id, color_token, now_ms())
+    }
+
+    /// Soft-delete a vault, moving its items or soft-deleting them with it.
+    ///
+    /// # Errors
+    ///
+    /// [`StoreError::VaultNotFound`] if either vault is missing,
+    /// [`StoreError::LastVault`] if this is the only live vault,
+    /// [`StoreError::Database`] or [`StoreError::Crypto`].
+    ///
+    /// # Panics
+    ///
+    /// If an internal lock is poisoned, which can only happen if another thread
+    /// panicked while holding it.
+    pub fn vault_delete(&self, id: Uuid, move_items_to: Option<Uuid>) -> Result<(), StoreError> {
+        let conn = self.file.conn.lock().expect("connection lock");
+        repository::vault_delete(&conn, &self.keys.muk, id, move_items_to, now_ms())?;
+        // Soft-deleting items removes them from the manifest root, and moving
+        // them rewrites `item_key_ct`, so either branch changes what the
+        // signature has to cover.
+        self.reseal(&conn)
+    }
+
     // ── Items ───────────────────────────────────────────────────────────────
 
     /// Create or update an item, then re-sign the manifest.
@@ -674,9 +732,47 @@ impl Session<'_> {
     /// panicked while holding it.
     pub fn item_upsert(&self, draft: &ItemDraft) -> Result<Uuid, StoreError> {
         let conn = self.file.conn.lock().expect("connection lock");
-        let id = repository::item_upsert(&conn, &self.keys.muk, draft, now_ms())?;
+        let now = now_ms();
+        let outcome = repository::item_upsert(&conn, &self.keys.muk, draft, now)?;
         self.reseal(&conn)?;
-        Ok(id)
+
+        // Recorded after the reseal so a write that fails to re-sign leaves no
+        // activity claiming it succeeded. `PasswordChanged` rather than
+        // `Updated` when the password moved: it is the event the security
+        // report and the user both care about, and collapsing the two would
+        // lose it.
+        let kind = if outcome.created {
+            ActivityKind::Created
+        } else if outcome.password_changed {
+            ActivityKind::PasswordChanged
+        } else {
+            ActivityKind::Updated
+        };
+        activity::record(&conn, &self.keys.muk, outcome.id, kind, now)?;
+        Ok(outcome.id)
+    }
+
+    /// Set or clear an item's favourite flag.
+    ///
+    /// Returns whether anything changed; a no-op toggle does not burn a
+    /// revision.
+    ///
+    /// # Errors
+    ///
+    /// [`StoreError::ItemNotFound`], [`StoreError::Database`], or
+    /// [`StoreError::Crypto`].
+    ///
+    /// # Panics
+    ///
+    /// If an internal lock is poisoned, which can only happen if another thread
+    /// panicked while holding it.
+    pub fn item_set_favorite(&self, id: Uuid, favorite: bool) -> Result<bool, StoreError> {
+        let conn = self.file.conn.lock().expect("connection lock");
+        let changed = repository::item_set_favorite(&conn, &self.keys.muk, id, favorite, now_ms())?;
+        if changed {
+            self.reseal(&conn)?;
+        }
+        Ok(changed)
     }
 
     /// List live items, metadata only. Never contains a secret field.
@@ -751,6 +847,91 @@ impl Session<'_> {
     ) -> Result<Zeroizing<String>, StoreError> {
         let conn = self.file.conn.lock().expect("connection lock");
         repository::item_secret(&conn, &self.keys.muk, id, field)
+    }
+
+    /// Decrypt one secret field and record that it was shown to the user.
+    ///
+    /// The activity write is the whole difference from [`Session::item_secret`],
+    /// and it is deliberately in the store rather than in the caller: AC10
+    /// asserts that a reveal leaves `revision` and `updated_at` untouched, and
+    /// that property is only meaningful if the activity write lives next to the
+    /// read it accompanies, where a test can see both.
+    ///
+    /// # Errors
+    ///
+    /// [`StoreError::ItemNotFound`], [`StoreError::NoSuchField`],
+    /// [`StoreError::Database`], or [`StoreError::Crypto`].
+    ///
+    /// # Panics
+    ///
+    /// If an internal lock is poisoned, which can only happen if another thread
+    /// panicked while holding it.
+    pub fn item_reveal_field(
+        &self,
+        id: Uuid,
+        field: SecretField,
+    ) -> Result<Zeroizing<String>, StoreError> {
+        let conn = self.file.conn.lock().expect("connection lock");
+        let value = repository::item_secret(&conn, &self.keys.muk, id, field)?;
+        activity::record(&conn, &self.keys.muk, id, ActivityKind::Revealed, now_ms())?;
+        Ok(value)
+    }
+
+    /// Decrypt one secret field for the clipboard and record the copy.
+    ///
+    /// The value never enters the webview (CLAUDE.md §4.3); this returns it to
+    /// the Rust caller that hands it to the OS clipboard.
+    ///
+    /// # Errors
+    ///
+    /// As [`Session::item_reveal_field`].
+    ///
+    /// # Panics
+    ///
+    /// If an internal lock is poisoned, which can only happen if another thread
+    /// panicked while holding it.
+    pub fn item_copy_field(
+        &self,
+        id: Uuid,
+        field: SecretField,
+    ) -> Result<Zeroizing<String>, StoreError> {
+        let conn = self.file.conn.lock().expect("connection lock");
+        let value = repository::item_secret(&conn, &self.keys.muk, id, field)?;
+        activity::record(&conn, &self.keys.muk, id, ActivityKind::Copied, now_ms())?;
+        Ok(value)
+    }
+
+    /// The most recent activity for one item, newest first.
+    ///
+    /// # Errors
+    ///
+    /// [`StoreError::ItemNotFound`], [`StoreError::Database`], or
+    /// [`StoreError::Crypto`].
+    ///
+    /// # Panics
+    ///
+    /// If an internal lock is poisoned, which can only happen if another thread
+    /// panicked while holding it.
+    pub fn item_activity(&self, id: Uuid, limit: usize) -> Result<Vec<ActivityEvent>, StoreError> {
+        let conn = self.file.conn.lock().expect("connection lock");
+        activity::list(&conn, &self.keys.muk, id, limit)
+    }
+
+    /// Delete activity for one item, or for every item when `id` is `None`.
+    ///
+    /// Returns how many rows went. SPEC-V1 §7.5 offers this under Privacy & data.
+    ///
+    /// # Errors
+    ///
+    /// [`StoreError::Database`] if the delete fails.
+    ///
+    /// # Panics
+    ///
+    /// If an internal lock is poisoned, which can only happen if another thread
+    /// panicked while holding it.
+    pub fn activity_clear(&self, id: Option<Uuid>) -> Result<usize, StoreError> {
+        let conn = self.file.conn.lock().expect("connection lock");
+        activity::clear(&conn, id)
     }
 
     /// Soft-delete an item, then re-sign the manifest.

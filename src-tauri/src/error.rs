@@ -16,8 +16,17 @@ use keyring_store::{StoreError, UnlockError};
 use crate::session::SessionError;
 
 /// An error crossing the IPC boundary.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
-#[serde(tag = "kind")]
+///
+/// Generated into TypeScript with everything else that crosses IPC, so the
+/// frontend matches on a closed set of discriminants rather than a hand-written
+/// union that drifts the first time a variant is added.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase",
+    tag = "kind"
+)]
 #[non_exhaustive]
 pub enum AppError {
     /// The vault is locked; the operation requires an unlocked session.
@@ -36,6 +45,11 @@ pub enum AppError {
     /// broken.
     Backoff {
         /// Seconds until the next attempt is accepted.
+        ///
+        /// Typed as a TS `number`, not `bigint`: Tauri's IPC is JSON, so this
+        /// arrives as a double no matter what ts-rs infers from `u64`. A
+        /// `bigint` annotation would typecheck and then fail at runtime.
+        #[ts(type = "number")]
         retry_in_seconds: u64,
     },
     /// The vault file has been modified. Refuse, never partial-open.
@@ -44,6 +58,17 @@ pub enum AppError {
     NotFound,
     /// The requested field does not exist on this item.
     NoSuchField,
+    /// The reveal rate limit was reached (SPEC-V1 §6).
+    ///
+    /// Not a rejection: the caller re-authenticates and tries again. The reveal
+    /// that hit the limit did not happen, and no plaintext was decrypted.
+    ReauthRequired,
+    /// The last remaining vault cannot be deleted.
+    LastVaultRemaining,
+    /// The clipboard could not be written or cleared.
+    Clipboard,
+    /// The application data directory could not be resolved or created.
+    DataDirectory,
     /// A storage operation failed. No detail crosses the boundary.
     Storage,
     /// A cryptographic operation failed. Fails closed; no detail, ever.
@@ -65,6 +90,10 @@ impl fmt::Display for AppError {
             Self::TamperDetected => "this vault file has been modified",
             Self::NotFound => "not found",
             Self::NoSuchField => "that field does not exist on this item",
+            Self::ReauthRequired => "confirm your master password to keep revealing secrets",
+            Self::LastVaultRemaining => "the last vault cannot be deleted",
+            Self::Clipboard => "the clipboard is unavailable",
+            Self::DataDirectory => "Keyring could not find a place to store your vault",
             Self::Storage => "a storage operation failed",
             Self::Crypto => "a cryptographic operation failed",
             Self::Biometric => "biometric unlock is unavailable",
@@ -91,6 +120,7 @@ impl From<StoreError> for AppError {
         match e {
             StoreError::ItemNotFound | StoreError::VaultNotFound => Self::NotFound,
             StoreError::NoSuchField => Self::NoSuchField,
+            StoreError::LastVault => Self::LastVaultRemaining,
             StoreError::Crypto => Self::Crypto,
             StoreError::Tampered(_) => Self::TamperDetected,
             // Everything else is a storage problem the user cannot act on, and
@@ -119,5 +149,23 @@ impl From<UnlockError> for AppError {
 impl From<crate::platform::BiometricError> for AppError {
     fn from(_: crate::platform::BiometricError) -> Self {
         Self::Biometric
+    }
+}
+
+impl From<crate::platform::ClipboardError> for AppError {
+    fn from(_: crate::platform::ClipboardError) -> Self {
+        Self::Clipboard
+    }
+}
+
+impl From<crate::platform::paths::PathError> for AppError {
+    fn from(_: crate::platform::paths::PathError) -> Self {
+        Self::DataDirectory
+    }
+}
+
+impl From<keyring_crypto::CryptoError> for AppError {
+    fn from(_: keyring_crypto::CryptoError) -> Self {
+        Self::Crypto
     }
 }

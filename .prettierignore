@@ -22,3 +22,8 @@ addendums/
 # that includes reformatting them. See tests/acceptance/API.md.
 scripts/verify-v1.mjs
 tests/acceptance/
+
+# Emitted by ts-rs from the Rust types during `cargo test`, and committed. CI
+# regenerates and fails on any diff, so these files must stay byte-identical to
+# what ts-rs writes — reformatting them would make that check fail on every run.
+src/ipc/generated/

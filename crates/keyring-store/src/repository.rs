@@ -22,6 +22,23 @@ use crate::model::{
     VaultMetaPayload, VaultSummary, PASSWORD_HISTORY_LIMIT,
 };
 
+/// What an upsert did.
+///
+/// Crate-internal on purpose. The frozen acceptance contract
+/// (`tests/acceptance/API.md`) pins `Session::item_upsert` to
+/// `Result<Uuid, StoreError>`, so this never crosses that boundary — it exists
+/// so [`crate::vault::Session::item_upsert`] can choose the right activity kind
+/// without decrypting the secret half a second time to find out.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct UpsertOutcome {
+    /// The item's id — freshly generated when `created`.
+    pub(crate) id: Uuid,
+    /// Whether this call created the item rather than updating one.
+    pub(crate) created: bool,
+    /// Whether the password field changed value.
+    pub(crate) password_changed: bool,
+}
+
 fn uuid_bytes(id: Uuid) -> [u8; 16] {
     *id.as_bytes()
 }
@@ -95,7 +112,7 @@ pub(crate) fn vault_insert(
 }
 
 /// Unwrap a vault key.
-fn vault_key(conn: &Connection, muk: &Muk, vault_id: Uuid) -> Result<Key32, StoreError> {
+pub(crate) fn vault_key(conn: &Connection, muk: &Muk, vault_id: Uuid) -> Result<Key32, StoreError> {
     let (key_id, wrap_ct): (Vec<u8>, Vec<u8>) = conn
         .query_row(
             "SELECT key_id, key_wrap_ct FROM vaults WHERE id = ?1",
@@ -170,6 +187,256 @@ pub(crate) fn vaults_list(conn: &Connection, muk: &Muk) -> Result<Vec<VaultSumma
         });
     }
     Ok(out)
+}
+
+/// The vault key that owns `item_id`, and that vault's `key_id`.
+///
+/// Activity rows are sealed under a derivation of the *vault* key rather than a
+/// MUK subkey (SPEC-V1 §4.3), so writing one needs the owning vault resolved
+/// from the item.
+pub(crate) fn vault_key_of_item(
+    conn: &Connection,
+    muk: &Muk,
+    item_id: Uuid,
+) -> Result<(Key32, [u8; 16]), StoreError> {
+    let vault_bytes: Vec<u8> = conn
+        .query_row(
+            "SELECT vault_id FROM items WHERE id = ?1",
+            [uuid_bytes(item_id).as_slice()],
+            |r| r.get(0),
+        )
+        .optional()?
+        .ok_or(StoreError::ItemNotFound)?;
+    vault_key_and_id(conn, muk, uuid_from(&vault_bytes)?)
+}
+
+/// A vault's unwrapped key together with its `key_id`.
+///
+/// Soft-deleted vaults are included on purpose: their rows survive the 30-day
+/// purge window, and their items' envelopes still name them.
+pub(crate) fn vault_key_and_id(
+    conn: &Connection,
+    muk: &Muk,
+    vault_id: Uuid,
+) -> Result<(Key32, [u8; 16]), StoreError> {
+    let key_id: Vec<u8> = conn
+        .query_row(
+            "SELECT key_id FROM vaults WHERE id = ?1",
+            [uuid_bytes(vault_id).as_slice()],
+            |r| r.get(0),
+        )
+        .optional()?
+        .ok_or(StoreError::VaultNotFound)?;
+    let key_id: [u8; 16] = key_id
+        .as_slice()
+        .try_into()
+        .map_err(|_| StoreError::Database)?;
+
+    Ok((vault_key(conn, muk, vault_id)?, key_id))
+}
+
+/// Read a vault's decrypted metadata, for an edit that rewrites it.
+fn vault_meta(
+    conn: &Connection,
+    muk: &Muk,
+    id: Uuid,
+) -> Result<(VaultMetaPayload, Key32, [u8; 16]), StoreError> {
+    let key_id: Vec<u8> = conn
+        .query_row(
+            "SELECT key_id FROM vaults WHERE id = ?1 AND deleted_at IS NULL",
+            [uuid_bytes(id).as_slice()],
+            |r| r.get(0),
+        )
+        .optional()?
+        .ok_or(StoreError::VaultNotFound)?;
+    let key_id: [u8; 16] = key_id
+        .as_slice()
+        .try_into()
+        .map_err(|_| StoreError::Database)?;
+
+    let meta_ct: Vec<u8> = conn.query_row(
+        "SELECT meta_ct FROM vaults WHERE id = ?1",
+        [uuid_bytes(id).as_slice()],
+        |r| r.get(0),
+    )?;
+
+    let key = vault_key(conn, muk, id)?;
+    let envelope = Envelope::from_bytes(&meta_ct)?;
+    let opened = open(
+        &key,
+        &aad(Purpose::VaultMeta, uuid_bytes(id), 0, key_id),
+        &envelope,
+    )?;
+    let payload: VaultMetaPayload =
+        postcard::from_bytes(&opened).map_err(|_| StoreError::MalformedPayload)?;
+    Ok((payload, key, key_id))
+}
+
+/// Re-seal a vault's metadata after an edit.
+///
+/// The AAD revision stays 0 for the vault envelope's whole life — a vault has no
+/// revision column, so there is nothing for it to track, and inventing one would
+/// mean the manifest and the envelope disagreed about what a vault edit is.
+fn vault_write_meta(
+    conn: &Connection,
+    id: Uuid,
+    key: &Key32,
+    key_id: [u8; 16],
+    payload: &VaultMetaPayload,
+    now: i64,
+) -> Result<(), StoreError> {
+    let encoded = postcard::to_stdvec(payload).map_err(|_| StoreError::MalformedPayload)?;
+    let meta_ct = seal(
+        key,
+        &aad(Purpose::VaultMeta, uuid_bytes(id), 0, key_id),
+        &encoded,
+    )?
+    .to_bytes();
+
+    conn.execute(
+        "UPDATE vaults SET meta_ct = ?1, updated_at = ?2 WHERE id = ?3",
+        rusqlite::params![meta_ct, now, uuid_bytes(id).as_slice()],
+    )?;
+    Ok(())
+}
+
+/// Rename a vault.
+pub(crate) fn vault_rename(
+    conn: &Connection,
+    muk: &Muk,
+    id: Uuid,
+    name: &str,
+    now: i64,
+) -> Result<(), StoreError> {
+    let (mut payload, key, key_id) = vault_meta(conn, muk, id)?;
+    name.clone_into(&mut payload.name);
+    vault_write_meta(conn, id, &key, key_id, &payload, now)
+}
+
+/// Change a vault's colour token.
+pub(crate) fn vault_set_color(
+    conn: &Connection,
+    muk: &Muk,
+    id: Uuid,
+    color_token: &str,
+    now: i64,
+) -> Result<(), StoreError> {
+    let (mut payload, key, key_id) = vault_meta(conn, muk, id)?;
+    color_token.clone_into(&mut payload.color_token);
+    vault_write_meta(conn, id, &key, key_id, &payload, now)
+}
+
+/// Move one item into another vault.
+///
+/// Two things are sealed under the *vault* key rather than the item key, and a
+/// move has to carry both across:
+///
+/// - **the item key** (`item_key_ct`). The AAD is unchanged, because it names the
+///   item and its own `key_id` and never the vault, so the item's two payload
+///   envelopes stay valid and no secret is decrypted to move it.
+/// - **every activity row** (SPEC-V1 §4.3 seals them under the vault's activity
+///   subkey). Missing this leaves the history sealed under a key the item no
+///   longer resolves to, and it does not fail at move time — it fails the next
+///   time anyone opens the item, which is the worst possible moment to discover
+///   it.
+fn item_move(
+    conn: &Connection,
+    muk: &Muk,
+    item_id: Uuid,
+    to_vault: Uuid,
+    now: i64,
+) -> Result<(), StoreError> {
+    let (from_key, from_key_id) = vault_key_of_item(conn, muk, item_id)?;
+    let (to_key, to_key_id) = vault_key_and_id(conn, muk, to_vault)?;
+
+    let (item_key, key_id) = item_key(conn, muk, item_id)?;
+    let key_ct = seal(
+        &to_key,
+        &aad(Purpose::ItemMeta, uuid_bytes(item_id), 0, key_id),
+        item_key.expose(),
+    )?
+    .to_bytes();
+
+    conn.execute(
+        "UPDATE items SET vault_id = ?1, item_key_ct = ?2, updated_at = ?3 WHERE id = ?4",
+        rusqlite::params![
+            uuid_bytes(to_vault).as_slice(),
+            key_ct,
+            now,
+            uuid_bytes(item_id).as_slice(),
+        ],
+    )?;
+
+    crate::activity::rewrap(conn, item_id, &from_key, from_key_id, &to_key, to_key_id)
+}
+
+/// Soft-delete a vault, either moving its live items or soft-deleting them too.
+///
+/// Refuses to remove the last live vault. An account with no vault has nowhere
+/// to put an item, and recovering from that state means editing the database by
+/// hand — which is not a thing a user can do (CLAUDE.md §9: no acceptable
+/// data-loss bug).
+pub(crate) fn vault_delete(
+    conn: &Connection,
+    muk: &Muk,
+    id: Uuid,
+    move_items_to: Option<Uuid>,
+    now: i64,
+) -> Result<(), StoreError> {
+    let live: Option<i64> = conn
+        .query_row(
+            "SELECT 1 FROM vaults WHERE id = ?1 AND deleted_at IS NULL",
+            [uuid_bytes(id).as_slice()],
+            |r| r.get(0),
+        )
+        .optional()?;
+    if live.is_none() {
+        return Err(StoreError::VaultNotFound);
+    }
+    if vault_count(conn)? <= 1 {
+        return Err(StoreError::LastVault);
+    }
+
+    match move_items_to {
+        Some(target) => {
+            if target == id {
+                return Err(StoreError::VaultNotFound);
+            }
+            let target_live: Option<i64> = conn
+                .query_row(
+                    "SELECT 1 FROM vaults WHERE id = ?1 AND deleted_at IS NULL",
+                    [uuid_bytes(target).as_slice()],
+                    |r| r.get(0),
+                )
+                .optional()?;
+            if target_live.is_none() {
+                return Err(StoreError::VaultNotFound);
+            }
+
+            let mut stmt =
+                conn.prepare("SELECT id FROM items WHERE vault_id = ?1 AND deleted_at IS NULL")?;
+            let ids: Vec<Vec<u8>> = stmt
+                .query_map([uuid_bytes(id).as_slice()], |r| r.get::<_, Vec<u8>>(0))?
+                .collect::<Result<_, _>>()?;
+            drop(stmt);
+
+            for raw in ids {
+                item_move(conn, muk, uuid_from(&raw)?, target, now)?;
+            }
+        }
+        None => {
+            conn.execute(
+                "UPDATE items SET deleted_at = ?1 WHERE vault_id = ?2 AND deleted_at IS NULL",
+                rusqlite::params![now, uuid_bytes(id).as_slice()],
+            )?;
+        }
+    }
+
+    conn.execute(
+        "UPDATE vaults SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2",
+        rusqlite::params![now, uuid_bytes(id).as_slice()],
+    )?;
+    Ok(())
 }
 
 // ── Items ───────────────────────────────────────────────────────────────────
@@ -361,7 +628,7 @@ pub(crate) fn item_upsert(
     muk: &Muk,
     draft: &ItemDraft,
     now: i64,
-) -> Result<Uuid, StoreError> {
+) -> Result<UpsertOutcome, StoreError> {
     // The vault must exist, or a foreign-key failure would surface as a generic
     // database error.
     let exists: Option<i64> = conn
@@ -386,7 +653,7 @@ fn insert_item(
     muk: &Muk,
     draft: &ItemDraft,
     now: i64,
-) -> Result<Uuid, StoreError> {
+) -> Result<UpsertOutcome, StoreError> {
     let id = Uuid::new_v4();
     let key_id = Uuid::new_v4();
     let item_key = Key32::random()?;
@@ -415,7 +682,14 @@ fn insert_item(
             now,
         ],
     )?;
-    Ok(id)
+    Ok(UpsertOutcome {
+        id,
+        created: true,
+        // A first password is not a change. Reporting it as one would put a
+        // `PasswordChanged` event on every new login, which makes the one event
+        // the security report actually cares about worthless.
+        password_changed: false,
+    })
 }
 
 fn update_item(
@@ -424,7 +698,7 @@ fn update_item(
     draft: &ItemDraft,
     id: Uuid,
     now: i64,
-) -> Result<Uuid, StoreError> {
+) -> Result<UpsertOutcome, StoreError> {
     let revision: i64 = conn
         .query_row(
             "SELECT revision FROM items WHERE id = ?1",
@@ -438,6 +712,13 @@ fn update_item(
     let (item_key, key_id) = item_key(conn, muk, id)?;
     let previous = read_secret(conn, &item_key, id, key_id, revision.unsigned_abs())?;
     let (meta, secret) = split_draft(draft, now, Some(&previous));
+    // Compared before the payloads are sealed and both copies dropped. The
+    // comparison is on values that are already in memory for the split; it adds
+    // no decryption of its own.
+    let password_changed = match (&previous.password, &secret.password) {
+        (Some(old), Some(new)) => old != new,
+        _ => false,
+    };
     let (meta_ct, secret_ct) =
         seal_payloads(&item_key, id, key_id, next.unsigned_abs(), &meta, &secret)?;
 
@@ -446,7 +727,54 @@ fn update_item(
          WHERE id = ?5",
         rusqlite::params![meta_ct, secret_ct, next, now, uuid_bytes(id).as_slice()],
     )?;
-    Ok(id)
+    Ok(UpsertOutcome {
+        id,
+        created: false,
+        password_changed,
+    })
+}
+
+/// Set or clear an item's favourite flag.
+///
+/// `favorite` lives in `meta_ct`, and both envelopes bind the revision in their
+/// AAD, so changing it means re-sealing the secret half too. A no-op toggle
+/// returns early rather than burning a revision: `revision` is what the manifest
+/// uses to detect a rollback, and churning it on a UI click makes the signal
+/// noisier for no gain.
+pub(crate) fn item_set_favorite(
+    conn: &Connection,
+    muk: &Muk,
+    id: Uuid,
+    favorite: bool,
+    now: i64,
+) -> Result<bool, StoreError> {
+    let revision: i64 = conn
+        .query_row(
+            "SELECT revision FROM items WHERE id = ?1 AND deleted_at IS NULL",
+            [uuid_bytes(id).as_slice()],
+            |r| r.get(0),
+        )
+        .optional()?
+        .ok_or(StoreError::ItemNotFound)?;
+
+    let (item_key, key_id) = item_key(conn, muk, id)?;
+    let mut meta = read_meta_payload(conn, &item_key, id, key_id, revision.unsigned_abs())?;
+    if meta.favorite == favorite {
+        return Ok(false);
+    }
+    meta.favorite = favorite;
+
+    let secret = read_secret(conn, &item_key, id, key_id, revision.unsigned_abs())?;
+    let next = revision.saturating_add(1);
+    let (meta_ct, secret_ct) =
+        seal_payloads(&item_key, id, key_id, next.unsigned_abs(), &meta, &secret)?;
+
+    conn.execute(
+        "UPDATE items SET meta_ct = ?1, secret_ct = ?2, revision = ?3, updated_at = ?4 \
+         WHERE id = ?5",
+        rusqlite::params![meta_ct, secret_ct, next, now, uuid_bytes(id).as_slice()],
+    )?;
+    Ok(true)
 }
 
 /// Seal both halves under their own subkeys of the item key.

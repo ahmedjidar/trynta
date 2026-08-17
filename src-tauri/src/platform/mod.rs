@@ -12,6 +12,7 @@
 
 pub mod biometric;
 pub mod clipboard;
+pub mod paths;
 pub mod secure_store;
 
 #[cfg(target_os = "macos")]

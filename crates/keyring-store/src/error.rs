@@ -76,6 +76,13 @@ pub enum StoreError {
     #[error("no such vault")]
     VaultNotFound,
 
+    /// The last remaining vault cannot be deleted.
+    ///
+    /// An account with no vault has nowhere to put an item, and there is no path
+    /// back for a user who reaches that state (CLAUDE.md §9).
+    #[error("the last vault cannot be deleted")]
+    LastVault,
+
     /// The requested field is not present on this item type.
     #[error("that field does not exist on this item")]
     NoSuchField,

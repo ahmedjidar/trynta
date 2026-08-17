@@ -31,6 +31,23 @@ tracing = { workspace = true }
 uuid = { workspace = true }
 zeroize = { workspace = true }
 
+# CLAUDE.md §5 describes ts-rs as a dev-dependency. It is a normal dependency
+# here and the reason is a correctness one, not convenience: `#[derive(TS)]` and
+# every `#[ts(...)]` attribute must exist at compile time, so a dev-only ts-rs
+# means gating ~25 attributes in commands/dto.rs behind `cfg_attr`. A mis-gated
+# attribute does not fail to build — it silently drops a field from the generated
+# TypeScript, which is precisely the drift the ts-rs no-diff check exists to
+# catch. It contributes nothing to the shipped binary: the generated impls are
+# called only by the export tests, and release LTO drops them. Export itself is
+# still test-time only (`cargo test` writes src/ipc/generated/).
+#
+# `serde-compat` (its one default feature) stays on deliberately: it makes ts-rs
+# read the `#[serde(rename_all = "camelCase")]` we already set, so the field names
+# in the generated TypeScript come from the same attribute that decides the field
+# names on the wire. Turning it off would mean repeating every rename as an
+# `#[ts(...)]` attribute, and two lists of renames drift.
+ts-rs = "12.0.1"
+
 # ── Platform layer (ADD-002 Q13) ────────────────────────────────────────────
 # The only `unsafe` in the product lives behind these, in src/platform/.
 [target.'cfg(windows)'.dependencies]

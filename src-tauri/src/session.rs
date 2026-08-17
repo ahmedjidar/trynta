@@ -24,6 +24,7 @@ use thiserror::Error;
 use crate::autolock::{should_lock, AutoLockSetting, Clock, LockTrigger};
 use crate::index::SearchIndex;
 use crate::platform::Platform;
+use crate::reveal::{Gate, RevealLimiter};
 
 /// Where the vault is (SPEC-V1 §5).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -78,6 +79,10 @@ struct Inner {
     /// `None` until one has.
     last_password_unlock_ms: Option<i64>,
     setting: AutoLockSetting,
+    /// The rolling reveal window (SPEC-V1 §6). Lives here rather than beside the
+    /// commands because it is session state: "lock is real" (CLAUDE.md §4.9)
+    /// includes forgetting how many secrets were looked at before the lock.
+    reveals: RevealLimiter,
 }
 
 /// Owns the unlocked state and everything that must be destroyed with it.
@@ -111,6 +116,7 @@ impl SessionManager {
                 last_activity_ms: now,
                 last_password_unlock_ms: None,
                 setting: AutoLockSetting::default(),
+                reveals: RevealLimiter::new(),
             }),
             platform,
             clock,
@@ -288,6 +294,36 @@ impl SessionManager {
         self.lock_inner().last_password_unlock_ms
     }
 
+    /// The session's view of the clock.
+    ///
+    /// Exposed so a command measures time against the same source the auto-lock
+    /// timer does. Two clocks in one process is how an injected clock in a test
+    /// ends up half-effective.
+    #[must_use]
+    pub fn now_ms(&self) -> i64 {
+        self.clock.now_ms()
+    }
+
+    /// Ask whether a reveal may proceed, counting it if so (SPEC-V1 §6).
+    ///
+    /// Returns [`Gate::ReauthRequired`] once 20 reveals have happened inside any
+    /// rolling 60 seconds. The caller must not read the secret in that case.
+    pub fn check_reveal(&self) -> Gate {
+        let now = self.clock.now_ms();
+        self.lock_inner().reveals.check(now)
+    }
+
+    /// Whether the next reveal needs re-authentication.
+    #[must_use]
+    pub fn reveal_reauth_pending(&self) -> bool {
+        self.lock_inner().reveals.reauth_pending()
+    }
+
+    /// Record a successful re-authentication, reopening the reveal window.
+    pub fn note_reauth(&self) {
+        self.lock_inner().reveals.reauthenticated();
+    }
+
     /// Remember that we put `token` on the clipboard.
     pub fn note_clipboard_write(&self, token: u64) {
         self.lock_inner().clipboard_token = Some(token);
@@ -327,6 +363,10 @@ impl SessionManager {
         // And the index with them: it holds every title, username and URL, which
         // is the account inventory even though none of it is a secret field.
         drop(inner.index.take());
+        // The reveal window too. Carrying it across a lock would mean a user who
+        // locked and came back was still one reveal from a re-auth prompt for a
+        // session that no longer exists.
+        inner.reveals.reset();
         inner.state = match inner.file {
             Some(_) => VaultState::Locked,
             None => VaultState::Uninitialised,

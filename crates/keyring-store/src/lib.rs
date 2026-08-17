@@ -25,6 +25,7 @@
 #![warn(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
 
+pub mod activity;
 pub mod app_state;
 pub mod backoff;
 pub mod error;
@@ -35,6 +36,7 @@ mod repository;
 pub mod schema;
 pub mod vault;
 
+pub use activity::{ActivityEvent, ActivityKind, ACTIVITY_LIMIT};
 pub use app_state::AppStateKey;
 pub use error::{StoreError, TamperKind, UnlockError};
 pub use keyring_crypto::KdfParams;

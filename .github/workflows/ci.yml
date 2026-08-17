@@ -52,6 +52,12 @@ jobs:
       - name: pnpm verify:v1
         run: pnpm verify:v1
 
+      # AC22 asks for `ts-rs` no-diff. scripts/verify-v1.mjs is frozen and
+      # records that row as deferred, so the check runs here instead — on both
+      # platforms, and still before anything ships.
+      - name: ts-rs generated types match
+        run: pnpm check:ts-rs
+
   # ── Supply chain, once. Platform-independent, so it does not need the matrix.
   supply-chain:
     runs-on: ubuntu-latest
