@@ -30,7 +30,13 @@
     "//": "Postinstall scripts are denied by default. esbuild is allow-listed because Vite needs its platform binary; the WebDriver downloaders are not, since we drive Tauri, not browsers.",
     "onlyBuiltDependencies": [
       "esbuild"
-    ]
+    ],
+    "auditConfig": {
+      "//": "Same discipline as .cargo/audit.toml: every entry names why it cannot reach a shipped binary, no entry is ever a production dependency, and the list is re-reviewed on every bump. GHSA-jmr9-qjv8-65gv is extract-zip symlink path traversal, reached only via @wdio/cli > @wdio/utils > @puppeteer/browsers -- the E2E harness's browser downloader. It is a devDependency, it never enters the app bundle, and we drive a Tauri binary rather than a browser so the downloader never runs at all. Upstream publishes no patched version. Delete this the moment @wdio/cli stops pulling it. Deliberately NOT --ignore-unfixable, which would also silence a future unfixable advisory in a production dependency.",
+      "ignoreGhsas": [
+        "GHSA-jmr9-qjv8-65gv"
+      ]
+    }
   },
   "dependencies": {
     "@tanstack/react-query": "5.101.4",

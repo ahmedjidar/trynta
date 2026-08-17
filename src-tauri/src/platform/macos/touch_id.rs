@@ -31,7 +31,10 @@ use crate::platform::biometric::{BiometricError, BiometricKind, Biometrics};
 const SERVICE: &str = "app.keyring.desktop.biometric";
 
 /// `kSecAccessControlBiometryCurrentSet` — invalidated when enrolment changes.
-const BIOMETRY_CURRENT_SET: u32 = 1 << 3;
+///
+/// Typed as `usize` to match `CFOptionFlags`, which is pointer-sized rather
+/// than the `u32` the C header suggests.
+const BIOMETRY_CURRENT_SET: usize = 1 << 3;
 
 /// Touch ID biometrics.
 pub struct TouchId;
@@ -48,7 +51,7 @@ impl TouchId {
     fn access_control() -> Result<SecAccessControl, BiometricError> {
         SecAccessControl::create_with_protection(
             Some(ProtectionMode::AccessibleWhenPasscodeSetThisDeviceOnly),
-            BIOMETRY_CURRENT_SET.into(),
+            BIOMETRY_CURRENT_SET,
         )
         .map_err(|_| BiometricError::Platform)
     }

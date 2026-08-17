@@ -49,10 +49,25 @@ windows = { version = "0.62.2", features = [
 windows-future = "0.3.2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-objc2 = "0.6.4"
-objc2-foundation = { version = "0.3.2", features = ["NSString", "NSArray", "NSDictionary", "NSValue"] }
-objc2-app-kit = { version = "0.3.2", features = ["NSPasteboard"] }
-objc2-local-authentication = { version = "0.3.2", features = ["LAContext"] }
+# default-features = false throughout: the objc2 binding crates default to
+# exposing an entire framework, and objc2-app-kit's defaults pull
+# objc2-exception-helper, which needs a C toolchain and cannot cross-compile.
+# We use three types between them, so the smaller surface is both a security
+# win and what makes `cargo check --target aarch64-apple-darwin` work from a
+# non-Mac.
+objc2 = { version = "0.6.4", default-features = false, features = ["std"] }
+objc2-foundation = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "NSString",
+] }
+objc2-app-kit = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "NSPasteboard",
+] }
+objc2-local-authentication = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "LAContext",
+] }
 security-framework = "3.7.0"
 
 # Deliberately absent, and each absence is a decision:

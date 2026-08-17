@@ -17,10 +17,23 @@
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use objc2_app_kit::NSPasteboard;
-use objc2_foundation::{NSString, NSStringPboardType};
+use objc2_app_kit::{NSPasteboard, NSPasteboardType, NSPasteboardTypeString};
+use objc2_foundation::NSString;
 
 use crate::platform::clipboard::{Clipboard, ClipboardError};
+
+/// The AppKit constant for plain-text pasteboard content.
+///
+/// Reading it is `unsafe` only because it is an `extern "C"` static; the value
+/// is a framework-owned immutable `NSString` that exists for the lifetime of the
+/// process. Wrapped here so the single access has one place to justify it,
+/// rather than an `unsafe` block inline in the copy path.
+fn pasteboard_type_string() -> &'static NSPasteboardType {
+    // SAFETY: `NSPasteboardTypeString` is a constant exported by AppKit and
+    // initialised before any Objective-C code can run. It is never written to,
+    // so there is no data race, and its lifetime is the process's.
+    unsafe { NSPasteboardTypeString }
+}
 
 /// Respected by clipboard managers as "do not record this".
 const CONCEALED_TYPE: &str = "org.nspasteboard.ConcealedType";
@@ -50,26 +63,23 @@ impl Default for MacClipboard {
 
 impl Clipboard for MacClipboard {
     fn set_secret(&self, value: &str) -> Result<u64, ClipboardError> {
-        // SAFETY: `generalPasteboard` returns the process-wide pasteboard and
-        // never null on a running AppKit app. `clearContents` invalidates the
-        // previous contents and returns the new change count. `setString_forType`
-        // copies the string, so neither temporary needs to outlive the call.
-        let change_count = unsafe {
-            let pasteboard = NSPasteboard::generalPasteboard();
-            pasteboard.clearContents();
+        // objc2 models these as safe: the generated bindings own the retain and
+        // release, and `generalPasteboard` cannot return null.
+        let pasteboard = NSPasteboard::generalPasteboard();
+        pasteboard.clearContents();
 
-            // The markers first: a manager that reads the pasteboard between the
-            // text landing and the marker landing would record the password.
-            let empty = NSString::from_str("");
-            pasteboard.setString_forType(&empty, &NSString::from_str(CONCEALED_TYPE));
-            pasteboard.setString_forType(&empty, &NSString::from_str(AUTO_GENERATED_TYPE));
+        // The markers first. A clipboard manager that reads the pasteboard
+        // between the text landing and the marker landing would record the
+        // password, and that window is avoidable simply by ordering the writes.
+        let empty = NSString::from_str("");
+        pasteboard.setString_forType(&empty, &NSString::from_str(CONCEALED_TYPE));
+        pasteboard.setString_forType(&empty, &NSString::from_str(AUTO_GENERATED_TYPE));
 
-            let text = NSString::from_str(value);
-            if !pasteboard.setString_forType(&text, NSStringPboardType) {
-                return Err(ClipboardError::WriteFailed);
-            }
-            pasteboard.changeCount()
-        };
+        let text = NSString::from_str(value);
+        if !pasteboard.setString_forType(&text, pasteboard_type_string()) {
+            return Err(ClipboardError::WriteFailed);
+        }
+        let change_count = pasteboard.changeCount();
 
         let token = u64::try_from(change_count).unwrap_or(0);
         self.last_write.store(token, Ordering::SeqCst);
@@ -77,17 +87,13 @@ impl Clipboard for MacClipboard {
     }
 
     fn clear_if_ours(&self, token: u64) -> Result<bool, ClipboardError> {
-        // SAFETY: as above; `changeCount` and `clearContents` have no
-        // preconditions beyond a valid pasteboard.
-        unsafe {
-            let pasteboard = NSPasteboard::generalPasteboard();
-            let current = u64::try_from(pasteboard.changeCount()).unwrap_or(0);
-            if current != token {
-                // The user copied something else. Not ours to destroy.
-                return Ok(false);
-            }
-            pasteboard.clearContents();
+        let pasteboard = NSPasteboard::generalPasteboard();
+        let current = u64::try_from(pasteboard.changeCount()).unwrap_or(0);
+        if current != token {
+            // The user copied something else. Not ours to destroy.
+            return Ok(false);
         }
+        pasteboard.clearContents();
         Ok(true)
     }
 }
