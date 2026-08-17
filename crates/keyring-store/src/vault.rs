@@ -442,8 +442,7 @@ impl VaultFile {
 
         let session = Session {
             file: self,
-            muk,
-            account_keys,
+            keys: SessionKeys { muk, account_keys },
         };
 
         session.run_payload_migrations(set)?;
@@ -480,19 +479,62 @@ impl VaultFile {
     }
 }
 
+/// The key material an unlocked vault holds, separated from the borrow.
+///
+/// A [`Session`] borrows its [`VaultFile`], which is right for a scoped
+/// operation and wrong for an application that has to hold an unlocked vault
+/// across many IPC calls — that would need a self-referential struct. So the
+/// keys are their own owned type: the application stores these next to an
+/// `Arc<VaultFile>` and rebuilds a transient `Session` per call with
+/// [`Session::resume`].
+///
+/// Dropping this is what "lock" means at the storage layer. `Muk` owns a
+/// `Zeroizing<[u8; 32]>` and the dalek keys zeroize on drop, so there is nothing
+/// further to wipe by hand — and nothing that can be forgotten.
+pub struct SessionKeys {
+    muk: Muk,
+    account_keys: AccountKeys,
+}
+
+impl std::fmt::Debug for SessionKeys {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("SessionKeys(<redacted>)")
+    }
+}
+
 /// An unlocked vault. Holds the MUK and the account keys for its lifetime.
 pub struct Session<'a> {
     pub(crate) file: &'a VaultFile,
-    /// Already zeroizing: `Muk` owns a `Zeroizing<[u8; 32]>`, so wrapping it
-    /// again would only add a layer without adding a guarantee.
-    pub(crate) muk: Muk,
-    pub(crate) account_keys: AccountKeys,
+    pub(crate) keys: SessionKeys,
 }
 
 impl std::fmt::Debug for Session<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Never render the MUK or the account keys, not even redacted-by-proxy.
         f.write_str("Session { <unlocked> }")
+    }
+}
+
+impl<'a> Session<'a> {
+    /// Take ownership of the key material, consuming the session.
+    ///
+    /// The caller becomes responsible for the keys' lifetime, and dropping them
+    /// is what locks the vault.
+    #[must_use]
+    pub fn into_keys(self) -> SessionKeys {
+        self.keys
+    }
+
+    /// Rebuild a session from a file and previously extracted keys.
+    ///
+    /// Deliberately cheap and infallible: it does no verification, because the
+    /// keys can only have come from a successful [`VaultFile::unlock`] on this
+    /// same vault. Handing it keys from a *different* vault would fail at the
+    /// first decrypt, which is the correct outcome and not something to
+    /// re-check on every call.
+    #[must_use]
+    pub fn resume(file: &'a VaultFile, keys: SessionKeys) -> Self {
+        Self { file, keys }
     }
 }
 
@@ -540,8 +582,9 @@ impl Session<'_> {
 
         // A payload migration may have rewritten ciphertext, so both the
         // manifest and the MAC have to be recomputed.
-        header.manifest_sig = manifest::sign_current(&conn, &self.account_keys)?;
-        let header_key = keyring_crypto::derive_subkey(&self.muk, keyring_crypto::Subkey::Header);
+        header.manifest_sig = manifest::sign_current(&conn, &self.keys.account_keys)?;
+        let header_key =
+            keyring_crypto::derive_subkey(&self.keys.muk, keyring_crypto::Subkey::Header);
         header.header_mac = keyring_crypto::header_mac(&header_key, &header.fields());
         header.update_payload_version(&conn)?;
         header.update_manifest(&conn)?;
@@ -596,7 +639,7 @@ impl Session<'_> {
         } else {
             VaultKind::Custom
         };
-        repository::vault_insert(&conn, &self.muk, name, color_token, kind, now_ms())
+        repository::vault_insert(&conn, &self.keys.muk, name, color_token, kind, now_ms())
     }
 
     /// List live vaults with their item counts.
@@ -611,7 +654,7 @@ impl Session<'_> {
     /// panicked while holding it.
     pub fn vaults_list(&self) -> Result<Vec<VaultSummary>, StoreError> {
         let conn = self.file.conn.lock().expect("connection lock");
-        repository::vaults_list(&conn, &self.muk)
+        repository::vaults_list(&conn, &self.keys.muk)
     }
 
     // ── Items ───────────────────────────────────────────────────────────────
@@ -629,7 +672,7 @@ impl Session<'_> {
     /// panicked while holding it.
     pub fn item_upsert(&self, draft: &ItemDraft) -> Result<Uuid, StoreError> {
         let conn = self.file.conn.lock().expect("connection lock");
-        let id = repository::item_upsert(&conn, &self.muk, draft, now_ms())?;
+        let id = repository::item_upsert(&conn, &self.keys.muk, draft, now_ms())?;
         self.reseal(&conn)?;
         Ok(id)
     }
@@ -646,7 +689,7 @@ impl Session<'_> {
     /// panicked while holding it.
     pub fn items_list(&self) -> Result<Vec<ItemSummary>, StoreError> {
         let conn = self.file.conn.lock().expect("connection lock");
-        repository::items_list(&conn, &self.muk)
+        repository::items_list(&conn, &self.keys.muk)
     }
 
     /// Read one item's decrypted metadata.
@@ -662,7 +705,7 @@ impl Session<'_> {
     /// panicked while holding it.
     pub fn item_meta(&self, id: Uuid) -> Result<ItemMeta, StoreError> {
         let conn = self.file.conn.lock().expect("connection lock");
-        repository::item_meta(&conn, &self.muk, id)
+        repository::item_meta(&conn, &self.keys.muk, id)
     }
 
     /// Decrypt exactly one secret field.
@@ -687,7 +730,7 @@ impl Session<'_> {
         field: SecretField,
     ) -> Result<Zeroizing<String>, StoreError> {
         let conn = self.file.conn.lock().expect("connection lock");
-        repository::item_secret(&conn, &self.muk, id, field)
+        repository::item_secret(&conn, &self.keys.muk, id, field)
     }
 
     /// Soft-delete an item, then re-sign the manifest.
@@ -731,8 +774,9 @@ impl Session<'_> {
     /// deliberately few and all of them end with this call.
     fn reseal(&self, conn: &Connection) -> Result<(), StoreError> {
         let mut header = self.file.header.lock().expect("header lock");
-        header.manifest_sig = manifest::sign_current(conn, &self.account_keys)?;
-        let header_key = keyring_crypto::derive_subkey(&self.muk, keyring_crypto::Subkey::Header);
+        header.manifest_sig = manifest::sign_current(conn, &self.keys.account_keys)?;
+        let header_key =
+            keyring_crypto::derive_subkey(&self.keys.muk, keyring_crypto::Subkey::Header);
         header.header_mac = keyring_crypto::header_mac(&header_key, &header.fields());
         header.update_manifest(conn)
     }

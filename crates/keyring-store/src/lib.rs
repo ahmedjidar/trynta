@@ -47,4 +47,4 @@ pub use schema::{
     MigrationSet, PayloadCtx, PayloadMigration, Phase, SchemaMigration, CURRENT_PAYLOAD_VERSION,
     CURRENT_SCHEMA_VERSION, SNAPSHOT_RETENTION,
 };
-pub use vault::{Session, VaultFile, PURGE_AFTER_DAYS};
+pub use vault::{Session, SessionKeys, VaultFile, PURGE_AFTER_DAYS};

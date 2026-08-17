@@ -1,13 +1,22 @@
 //! Keyring application shell.
 //!
-//! The IPC command surface (SPEC-V1 §6) lands in run 2. This crate stays thin by
-//! construction: `commands/` orchestrates and never holds business logic, which
-//! lives in `keyring-crypto` and `keyring-store`.
+//! This crate stays thin by construction: `commands/` orchestrates and never
+//! holds business logic, which lives in `keyring-crypto` and `keyring-store`.
+//! What does live here is the state that cannot: the lock/unlock state machine,
+//! the auto-lock policy, and the platform layer.
 
-#![forbid(unsafe_code)]
+// `forbid` cannot be relaxed per-module, and CLAUDE.md §7 requires exactly one
+// place where `unsafe` is permitted. So the crate denies it and `platform`
+// carries a scoped allow; `scripts/check-unsafe.mjs` fails the build if that
+// allow ever appears anywhere else.
+#![deny(unsafe_code)]
 #![warn(clippy::pedantic)]
 
+pub mod autolock;
 pub mod error;
+#[allow(unsafe_code)]
+pub mod platform;
+pub mod session;
 
 /// Build and run the Tauri application.
 ///
