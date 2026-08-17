@@ -27,6 +27,7 @@ pub mod generator;
 pub mod items;
 pub mod security;
 pub mod totp;
+pub mod updates;
 pub mod vaults;
 
 use std::path::PathBuf;

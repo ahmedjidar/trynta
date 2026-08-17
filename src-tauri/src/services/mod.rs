@@ -27,3 +27,4 @@ pub mod report;
 pub mod strength;
 pub mod theme;
 pub mod totp;
+pub mod updater;

@@ -26,6 +26,7 @@ import type { HistoryEntryDto } from './generated/HistoryEntryDto';
 import type { PassphraseOptionsDto } from './generated/PassphraseOptionsDto';
 import type { PasswordOptionsDto } from './generated/PasswordOptionsDto';
 import type { TotpCodeDto } from './generated/TotpCodeDto';
+import type { UpdateCheckDto } from './generated/UpdateCheckDto';
 import type { ActivityEventDto } from './generated/ActivityEventDto';
 import type { ItemDetailDto } from './generated/ItemDetailDto';
 import type { ItemDraftInput } from './generated/ItemDraftInput';
@@ -506,4 +507,46 @@ export function securityReportRun(): Promise<SecurityReportDto> {
  */
 export function securityBreachCheck(): Promise<BreachCheckDto> {
   return call<BreachCheckDto>('security_breach_check');
+}
+
+// ── Updates (SPEC-V1 §7.7) ──────────────────────────────────────────────────
+
+/**
+ * Ask whether a newer build exists.
+ *
+ * Works with the vault locked, and enforces §7.7's once-per-24-hours cadence
+ * itself — call it on launch and let it decide. Read `status` rather than testing
+ * `available` for null: `checkedRecently`, `checkFailed` and `disabled` all have
+ * a null `available` and none of them means "you are up to date".
+ *
+ * `available.notes` is text supplied by the update endpoint. Render it as text.
+ *
+ * @throws {IpcError} `featureUnavailable` until a release endpoint and signing
+ * public key are configured, `storage`.
+ *
+ * @beta
+ */
+export function updateCheck(): Promise<UpdateCheckDto> {
+  return call<UpdateCheckDto>('update_check');
+}
+
+/**
+ * Download, verify and install the pending update.
+ *
+ * Re-checks the manifest and its signature at the moment of install rather than
+ * trusting an earlier {@link updateCheck}, so nothing stale can be applied. Does
+ * not require the vault to be unlocked.
+ *
+ * Listen for `update://progress` — `[downloaded, total]` in bytes, `total` null
+ * when the endpoint sends no `Content-Length` — to show real progress. On success
+ * the app restarts to run the new binary, so this promise may never resolve.
+ *
+ * @throws {IpcError} `featureUnavailable` if no endpoint is configured,
+ * `notFound` if nothing newer is being offered, `updateFailed` for a download,
+ * signature or install failure — one discriminant for all three, deliberately.
+ *
+ * @beta
+ */
+export function updateInstall(): Promise<void> {
+  return callVoid('update_install');
 }

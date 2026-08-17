@@ -1315,3 +1315,65 @@ pub struct BreachCheckDto {
     /// How many ranges the cache now holds.
     pub cached_prefixes: u32,
 }
+
+// ── Updates (SPEC-V1 §7.7) ──────────────────────────────────────────────────
+
+/// The outcome of an update check.
+///
+/// A closed set rather than `Option<UpdateInfo>` alone, because §7.7 requires the
+/// check to be *user-visible* and four of these five outcomes look identical
+/// through an `Option`: "you are up to date", "checked an hour ago", "could not
+/// reach the endpoint" and "you turned this off" are different things to tell
+/// someone, and only one of them means everything is fine.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub enum UpdateStatusDto {
+    /// A newer build is available. `available` is populated.
+    Available,
+    /// This is the newest build the endpoint offers.
+    UpToDate,
+    /// Inside the 24-hour interval; no request was made.
+    CheckedRecently,
+    /// The endpoint could not be reached, or its answer was refused.
+    ///
+    /// Not an error. It also does not advance the clock, so the next launch tries
+    /// again rather than waiting a day on a failure.
+    CheckFailed,
+    /// The user has turned update checks off.
+    Disabled,
+}
+
+/// A release the endpoint is offering.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateInfoDto {
+    /// The candidate version, strictly newer than the running one.
+    pub version: String,
+    /// Release notes from the manifest, if it carries any.
+    ///
+    /// Endpoint-controlled text. Render it as text — never as markup.
+    pub notes: Option<String>,
+    /// Publication date from the manifest, RFC 3339.
+    pub published_at: Option<String>,
+}
+
+/// Answer to `update_check` (SPEC-V1 §6, §7.7).
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateCheckDto {
+    /// What happened.
+    pub status: UpdateStatusDto,
+    /// The running version.
+    pub current_version: String,
+    /// The candidate. Populated exactly when `status` is `available`.
+    pub available: Option<UpdateInfoDto>,
+    /// When the endpoint was last reached, Unix milliseconds.
+    #[ts(type = "number | null")]
+    pub checked_at: Option<i64>,
+    /// Earliest time an unattended check may run again, Unix milliseconds.
+    #[ts(type = "number")]
+    pub next_eligible_at: i64,
+}

@@ -82,6 +82,14 @@ pub enum AppError {
     Crypto,
     /// A biometric operation failed or was declined.
     Biometric,
+    /// An update could not be downloaded, verified or applied (SPEC-V1 §7.7).
+    ///
+    /// Deliberately one discriminant for every cause. A signature that did not
+    /// verify, a truncated download and an unreachable endpoint are all the same
+    /// message to the user — "the update did not install" — and distinguishing
+    /// them in the UI would tell an attacker probing the channel which of their
+    /// tampering attempts got furthest.
+    UpdateFailed,
     /// The input did not validate.
     Invalid,
 }
@@ -98,6 +106,7 @@ impl fmt::Display for AppError {
             Self::NotFound => "not found",
             Self::NoSuchField => "that field does not exist on this item",
             Self::ReauthRequired => "confirm your master password to keep revealing secrets",
+            Self::UpdateFailed => "the update could not be installed",
             Self::LastVaultRemaining => "the last vault cannot be deleted",
             Self::Clipboard => "the clipboard is unavailable",
             Self::DataDirectory => "Keyring could not find a place to store your vault",

@@ -87,5 +87,11 @@
       "nsis": { "installMode": "currentUser" }
     }
   },
-  "plugins": {}
+  "plugins": {
+    "updater": {
+      "endpoints": [],
+      "pubkey": "",
+      "windows": { "installMode": "passive" }
+    }
+  }
 }

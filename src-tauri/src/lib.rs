@@ -46,6 +46,14 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|_app, _argv, _cwd| {}))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        // SPEC-V1 7.7. Registered unconditionally so `update_check` can report
+        // "not configured" rather than the app failing to start: with no endpoint
+        // in `tauri.conf.json`, `app.updater()` returns `EmptyEndpoints` and the
+        // command maps that to `featureUnavailable`. Every JS-facing permission
+        // this plugin offers is deliberately left out of `capabilities/`; the
+        // frontend goes through our two commands, so the webview cannot start a
+        // download or an install on its own.
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppState::new(session, vault_path))
         .invoke_handler(tauri::generate_handler![
             commands::account::account_status,
@@ -79,6 +87,8 @@ pub fn run() {
             commands::security::security_report_run,
             commands::security::security_breach_check,
             commands::app::app_platform_info,
+            commands::updates::update_check,
+            commands::updates::update_install,
         ])
         .run(tauri::generate_context!())
         .expect("the Tauri runtime failed to start");

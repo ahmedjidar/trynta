@@ -43,6 +43,8 @@ export {
   vaultRename,
   vaultSetColor,
   totpCurrent,
+  updateCheck,
+  updateInstall,
   vaultsList,
 } from './commands';
 
@@ -81,6 +83,9 @@ export type { SecurityReportDto } from './generated/SecurityReportDto';
 export type { SortOrderDto } from './generated/SortOrderDto';
 export type { TotpAlgorithmDto } from './generated/TotpAlgorithmDto';
 export type { TotpConfigInput } from './generated/TotpConfigInput';
+export type { UpdateCheckDto } from './generated/UpdateCheckDto';
+export type { UpdateInfoDto } from './generated/UpdateInfoDto';
+export type { UpdateStatusDto } from './generated/UpdateStatusDto';
 export type { VaultKindDto } from './generated/VaultKindDto';
 export type { VaultStateDto } from './generated/VaultStateDto';
 export type { VaultSummaryDto } from './generated/VaultSummaryDto';
