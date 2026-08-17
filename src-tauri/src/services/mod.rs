@@ -10,6 +10,7 @@
 //! carries no secret in its error type.
 
 pub mod base32;
+pub mod breach;
 pub mod exact;
 pub mod generator;
 pub mod history;
