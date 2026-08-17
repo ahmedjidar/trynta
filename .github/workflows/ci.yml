@@ -102,6 +102,13 @@ jobs:
       - name: unsafe is confined to platform/
         run: pnpm check:unsafe
 
+      # ADD-001's verification list asks for this in so many words: "Grep the
+      # codebase: no icon URL is constructed at runtime, ever." It does not replace
+      # AC14's packet capture — a capture proves what left the machine, this proves
+      # nobody wrote the code that would.
+      - name: no fourth outbound request
+        run: pnpm check:network
+
       # AC22 runs keyring-crypto's redaction test in release. The store's domain
       # model holds the actual passwords, card numbers and TOTP seeds, and release
       # is where a formatter inlines differently — so it gets the same treatment.
@@ -213,6 +220,9 @@ jobs:
 
       - name: unsafe is confined to platform/
         run: pnpm check:unsafe
+
+      - name: no fourth outbound request
+        run: pnpm check:network
 
       - name: pnpm verify:v1
         run: pnpm verify:v1

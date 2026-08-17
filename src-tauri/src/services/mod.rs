@@ -23,6 +23,7 @@ pub mod exact;
 pub mod generator;
 pub mod hibp;
 pub mod history;
+pub mod icons;
 pub mod report;
 pub mod settings;
 pub mod strength;

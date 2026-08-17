@@ -21,6 +21,7 @@
     "e2e": "wdio run e2e/wdio.conf.ts",
     "check:tokens": "node scripts/check-tokens.mjs",
     "check:unsafe": "node scripts/check-unsafe.mjs",
+    "check:network": "node scripts/check-network.mjs",
     "check:freeze": "node scripts/check-freeze.mjs",
     "check:crypto-generation": "node scripts/check-crypto-generation.mjs",
     "check:ts-rs": "node scripts/check-ts-rs.mjs",

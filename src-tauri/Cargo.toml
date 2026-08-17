@@ -88,6 +88,8 @@ zeroize = { workspace = true }
 ts-rs = "12.0.1"
 ureq = { version = "3.4.0", default-features = false, features = ["rustls"] }
 tauri-plugin-updater = "2.10.1"
+psl = "2.1.224"
+url = "2.5.8"
 
 # ── Platform layer (ADD-002 Q13) ────────────────────────────────────────────
 # The only `unsafe` in the product lives behind these, in src/platform/.
