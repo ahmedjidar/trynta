@@ -26,6 +26,7 @@
 #![allow(clippy::module_name_repetitions)]
 
 pub mod activity;
+pub mod app_cache;
 pub mod app_state;
 pub mod backoff;
 pub mod error;
@@ -37,13 +38,15 @@ pub mod schema;
 pub mod vault;
 
 pub use activity::{ActivityEvent, ActivityKind, ACTIVITY_LIMIT};
+pub use app_cache::AppCacheKey;
 pub use app_state::AppStateKey;
 pub use error::{StoreError, TamperKind, UnlockError};
 pub use keyring_crypto::KdfParams;
 pub use model::{
     CustomField, CustomFieldKind, IndexRow, ItemBody, ItemBodyMeta, ItemDraft, ItemKind, ItemMeta,
     ItemMetaPayload, ItemSecretPayload, ItemSummary, PasswordHistoryEntry, SecretField,
-    TotpAlgorithm, TotpConfig, VaultKind, VaultMetaPayload, VaultSummary, PASSWORD_HISTORY_LIMIT,
+    TotpAlgorithm, TotpConfig, TotpParams, VaultKind, VaultMetaPayload, VaultSummary,
+    PASSWORD_HISTORY_LIMIT,
 };
 pub use schema::{
     MigrationSet, PayloadCtx, PayloadMigration, Phase, SchemaMigration, CURRENT_PAYLOAD_VERSION,

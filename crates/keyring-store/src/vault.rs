@@ -27,13 +27,14 @@ use uuid::Uuid;
 use zeroize::Zeroizing;
 
 use crate::activity::{self, ActivityEvent, ActivityKind};
+use crate::app_cache::{self, AppCacheKey};
 use crate::app_state::{self, AppStateKey};
 use crate::backoff;
 use crate::error::{StoreError, TamperKind, UnlockError};
 use crate::header::Header;
 use crate::manifest;
 use crate::model::{
-    IndexRow, ItemDraft, ItemMeta, ItemSummary, SecretField, VaultKind, VaultSummary,
+    IndexRow, ItemDraft, ItemMeta, ItemSummary, SecretField, TotpConfig, VaultKind, VaultSummary,
 };
 use crate::repository;
 use crate::schema::{
@@ -849,6 +850,30 @@ impl Session<'_> {
         repository::item_secret(&conn, &self.keys.muk, id, field)
     }
 
+    /// The item's full TOTP configuration, seed included.
+    ///
+    /// Returns `None` when the item has no TOTP, or when a stored seed has no
+    /// parameters beside it — guessing SHA-1/6/30 would hand back codes that may
+    /// be wrong, and a missing configuration is more useful to the user than a
+    /// plausible wrong number.
+    ///
+    /// This is a secret path: the returned config carries the seed. Callers must
+    /// compute a code and drop it, never return it over IPC.
+    ///
+    /// # Errors
+    ///
+    /// [`StoreError::ItemNotFound`], [`StoreError::Database`], or
+    /// [`StoreError::Crypto`].
+    ///
+    /// # Panics
+    ///
+    /// If an internal lock is poisoned, which can only happen if another thread
+    /// panicked while holding it.
+    pub fn item_totp(&self, id: Uuid) -> Result<Option<TotpConfig>, StoreError> {
+        let conn = self.file.conn.lock().expect("connection lock");
+        repository::item_totp(&conn, &self.keys.muk, id)
+    }
+
     /// Decrypt one secret field and record that it was shown to the user.
     ///
     /// The activity write is the whole difference from [`Session::item_secret`],
@@ -915,6 +940,80 @@ impl Session<'_> {
     pub fn item_activity(&self, id: Uuid, limit: usize) -> Result<Vec<ActivityEvent>, StoreError> {
         let conn = self.file.conn.lock().expect("connection lock");
         activity::list(&conn, &self.keys.muk, id, limit)
+    }
+
+    // ── Encrypted key/value (SPEC-V1 §4.4) ──────────────────────────────────
+
+    /// Read one `app_cache` namespace, decrypted.
+    ///
+    /// Returns `None` only when the row is absent. A row that does not
+    /// authenticate is an error, not a `None`: "never written" and "tampered
+    /// with" must not look the same to a caller.
+    ///
+    /// # Errors
+    ///
+    /// [`StoreError::Database`] or [`StoreError::Crypto`].
+    ///
+    /// # Panics
+    ///
+    /// If an internal lock is poisoned, which can only happen if another thread
+    /// panicked while holding it.
+    pub fn app_cache_get(
+        &self,
+        key: AppCacheKey,
+    ) -> Result<Option<Zeroizing<Vec<u8>>>, StoreError> {
+        let conn = self.file.conn.lock().expect("connection lock");
+        app_cache::get(&conn, &self.keys.muk, key)
+    }
+
+    /// Encrypt and store one `app_cache` namespace.
+    ///
+    /// The payload is opaque bytes here on purpose. The store's job is to seal
+    /// and persist them; deciding what a settings blob or a generator history
+    /// looks like belongs to the layer that owns those types, and teaching this
+    /// crate about them would drag the whole services layer down into storage.
+    ///
+    /// # Errors
+    ///
+    /// [`StoreError::Database`] or [`StoreError::Crypto`].
+    ///
+    /// # Panics
+    ///
+    /// If an internal lock is poisoned, which can only happen if another thread
+    /// panicked while holding it.
+    pub fn app_cache_put(&self, key: AppCacheKey, payload: &[u8]) -> Result<(), StoreError> {
+        let conn = self.file.conn.lock().expect("connection lock");
+        app_cache::put(&conn, &self.keys.muk, key, payload, now_ms())
+    }
+
+    /// Delete one `app_cache` namespace. Deleting an absent one is success.
+    ///
+    /// # Errors
+    ///
+    /// [`StoreError::Database`] if the delete fails.
+    ///
+    /// # Panics
+    ///
+    /// If an internal lock is poisoned, which can only happen if another thread
+    /// panicked while holding it.
+    pub fn app_cache_clear(&self, key: AppCacheKey) -> Result<(), StoreError> {
+        let conn = self.file.conn.lock().expect("connection lock");
+        app_cache::clear(&conn, key)
+    }
+
+    /// When one `app_cache` namespace was last written, Unix milliseconds.
+    ///
+    /// # Errors
+    ///
+    /// [`StoreError::Database`] if the read fails.
+    ///
+    /// # Panics
+    ///
+    /// If an internal lock is poisoned, which can only happen if another thread
+    /// panicked while holding it.
+    pub fn app_cache_updated_at(&self, key: AppCacheKey) -> Result<Option<i64>, StoreError> {
+        let conn = self.file.conn.lock().expect("connection lock");
+        app_cache::updated_at(&conn, key)
     }
 
     /// Delete activity for one item, or for every item when `id` is `None`.

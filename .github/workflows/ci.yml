@@ -79,6 +79,12 @@ jobs:
       - name: EFF wordlist is intact
         run: pnpm check:wordlist
 
+      # AC22 runs keyring-crypto's redaction test in release. The store's domain
+      # model holds the actual passwords, card numbers and TOTP seeds, and release
+      # is where a formatter inlines differently — so it gets the same treatment.
+      - name: store redaction holds in release
+        run: cargo test -p keyring-store --test redaction --release
+
   # ── Supply chain, once. Platform-independent, so it does not need the matrix.
   supply-chain:
     runs-on: ubuntu-latest

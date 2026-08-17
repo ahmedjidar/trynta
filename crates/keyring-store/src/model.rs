@@ -10,6 +10,8 @@
 //! millisecond timestamp that would leak the creation time §4.4 deliberately
 //! encrypts.
 
+use std::fmt;
+
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use zeroize::{Zeroize, ZeroizeOnDrop};
@@ -63,7 +65,7 @@ pub enum CustomFieldKind {
 }
 
 /// A user-defined field on an item.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CustomField {
     /// Label shown in the UI.
     pub label: String,
@@ -74,7 +76,12 @@ pub struct CustomField {
 }
 
 /// TOTP configuration (SPEC-V1 §4.1).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+///
+/// The input shape, pinned by `tests/acceptance/API.md`. On disk it is split:
+/// the seed goes to [`ItemSecretPayload::totp_secret`] and everything else to
+/// [`ItemSecretPayload::totp_params`], because only one of the six fields is a
+/// secret and conflating them is how the other five got dropped.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TotpConfig {
     /// Base32 shared secret. A secret field: never in the metadata envelope.
     pub secret: String,
@@ -101,8 +108,179 @@ pub enum TotpAlgorithm {
     Sha512,
 }
 
+/// A TOTP configuration minus its seed (SPEC-V1 §4.1).
+///
+/// These five fields are **not** secrets: the algorithm, digit count and period
+/// are public protocol parameters, and the issuer and account are labels the item
+/// already shows. They live beside the seed in `secret_ct` rather than in
+/// `meta_ct` for two reasons: producing a code needs the seed anyway, so one
+/// decrypt is enough; and parameters stored apart from the seed they describe can
+/// drift out of agreement with it.
+///
+/// This type exists because the first version of the store kept only
+/// `TotpConfig::secret` and silently discarded the rest, so an item saved as
+/// SHA-256/8-digit came back as SHA-1/6-digit and generated codes that never
+/// worked.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TotpParams {
+    /// Hash algorithm.
+    pub algorithm: TotpAlgorithm,
+    /// 6 or 8.
+    pub digits: u8,
+    /// Step length in seconds.
+    pub period_seconds: u32,
+    /// Issuer label.
+    pub issuer: String,
+    /// Account label.
+    pub account: String,
+}
+
+impl TotpParams {
+    /// Split a full config into its secret and non-secret halves.
+    #[must_use]
+    pub fn from_config(config: &TotpConfig) -> Self {
+        Self {
+            algorithm: config.algorithm,
+            digits: config.digits,
+            period_seconds: config.period_seconds,
+            issuer: config.issuer.clone(),
+            account: config.account.clone(),
+        }
+    }
+
+    /// Rejoin these parameters with a seed.
+    #[must_use]
+    pub fn into_config(self, secret: String) -> TotpConfig {
+        TotpConfig {
+            secret,
+            algorithm: self.algorithm,
+            digits: self.digits,
+            period_seconds: self.period_seconds,
+            issuer: self.issuer,
+            account: self.account,
+        }
+    }
+}
+
+// ── Redacting Debug impls (CLAUDE.md §4.6) ──────────────────────────────────
+//
+// Every type below holds at least one plaintext secret, and a derived `Debug`
+// prints all of them. §4.6 requires a manual redacting impl for exactly this
+// reason: an error string, a `dbg!` left in a branch, or a `{:?}` in a log
+// message is the one place a secret escapes without anyone deciding to send it.
+// `tests/redaction.rs` asserts each of these, in debug and in release.
+//
+// These are field-precise rather than blanket. A `Debug` that prints nothing is
+// useless for the debugging it exists for, so the non-secret fields stay
+// visible and only the secrets are replaced.
+
+/// Placeholder written in place of a secret. The redaction test greps for it.
+const REDACTED: &str = "<redacted>";
+
+impl fmt::Debug for CustomField {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Only a `Hidden` field's value is a secret. A text, url or date value is
+        // shown to the user in the clear, and blanket-redacting it would make
+        // `ItemMetaPayload`'s Debug useless for no gain.
+        let value: &dyn fmt::Debug = if self.kind == CustomFieldKind::Hidden {
+            &REDACTED
+        } else {
+            &self.value
+        };
+        f.debug_struct("CustomField")
+            .field("label", &self.label)
+            .field("value", value)
+            .field("kind", &self.kind)
+            .finish()
+    }
+}
+
+impl fmt::Debug for TotpConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TotpConfig")
+            .field("secret", &REDACTED)
+            .field("algorithm", &self.algorithm)
+            .field("digits", &self.digits)
+            .field("period_seconds", &self.period_seconds)
+            .field("issuer", &self.issuer)
+            .field("account", &self.account)
+            .finish()
+    }
+}
+
+impl fmt::Debug for PasswordHistoryEntry {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PasswordHistoryEntry")
+            .field("value", &REDACTED)
+            .field("changed_at", &self.changed_at)
+            .finish()
+    }
+}
+
+impl fmt::Debug for ItemBody {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Login {
+                username,
+                urls,
+                totp,
+                password: _,
+            } => f
+                .debug_struct("ItemBody::Login")
+                .field("username", username)
+                .field("password", &REDACTED)
+                .field("urls", urls)
+                .field("totp", totp)
+                .finish(),
+            Self::SecureNote => f.write_str("ItemBody::SecureNote"),
+            Self::Card {
+                cardholder,
+                expiry_month,
+                expiry_year,
+                billing_address,
+                number: _,
+                cvv: _,
+                pin: _,
+            } => f
+                .debug_struct("ItemBody::Card")
+                .field("cardholder", &cardholder)
+                .field("number", &REDACTED)
+                .field("expiry_month", expiry_month)
+                .field("expiry_year", expiry_year)
+                .field("cvv", &REDACTED)
+                .field("pin", &REDACTED)
+                .field("billing_address", billing_address)
+                .finish(),
+            Self::Identity {
+                first_name,
+                last_name,
+                dob,
+                document_type,
+                issuing_country,
+                expiry,
+                address,
+                phone,
+                email,
+                document_number: _,
+            } => f
+                .debug_struct("ItemBody::Identity")
+                .field("first_name", first_name)
+                .field("last_name", last_name)
+                .field("dob", dob)
+                .field("document_type", document_type)
+                .field("document_number", &REDACTED)
+                .field("issuing_country", issuing_country)
+                .field("expiry", expiry)
+                .field("address", address)
+                .field("phone", phone)
+                .field("email", email)
+                .finish(),
+        }
+    }
+}
+
 /// One historical password (SPEC-V1 §4.1: last 5 retained).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Zeroize)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Zeroize)]
 pub struct PasswordHistoryEntry {
     /// The previous password.
     pub value: String,
@@ -118,7 +296,7 @@ pub const PASSWORD_HISTORY_LIMIT: usize = 5;
 ///
 /// This is the only place the two halves coexist, and only in memory, on the way
 /// in. [`crate::repository`] splits it immediately.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum ItemBody {
     /// A login.
     Login {
@@ -329,12 +507,21 @@ impl ItemBodyMeta {
 /// `ZeroizeOnDrop`, and every field is a `String` that is wiped rather than
 /// freed. Deserializing this allocates the plaintext, so callers must keep it in
 /// scope for as short a time as possible.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, Zeroize, ZeroizeOnDrop)]
+#[derive(Clone, Default, PartialEq, Eq, Serialize, Deserialize, Zeroize, ZeroizeOnDrop)]
 pub struct ItemSecretPayload {
     /// `login.password`.
     pub password: Option<String>,
-    /// `login.totp.secret`.
+    /// `login.totp.secret` — the base32 seed, and the only secret half of a TOTP
+    /// configuration.
     pub totp_secret: Option<String>,
+    /// The rest of the TOTP configuration.
+    ///
+    /// `zeroize(skip)` because none of it is a secret: they are public protocol
+    /// parameters and two display labels. Zeroizing them would cost work and
+    /// protect nothing, and marking them skipped documents the judgement instead
+    /// of leaving a reader to wonder.
+    #[zeroize(skip)]
+    pub totp_params: Option<TotpParams>,
     /// `card.number`.
     pub card_number: Option<String>,
     /// `card.cvv`.
@@ -348,6 +535,32 @@ pub struct ItemSecretPayload {
     pub hidden_custom: Vec<String>,
     /// Previous passwords, newest first, capped at [`PASSWORD_HISTORY_LIMIT`].
     pub password_history: Vec<PasswordHistoryEntry>,
+}
+
+impl fmt::Debug for ItemSecretPayload {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Presence rather than values. Which secrets an item *has* already
+        // crosses IPC as `SecretPresence`, so it is not a disclosure; the values
+        // are the entire point of the type and none of them appears here.
+        let present = |set: bool| if set { "<redacted>" } else { "None" };
+        f.debug_struct("ItemSecretPayload")
+            .field("password", &present(self.password.is_some()))
+            .field("totp_secret", &present(self.totp_secret.is_some()))
+            .field("totp_params", &self.totp_params)
+            .field("card_number", &present(self.card_number.is_some()))
+            .field("card_cvv", &present(self.card_cvv.is_some()))
+            .field("card_pin", &present(self.card_pin.is_some()))
+            .field("document_number", &present(self.document_number.is_some()))
+            .field(
+                "hidden_custom",
+                &format_args!("{} <redacted>", self.hidden_custom.len()),
+            )
+            .field(
+                "password_history",
+                &format_args!("{} <redacted>", self.password_history.len()),
+            )
+            .finish()
+    }
 }
 
 impl ItemSecretPayload {

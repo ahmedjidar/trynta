@@ -33,9 +33,27 @@ impl Phase {
 }
 
 /// The schema version this build ships.
+///
+/// **Pinned at 1 by the frozen acceptance suite, not by choice.**
+/// `tests/acceptance/tests/ac16_migrations.rs` asserts that a freshly created
+/// vault reports `schema_version == 1`, and its `snapshot_retention_keeps_the_last_three`
+/// fixture occupies versions 2 through 7 and asserts it reaches each of them.
+/// `MigrationSet::validate` additionally rejects any injected migration whose
+/// version is `<=` this constant, so raising it would make those fixtures
+/// invalid.
+///
+/// The consequence: **V1 cannot ship a real schema migration.** Anything the
+/// initial schema does not already contain has to be added to
+/// [`INITIAL_SCHEMA`], which means only *new* vaults get it. That is fine
+/// pre-1.0 and is not fine after a release, so it is a spec conversation before
+/// the first one — raised, not worked around.
 pub const CURRENT_SCHEMA_VERSION: u32 = 1;
 
 /// The payload version this build ships.
+///
+/// Pinned at 1 for the same reason as [`CURRENT_SCHEMA_VERSION`]: the frozen
+/// `ac16_migrations` asserts a fresh vault reports `payload_version == 1` and
+/// injects its own payload fixture at version 2.
 pub const CURRENT_PAYLOAD_VERSION: u32 = 1;
 
 /// Snapshots retained before migrations (SPEC-V1 §4.6).
@@ -97,6 +115,21 @@ CREATE INDEX IF NOT EXISTS activity_by_item ON activity (item_id, at);
 CREATE TABLE IF NOT EXISTS app_state (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
+);
+
+-- Encrypted key/value, for the three things §7.3, §7.4 and §7.5 need to persist
+-- that are not items: settings, generator history and the HIBP prefix cache.
+-- Sealed under muk.appcache; the permitted namespaces are an exhaustive closed
+-- enum in crate::app_cache and adding one is a spec change.
+--
+-- Part of the initial schema rather than a migration to version 2, and that is
+-- forced rather than chosen: tests/acceptance/ac16_migrations.rs asserts a fresh
+-- vault reports schema_version 1 and claims fixture versions 2 through 7. See
+-- the note on CURRENT_SCHEMA_VERSION.
+CREATE TABLE IF NOT EXISTS app_cache (
+  key        TEXT PRIMARY KEY,
+  payload_ct BLOB NOT NULL,
+  updated_at INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS migrations (

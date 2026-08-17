@@ -18,8 +18,8 @@ use zeroize::Zeroizing;
 use crate::error::StoreError;
 use crate::model::{
     CustomField, CustomFieldKind, IndexRow, ItemBody, ItemBodyMeta, ItemDraft, ItemMeta,
-    ItemMetaPayload, ItemSecretPayload, ItemSummary, PasswordHistoryEntry, SecretField, VaultKind,
-    VaultMetaPayload, VaultSummary, PASSWORD_HISTORY_LIMIT,
+    ItemMetaPayload, ItemSecretPayload, ItemSummary, PasswordHistoryEntry, SecretField, TotpConfig,
+    TotpParams, VaultKind, VaultMetaPayload, VaultSummary, PASSWORD_HISTORY_LIMIT,
 };
 
 /// What an upsert did.
@@ -473,7 +473,11 @@ fn split_body(body: &ItemBody, secret: &mut ItemSecretPayload) -> ItemBodyMeta {
             totp,
         } => {
             secret.password = Some(password.clone());
+            // Both halves of the TOTP config, not just the seed. Keeping only
+            // the seed is what made an item saved as SHA-256/8-digit come back
+            // as SHA-1/6-digit and generate codes that never worked.
             secret.totp_secret = totp.as_ref().map(|t| t.secret.clone());
+            secret.totp_params = totp.as_ref().map(TotpParams::from_config);
             ItemBodyMeta::Login {
                 username: username.clone(),
                 urls: urls.clone(),
@@ -1048,6 +1052,41 @@ pub(crate) fn item_secret(
     // Copy out one field; `secret` zeroizes on drop at the end of this scope.
     let value = secret.field(field).ok_or(StoreError::NoSuchField)?;
     Ok(Zeroizing::new(value.to_owned()))
+}
+
+/// The item's full TOTP configuration, seed included.
+///
+/// One decrypt of `secret_ct` yields both halves, which is the reason the
+/// parameters live there rather than in `meta_ct`. Returns `None` when the item
+/// has no TOTP, and `None` for the params too if only a seed was stored — which
+/// can only be a payload written before [`TotpParams`] existed.
+pub(crate) fn item_totp(
+    conn: &Connection,
+    muk: &Muk,
+    id: Uuid,
+) -> Result<Option<TotpConfig>, StoreError> {
+    let revision: i64 = conn
+        .query_row(
+            "SELECT revision FROM items WHERE id = ?1 AND deleted_at IS NULL",
+            [uuid_bytes(id).as_slice()],
+            |r| r.get(0),
+        )
+        .optional()?
+        .ok_or(StoreError::ItemNotFound)?;
+
+    let (item_key, key_id) = item_key(conn, muk, id)?;
+    let secret = read_secret(conn, &item_key, id, key_id, revision.unsigned_abs())?;
+
+    let Some(seed) = secret.totp_secret.clone() else {
+        return Ok(None);
+    };
+    // A seed with no parameters would mean guessing SHA-1/6/30 and handing back
+    // codes that may be wrong. `None` is the honest answer: the caller shows the
+    // user that the configuration is incomplete rather than a plausible code.
+    let Some(params) = secret.totp_params.clone() else {
+        return Ok(None);
+    };
+    Ok(Some(params.into_config(seed)))
 }
 
 /// Soft-delete an item.

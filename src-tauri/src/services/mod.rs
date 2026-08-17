@@ -13,4 +13,5 @@ pub mod base32;
 pub mod exact;
 pub mod generator;
 pub mod report;
+pub mod theme;
 pub mod totp;
