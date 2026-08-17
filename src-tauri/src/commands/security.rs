@@ -124,8 +124,8 @@ pub fn security_report_run(state: State<'_, AppState>) -> Result<SecurityReportD
             HealthScore::Scored { score, breakdown } => (Some(score), Some(breakdown.into())),
         };
 
-        let checked_at = (assessment.inputs.logins > 0 && cache.fetched_at > 0)
-            .then_some(cache.fetched_at);
+        let checked_at =
+            (assessment.inputs.logins > 0 && cache.fetched_at > 0).then_some(cache.fetched_at);
 
         Ok(SecurityReportDto {
             score,

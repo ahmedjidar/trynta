@@ -63,13 +63,15 @@ impl Reviewed {
         self.rows
             .iter()
             .zip(&self.passwords)
-            .map(|((id, title, subtitle, has_totp), password)| ItemUnderReview {
-                id: *id,
-                title,
-                subtitle,
-                password: password.as_str(),
-                has_totp: *has_totp,
-            })
+            .map(
+                |((id, title, subtitle, has_totp), password)| ItemUnderReview {
+                    id: *id,
+                    title,
+                    subtitle,
+                    password: password.as_str(),
+                    has_totp: *has_totp,
+                },
+            )
             .collect()
     }
 }
@@ -80,7 +82,9 @@ fn build_vault(dir: &std::path::Path) -> Reviewed {
     let path = dir.join("vault.db");
     let file = VaultFile::create(&path, MASTER, KdfParams::floor()).expect("create");
     let session = file.unlock(MASTER).expect("unlock");
-    let vault = session.vault_add("Personal", "vault.accent.1").expect("vault");
+    let vault = session
+        .vault_add("Personal", "vault.accent.1")
+        .expect("vault");
 
     // One login with a TOTP configured. It must still get no 2FA credit, because
     // "capable" is what the missing directory would have told us and we do not know.
@@ -153,7 +157,11 @@ fn no_directory_means_zero_capable_and_redistributed_weights() {
     let dir = tempfile::tempdir().expect("tempdir");
     let reviewed = build_vault(dir.path());
     let items = reviewed.as_items();
-    assert_eq!(items.len(), 4, "four logins, and the note is not one of them");
+    assert_eq!(
+        items.len(),
+        4,
+        "four logins, and the note is not one of them"
+    );
 
     let cache = seeded_cache(WEAK, 4_912_313, 1_700_000_000_000);
     let assessment = report::assess_all(&items, &CachedOnly { cache: &cache });

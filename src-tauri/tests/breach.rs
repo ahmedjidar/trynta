@@ -318,11 +318,17 @@ fn a_refresh_prunes_prefixes_no_longer_in_use() {
 
     let mut previous = BreachCache::default();
     previous.put(kept, hit_body(), 1_000);
-    previous.put(dropped, "0000000000000000000000000000000000000:0\n".into(), 1_000);
+    previous.put(
+        dropped,
+        "0000000000000000000000000000000000000:0\n".into(),
+        1_000,
+    );
     assert_eq!(previous.len(), 2);
 
     let source = Partial {
-        answers: [(kept.as_str().to_owned(), hit_body())].into_iter().collect(),
+        answers: [(kept.as_str().to_owned(), hit_body())]
+            .into_iter()
+            .collect(),
         asked: RefCell::new(Vec::new()),
     };
 

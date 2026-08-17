@@ -393,8 +393,10 @@ pub fn assess_all(items: &[ItemUnderReview<'_>], breach: &dyn RangeSource) -> As
             .map(|item| (item.id, item.password))
             .collect::<Vec<_>>(),
     );
-    let reused_ids: std::collections::BTreeSet<Uuid> =
-        groups.iter().flat_map(|g| g.items.iter().copied()).collect();
+    let reused_ids: std::collections::BTreeSet<Uuid> = groups
+        .iter()
+        .flat_map(|g| g.items.iter().copied())
+        .collect();
 
     let mut risks = Vec::new();
     let mut breached = 0;
