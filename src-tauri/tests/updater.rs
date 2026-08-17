@@ -133,3 +133,32 @@ fn the_running_version_is_the_one_the_bundle_declares() {
         "tauri.conf.json's version and Cargo.toml's version have diverged"
     );
 }
+
+#[test]
+fn the_plugin_can_deserialize_its_own_configuration() {
+    // The plugin is registered unconditionally, and its `setup` deserializes
+    // `plugins.updater` into this exact type. If that fails, the app does not
+    // start — and nothing else catches it: CI builds the bundle but never launches
+    // it, so a config typo would ship as a binary that opens no window.
+    //
+    // Uses the plugin's own `Config`, not a local mirror, so a field it renames or
+    // makes required is a failing test rather than a broken release.
+    let conf = json("tauri.conf.json");
+    let raw = conf["plugins"]["updater"].clone();
+
+    let parsed: Result<tauri_plugin_updater::Config, _> = serde_json::from_value(raw);
+    let config = parsed.expect(
+        "plugins.updater does not deserialize into tauri_plugin_updater::Config. \
+         The app will fail to start. Note that `pubkey` is required even when the \
+         channel is unconfigured — an empty string is the right value there, not an \
+         absent key.",
+    );
+
+    assert!(
+        !config.dangerous_insecure_transport_protocol
+            && !config.dangerous_accept_invalid_certs
+            && !config.dangerous_accept_invalid_hostnames,
+        "checked again through the parsed type, in case a field is ever renamed \
+         and the string assertions above start passing vacuously"
+    );
+}
