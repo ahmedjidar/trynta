@@ -417,6 +417,39 @@ impl Default for PassphraseOptions {
 /// Words the EFF long list is required to contain (SPEC-V1 §7.3).
 pub const EFF_WORDLIST_LEN: usize = 7_776;
 
+/// The vendored EFF long wordlist, when the asset is present.
+///
+/// `build.rs` decides presence and sets `has_wordlist`, because `include_str!` on
+/// a missing file is a compile error and the asset's licence is still unconfirmed
+/// (THIRD-PARTY-NOTICES.md). Dropping the file in and rebuilding turns the feature
+/// on; until then [`passphrase`] reports it unavailable rather than generating
+/// from whatever happens to be there.
+#[cfg(has_wordlist)]
+const WORDLIST_RAW: &str = include_str!("../../assets/eff_large_wordlist.txt");
+
+/// The bundled wordlist, or `None` when the asset is not vendored.
+///
+/// Each line is `<5 dice digits>\t<word>`; only the word is taken. The length is
+/// **not** checked here — [`passphrase`] does that, so the same refusal covers a
+/// bundled list that is the wrong size and a caller-supplied one that is.
+#[must_use]
+pub fn bundled_wordlist() -> Option<Vec<&'static str>> {
+    #[cfg(has_wordlist)]
+    {
+        Some(
+            WORDLIST_RAW
+                .lines()
+                .filter(|l| !l.trim().is_empty())
+                .map(|line| line.rsplit('\t').next().unwrap_or(line).trim())
+                .collect(),
+        )
+    }
+    #[cfg(not(has_wordlist))]
+    {
+        None
+    }
+}
+
 /// Build a passphrase from a supplied word list.
 ///
 /// The list is a parameter rather than a compiled-in constant so that the

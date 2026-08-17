@@ -69,6 +69,13 @@ pub fn run() {
             commands::items::item_restore,
             commands::items::item_toggle_favorite,
             commands::items::item_activity,
+            commands::generator::generator_password,
+            commands::generator::generator_passphrase,
+            commands::generator::generator_pin,
+            commands::generator::generator_history_list,
+            commands::generator::generator_history_copy,
+            commands::generator::generator_history_clear,
+            commands::totp::totp_current,
             commands::app::app_platform_info,
         ])
         .run(tauri::generate_context!())

@@ -69,6 +69,13 @@ pub enum AppError {
     Clipboard,
     /// The application data directory could not be resolved or created.
     DataDirectory,
+    /// A feature's bundled data is not present in this build.
+    ///
+    /// Today: the EFF wordlist, whose licence THIRD-PARTY-NOTICES.md still
+    /// records as unconfirmed. Reported rather than worked around, because the
+    /// alternative is generating passphrases from a short list while claiming the
+    /// entropy of a complete one.
+    FeatureUnavailable,
     /// A storage operation failed. No detail crosses the boundary.
     Storage,
     /// A cryptographic operation failed. Fails closed; no detail, ever.
@@ -94,6 +101,7 @@ impl fmt::Display for AppError {
             Self::LastVaultRemaining => "the last vault cannot be deleted",
             Self::Clipboard => "the clipboard is unavailable",
             Self::DataDirectory => "Keyring could not find a place to store your vault",
+            Self::FeatureUnavailable => "that feature is not available in this build",
             Self::Storage => "a storage operation failed",
             Self::Crypto => "a cryptographic operation failed",
             Self::Biometric => "biometric unlock is unavailable",
@@ -155,6 +163,17 @@ impl From<crate::platform::BiometricError> for AppError {
 impl From<crate::platform::ClipboardError> for AppError {
     fn from(_: crate::platform::ClipboardError) -> Self {
         Self::Clipboard
+    }
+}
+
+impl From<crate::services::generator::GeneratorError> for AppError {
+    fn from(e: crate::services::generator::GeneratorError) -> Self {
+        use crate::services::generator::GeneratorError as G;
+        match e {
+            // No fallback for a degraded randomness source (SPEC-V1 §3.2).
+            G::Rng | G::Exhausted => Self::Crypto,
+            G::NoWordList => Self::FeatureUnavailable,
+        }
     }
 }
 

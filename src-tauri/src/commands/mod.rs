@@ -23,7 +23,9 @@
 pub mod account;
 pub mod app;
 pub mod dto;
+pub mod generator;
 pub mod items;
+pub mod totp;
 pub mod vaults;
 
 use std::path::PathBuf;

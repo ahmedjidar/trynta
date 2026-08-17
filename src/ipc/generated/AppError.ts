@@ -15,4 +15,4 @@ export type AppError = { "kind": "locked" } | { "kind": "noVault" } | { "kind": 
  * arrives as a double no matter what ts-rs infers from `u64`. A
  * `bigint` annotation would typecheck and then fail at runtime.
  */
-retryInSeconds: number, } | { "kind": "tamperDetected" } | { "kind": "notFound" } | { "kind": "noSuchField" } | { "kind": "reauthRequired" } | { "kind": "lastVaultRemaining" } | { "kind": "clipboard" } | { "kind": "dataDirectory" } | { "kind": "storage" } | { "kind": "crypto" } | { "kind": "biometric" } | { "kind": "invalid" };
+retryInSeconds: number, } | { "kind": "tamperDetected" } | { "kind": "notFound" } | { "kind": "noSuchField" } | { "kind": "reauthRequired" } | { "kind": "lastVaultRemaining" } | { "kind": "clipboard" } | { "kind": "dataDirectory" } | { "kind": "featureUnavailable" } | { "kind": "storage" } | { "kind": "crypto" } | { "kind": "biometric" } | { "kind": "invalid" };

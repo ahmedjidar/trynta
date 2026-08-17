@@ -19,6 +19,7 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 use crate::index::{ItemSource, ListQuery, QuickFilters, SortOrder};
+use crate::services::{generator, history, totp};
 
 /// Where the vault is (SPEC-V1 §5).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -955,6 +956,176 @@ impl From<ListQueryDto> for ListQuery {
             filters: q.filters.into(),
             sort: q.sort.into(),
             search: q.search,
+        }
+    }
+}
+
+// ── Generator (SPEC-V1 §7.3) ────────────────────────────────────────────────
+
+/// A generated secret and its honest entropy.
+///
+/// The value crosses IPC because the generator's entire purpose is to show the
+/// user a password they can use. That makes this the second plaintext path out of
+/// Rust after `item_reveal_field`, and it is narrow in the same way: one value,
+/// on an explicit action, never persisted by the frontend.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub struct GeneratedDto {
+    /// The generated value.
+    pub value: String,
+    /// `floor(log2(|sample space|))`, by inclusion–exclusion. Never the inflated
+    /// `length × log2(charset)` (SPEC-V1 §7.3).
+    pub entropy_bits: u32,
+}
+
+/// Password generator options, on the wire.
+///
+/// Four class toggles, and they stay four booleans for the same reason
+/// [`generator::Classes`] does: SPEC-V1 §7.3 defines exactly these switches and
+/// the UI renders exactly these switches. A bitmask would satisfy the lint and
+/// lose the one-to-one correspondence between the wire, the spec and the screen.
+#[allow(clippy::struct_excessive_bools)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub struct PasswordOptionsDto {
+    /// Length, clamped to 8–128 by Rust.
+    pub length: usize,
+    /// `A`–`Z`.
+    pub uppercase: bool,
+    /// `a`–`z`.
+    pub lowercase: bool,
+    /// `0`–`9`.
+    pub digits: bool,
+    /// The §7.3 symbol set.
+    pub symbols: bool,
+    /// Remove `l 1 I | 0 O o`.
+    pub avoid_ambiguous: bool,
+}
+
+impl From<PasswordOptionsDto> for generator::PasswordOptions {
+    fn from(o: PasswordOptionsDto) -> Self {
+        Self {
+            length: o.length,
+            classes: generator::Classes {
+                uppercase: o.uppercase,
+                lowercase: o.lowercase,
+                digits: o.digits,
+                symbols: o.symbols,
+            },
+            avoid_ambiguous: o.avoid_ambiguous,
+        }
+    }
+}
+
+/// Passphrase generator options, on the wire.
+///
+/// `separator` and `capitalise` are presentation only. They add **zero** bits —
+/// the attacker knows the scheme — and the entropy figure ignores them. A UI must
+/// not imply otherwise (SPEC-V1 §7.3).
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub struct PassphraseOptionsDto {
+    /// Word count, clamped to 3–12 by Rust.
+    pub words: usize,
+    /// String placed between words. Adds no entropy.
+    pub separator: String,
+    /// Capitalise each word. Adds no entropy.
+    pub capitalise: bool,
+    /// Append one digit. Adds `log2(10)` bits.
+    pub numeric_suffix: bool,
+}
+
+impl From<PassphraseOptionsDto> for generator::PassphraseOptions {
+    fn from(o: PassphraseOptionsDto) -> Self {
+        Self {
+            words: o.words,
+            separator: o.separator,
+            capitalise: o.capitalise,
+            numeric_suffix: o.numeric_suffix,
+        }
+    }
+}
+
+/// What produced a history entry.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub enum GeneratedKindDto {
+    /// A random password.
+    Password,
+    /// A passphrase.
+    Passphrase,
+    /// A numeric PIN.
+    Pin,
+}
+
+impl From<history::GeneratedKind> for GeneratedKindDto {
+    fn from(k: history::GeneratedKind) -> Self {
+        match k {
+            history::GeneratedKind::Password => Self::Password,
+            history::GeneratedKind::Passphrase => Self::Passphrase,
+            history::GeneratedKind::Pin => Self::Pin,
+        }
+    }
+}
+
+/// One generator-history entry, **without its value**.
+///
+/// SPEC-V1 §6 gives the history a `copy` command and no reveal, so the value never
+/// crosses IPC: the user picks an entry by kind and time, and Rust puts it on the
+/// clipboard. A list that carried the values would put twenty passwords into the
+/// webview to render a list nobody is reading them from.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryEntryDto {
+    /// Entry id, for `generator_history_copy`.
+    #[ts(type = "string")]
+    pub id: Uuid,
+    /// What produced it.
+    pub kind: GeneratedKindDto,
+    /// The entropy reported at generation.
+    pub entropy_bits: u32,
+    /// When it was generated, Unix milliseconds.
+    #[ts(type = "number")]
+    pub created_at: i64,
+}
+
+impl From<&history::HistoryEntry> for HistoryEntryDto {
+    fn from(e: &history::HistoryEntry) -> Self {
+        Self {
+            id: e.id,
+            kind: e.kind.into(),
+            entropy_bits: e.entropy_bits,
+            created_at: e.created_at,
+        }
+    }
+}
+
+// ── TOTP (SPEC-V1 §6, §7.2) ─────────────────────────────────────────────────
+
+/// A live one-time code and its countdown.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub struct TotpCodeDto {
+    /// The code, zero-padded to its digit count.
+    pub code: String,
+    /// Seconds until the step rolls over. Never zero.
+    pub seconds_remaining: u32,
+    /// The step length, so a countdown can be sized without a second call.
+    pub period: u32,
+}
+
+impl From<totp::Code> for TotpCodeDto {
+    fn from(c: totp::Code) -> Self {
+        Self {
+            code: c.value,
+            seconds_remaining: c.seconds_remaining,
+            period: c.period,
         }
     }
 }

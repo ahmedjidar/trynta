@@ -25,6 +25,12 @@ tauri-plugin-single-instance = "2.4.3"   # two processes on one SQLite file is a
 
 nucleo-matcher = "0.3.1"
 
+# Generator history and the breach cache are sealed blobs in `app_cache`, and
+# postcard is what encodes them — the same choice, for the same reason, that
+# ADD-002 Q13 approved for item payloads: serde_json leaves unzeroized scratch
+# buffers behind, and these payloads are real passwords.
+postcard = { workspace = true }
+
 # TOTP (SPEC-V1 §4.1, §7.2). Same pinned RustCrypto generation the crypto crate
 # uses, so there is still exactly one `digest`, `sha2` and `hmac` in the tree.
 # `sha1` is here for RFC 6238's default algorithm as well as HIBP's k-anonymity

@@ -20,6 +20,11 @@
 
 import { call, callVoid } from './client';
 import type { AccountStatus } from './generated/AccountStatus';
+import type { GeneratedDto } from './generated/GeneratedDto';
+import type { HistoryEntryDto } from './generated/HistoryEntryDto';
+import type { PassphraseOptionsDto } from './generated/PassphraseOptionsDto';
+import type { PasswordOptionsDto } from './generated/PasswordOptionsDto';
+import type { TotpCodeDto } from './generated/TotpCodeDto';
 import type { ActivityEventDto } from './generated/ActivityEventDto';
 import type { ItemDetailDto } from './generated/ItemDetailDto';
 import type { ItemDraftInput } from './generated/ItemDraftInput';
@@ -346,4 +351,112 @@ export function itemActivity(id: string, limit: number): Promise<ActivityEventDt
  */
 export function appPlatformInfo(): Promise<PlatformInfo> {
   return call<PlatformInfo>('app_platform_info');
+}
+
+// ── Generator (SPEC-V1 §7.3) ────────────────────────────────────────────────
+
+/**
+ * Generate a random password.
+ *
+ * The resolved value is plaintext — the second and last such path after
+ * {@link itemRevealField}, because showing the user a password they can use is the
+ * whole feature. Treat it the same way: component-local state, cleared on
+ * navigation, never in a store and never in a log.
+ *
+ * @throws {IpcError} `locked`, or `crypto` if the OS randomness source failed.
+ *
+ * @example
+ * ```ts
+ * const { value, entropyBits } = await generatorPassword({
+ *   length: 20, uppercase: true, lowercase: true,
+ *   digits: true, symbols: true, avoidAmbiguous: false,
+ * });
+ * ```
+ *
+ * @beta
+ */
+export function generatorPassword(options: PasswordOptionsDto): Promise<GeneratedDto> {
+  return call<GeneratedDto>('generator_password', { options });
+}
+
+/**
+ * Generate a passphrase from the bundled EFF long wordlist.
+ *
+ * `separator` and `capitalise` add **zero** bits — the attacker knows the scheme —
+ * and `entropyBits` ignores them. Never present them as strengthening anything.
+ *
+ * @throws {IpcError} `featureUnavailable` while the wordlist is not vendored,
+ * `locked`, or `crypto`.
+ *
+ * @beta
+ */
+export function generatorPassphrase(options: PassphraseOptionsDto): Promise<GeneratedDto> {
+  return call<GeneratedDto>('generator_passphrase', { options });
+}
+
+/**
+ * Generate a numeric PIN.
+ *
+ * @param length - Clamped to 3–12 by Rust.
+ * @throws {IpcError} `locked`, or `crypto`.
+ *
+ * @beta
+ */
+export function generatorPin(length: number): Promise<GeneratedDto> {
+  return call<GeneratedDto>('generator_pin', { length });
+}
+
+/**
+ * The retained generator history, newest first, **without values**.
+ *
+ * Entries carry a kind, an entropy figure and a timestamp. The values stay in
+ * Rust: use {@link generatorHistoryCopy} to put one on the clipboard.
+ *
+ * @throws {IpcError} `locked`.
+ *
+ * @beta
+ */
+export function generatorHistoryList(): Promise<HistoryEntryDto[]> {
+  return call<HistoryEntryDto[]>('generator_history_list');
+}
+
+/**
+ * Copy one history entry to the clipboard, entirely inside Rust.
+ *
+ * @throws {IpcError} `notFound` if the entry has expired or been cleared,
+ * `locked`, `clipboard`.
+ *
+ * @beta
+ */
+export function generatorHistoryCopy(id: string): Promise<void> {
+  return callVoid('generator_history_copy', { id });
+}
+
+/**
+ * Forget the whole generator history.
+ *
+ * @throws {IpcError} `locked`.
+ *
+ * @beta
+ */
+export function generatorHistoryClear(): Promise<void> {
+  return callVoid('generator_history_clear');
+}
+
+// ── TOTP (SPEC-V1 §7.2) ─────────────────────────────────────────────────────
+
+/**
+ * The current one-time code for an item, with its countdown.
+ *
+ * Returns a code, never the seed. Poll it once per second to drive a countdown,
+ * or once per `period` and derive the remainder locally.
+ *
+ * @throws {IpcError} `notFound` if the item has no TOTP configuration — which
+ * includes a seed stored without its parameters, where a guessed SHA-1/6/30 would
+ * produce a plausible code that never works. Also `locked`.
+ *
+ * @beta
+ */
+export function totpCurrent(id: string): Promise<TotpCodeDto> {
+  return call<TotpCodeDto>('totp_current', { id });
 }
