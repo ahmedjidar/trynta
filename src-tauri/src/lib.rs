@@ -89,6 +89,7 @@ pub fn run() {
             commands::app::app_platform_info,
             commands::updates::update_check,
             commands::updates::update_install,
+            commands::updates::update_checks_set_enabled,
         ])
         .run(tauri::generate_context!())
         .expect("the Tauri runtime failed to start");

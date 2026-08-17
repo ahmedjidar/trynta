@@ -131,6 +131,37 @@ pub fn offerable(current: &str, candidate: &str) -> bool {
     }
 }
 
+/// Checks are on unless the user turns them off.
+///
+/// The alternative — off until opted in — reads as more conservative and is worse:
+/// a password manager whose patch channel is dark by default ships a dependency CVE
+/// to everyone who never found the setting, and SPEC-V1 §7.7 exists precisely
+/// because that is not acceptable.
+pub const ENABLED_BY_DEFAULT: bool = true;
+
+/// Interpret the stored `app_state.update_checks_enabled` value (ADD-004).
+///
+/// Absent means [`ENABLED_BY_DEFAULT`]. So does anything unparseable: the failure
+/// mode of a corrupted preference must not be a silently dark patch channel, and
+/// this is the one place in the codebase where "fail closed" would mean *less*
+/// safety rather than more.
+#[must_use]
+pub fn checks_enabled_from(stored: Option<&str>) -> bool {
+    stored
+        .and_then(|raw| raw.trim().parse::<bool>().ok())
+        .unwrap_or(ENABLED_BY_DEFAULT)
+}
+
+/// The stored form of the toggle, for `app_state`.
+#[must_use]
+pub const fn checks_enabled_to(enabled: bool) -> &'static str {
+    if enabled {
+        "true"
+    } else {
+        "false"
+    }
+}
+
 /// This build's version, from `Cargo.toml`.
 #[must_use]
 pub fn current_version() -> &'static str {
@@ -218,6 +249,27 @@ mod tests {
             !offerable("not-a-version", "9.9.9"),
             "an unreadable current version means no comparison is possible"
         );
+    }
+
+    #[test]
+    fn the_toggle_round_trips_and_fails_open() {
+        assert!(checks_enabled_from(Some(checks_enabled_to(true))));
+        assert!(!checks_enabled_from(Some(checks_enabled_to(false))));
+        assert!(
+            !checks_enabled_from(Some(" false ")),
+            "whitespace is trimmed"
+        );
+
+        assert!(
+            checks_enabled_from(None),
+            "no stored preference means checks are on"
+        );
+        for corrupt in ["", "0", "1", "no", "TRUE", "yes", "off", " "] {
+            assert!(
+                checks_enabled_from(Some(corrupt)),
+                "{corrupt:?} is unparseable and must leave the patch channel open,                  not silently dark"
+            );
+        }
     }
 
     #[test]

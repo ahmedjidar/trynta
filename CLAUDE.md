@@ -181,11 +181,62 @@ fetched one at a time, on demand, by explicit command.
 
 ---
 
-## 6. Cross-platform parity
+## 6. Platforms: Windows is verified, macOS is not
 
-Windows is not a port. Every feature ships on both or ships on neither.
+**Read this before you write a line of macOS code, and do not soften it anywhere.**
 
-| Concern | macOS | Windows |
+This section used to assert full parity — that neither platform was a port of the other and that
+every feature shipped on both or on neither. That is no longer true, and repeating it would be a
+lie in the operating manual. **ADD-005 supersedes it, and supersedes SPEC-V1 §8's parity
+requirement.** The old wording is gone rather than qualified, deliberately: a reader skimming for
+a parity guarantee should not find one to misread.
+
+The actual position:
+
+- **Windows is the verified platform.** CI runs the full gate on `windows-latest` for every
+  push. That is the build that has to be green.
+- **macOS code is written and never compiled.** Not "lightly tested" — never built. Its
+  correctness is *unknown*, and every claim about it in this repository is a claim about code
+  that no compiler has read.
+- macOS jobs run on tags and `workflow_dispatch` only, and are named `UNVERIFIED PLATFORM`.
+- This is a budget decision, not a technical judgement: private repo, free Actions minutes
+  exhausted, macOS runners bill at 10×. It reverts when there is real Apple hardware.
+
+Calibrate your confidence accordingly. Earlier on 2026-08-17, macOS code that had been read,
+reviewed and locally linted took **two CI round trips just to build** — a `crate-type` collision
+produced two instances of `keyring_store` in one test binary, and a timing test failed because the
+runner had three cores. Neither was visible from a Windows machine. "It looks right" has already
+been wrong twice.
+
+`cargo check --target aarch64-apple-darwin` **does not work from Windows** and this was measured,
+not assumed: `keyring-crypto` cross-checks cleanly, `keyring-store` fails on `libsqlite3-sys`, and
+`keyring` — the crate holding all the macOS code — fails on `objc2-exception-helper`, which
+compiles Objective-C. There is no way to check macOS code from here without an Apple SDK.
+
+### The standards get stricter, not looser
+
+Unverified is not permission to be sloppy. Nothing will compile this code until there is hardware,
+so it has to be right on the first read:
+
+1. **Read the real API signatures before writing.** Fetch the docs, or better, read the vendored
+   crate source under `~/.cargo/registry`. No guessing from memory, no plausible-looking calls.
+   Prefer a crate's own constant over a hand-copied value — `AccessControlOptions::BIOMETRY_CURRENT_SET`
+   over `1 << 3`.
+2. **Every macOS path gets the same test coverage as its Windows counterpart**, even though the
+   tests will not run. `tests/platform_macos.rs` mirrors `tests/platform_windows.rs` check for
+   check, and its header carries the mapping table. Those tests are the first thing executed on
+   real hardware.
+3. **Mark every uncertainty `// UNVERIFIED: <what could be wrong>`** at the site, and add a
+   *specific* row to `MACOS-UNVERIFIED.md` — a command to run or an observation to make, never
+   "check that the Keychain works".
+4. **Append to `MACOS-UNVERIFIED.md` in the same commit** as any macOS code you write.
+
+The bar: when this runs on real hardware, the failures should be environment surprises — not code
+that could have been right by reading the docs.
+
+### The platform split itself is unchanged
+
+| Concern | macOS (unverified) | Windows (verified) |
 |---|---|---|
 | Biometric unlock | Touch ID / LocalAuthentication | Windows Hello |
 | Key-at-rest for biometric unlock | Keychain, Secure Enclave where available | DPAPI + Credential Manager, TPM where available |
@@ -194,8 +245,9 @@ Windows is not a port. Every feature ships on both or ships on neither.
 | Autostart / background | LaunchAgent | Registry Run key or Task Scheduler |
 
 Anything platform-specific lives behind a trait in `platform/` with a `macos` and a `windows`
-implementation. No `#[cfg]` scattered through business logic. CI runs the full test suite on
-`macos-latest` and `windows-latest`; a green build on one platform is not a green build.
+implementation. No `#[cfg]` scattered through business logic. `unsafe` is permitted only inside
+`platform/`, only with a SAFETY comment, and `pnpm check:unsafe` enforces both — including in the
+macOS files, which makes it the one check that covers macOS code from a Windows machine.
 
 Never hardcode `⌘` in the UI. Keyboard hints resolve from a platform key-map.
 

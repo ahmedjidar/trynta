@@ -198,6 +198,9 @@ fn app_state_permits_exactly_the_keys_the_spec_lists() {
         "content_protection_enabled",
         "last_breach_check_at",
         "last_update_check_at",
+        // ADD-004: SPEC-V1 §7.7's "disableable" toggle. Added by a spec change,
+        // which is what this test is here to force.
+        "update_checks_enabled",
     ];
     let actual: Vec<&str> = AppStateKey::all().iter().map(|k| k.as_str()).collect();
     assert_eq!(actual, expected);

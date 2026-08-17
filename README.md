@@ -40,7 +40,13 @@ your vault. Breach checks use k-anonymity: we learn a five-character hash prefix
 **Fast enough to disappear.** Unlock, find, copy, gone. A password manager you notice is a
 password manager you route around.
 
-**Native on both platforms.** Windows is not a port. Same features, same day, same quality.
+**Native, not a web page in a frame.** Platform biometrics, platform secure storage, platform
+clipboard semantics — hand-written per OS rather than papered over by a cross-platform shim.
+
+**Right now, that means Windows.** The macOS half is written and has never been compiled, so its
+state is *unknown* rather than "coming soon". Windows is the platform with a green build. See
+[`MACOS-UNVERIFIED.md`](MACOS-UNVERIFIED.md) for exactly what is unverified and how it gets
+verified.
 
 ## Status
 

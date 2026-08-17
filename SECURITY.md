@@ -3,6 +3,29 @@
 Keyring is pre-1.0 and not ready for real credentials. Please do not store anything you cannot
 afford to lose while that remains true.
 
+## macOS is unverified — read this before reporting or trusting anything on it
+
+**The macOS build has never been compiled.** Not "lightly tested": no compiler has read it, no
+test has run against it, and no one has launched it. Windows is the verified platform and the
+only one with a green build. This is a budget decision (ADD-005) — private repo, exhausted free
+Actions minutes, macOS runners at 10× — not a judgement that macOS matters less, and it reverts
+once there is real Apple hardware.
+
+What that means concretely, for anyone assessing this project:
+
+- Every security claim below that depends on platform code — biometric unlock, the biometric key
+  wrap at rest, clipboard concealment, key locking in memory — is **verified on Windows only**.
+  The macOS half of each is written to the same standard and its behaviour is unknown.
+- Specifically unverified on macOS: that changing the enrolled fingerprint set destroys the
+  Keychain item (`kSecAccessControlBiometryCurrentSet`), that the `org.nspasteboard.ConcealedType`
+  marker actually lands on the pasteboard, and that Keychain access survives code-signing. Each is
+  an enumerated row in [`MACOS-UNVERIFIED.md`](MACOS-UNVERIFIED.md).
+- A macOS-only finding is **in scope and welcome**, and will not be treated as a duplicate of a
+  known gap unless it is already a row in that file with the same failure described.
+
+Two macOS build failures have already been found and fixed by CI after passing local review, which
+is the honest measure of how much a careful read is worth here: not nothing, and not much.
+
 ## Reporting a vulnerability
 
 Report privately. Do not open a public issue, and do not disclose before we have had a chance to

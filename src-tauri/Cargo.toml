@@ -110,11 +110,25 @@ windows-future = "0.3.2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # default-features = false throughout: the objc2 binding crates default to
-# exposing an entire framework, and objc2-app-kit's defaults pull
-# objc2-exception-helper, which needs a C toolchain and cannot cross-compile.
-# We use three types between them, so the smaller surface is both a security
-# win and what makes `cargo check --target aarch64-apple-darwin` work from a
-# non-Mac.
+# exposing an entire framework, and we use four types between them, so the
+# smaller surface is a real reduction in generated code and attack surface.
+#
+# It does NOT buy cross-compilation, and an earlier version of this comment
+# claimed it did. Measured on 2026-08-17 from Windows with the
+# aarch64-apple-darwin std component installed:
+#
+#   cargo check -p keyring-crypto --target aarch64-apple-darwin   -> succeeds
+#   cargo check -p keyring-store  --target aarch64-apple-darwin   -> fails,
+#       libsqlite3-sys compiles bundled SQLite and needs clang + the Apple SDK
+#   cargo check -p keyring        --target aarch64-apple-darwin   -> fails,
+#       objc2-exception-helper compiles try_catch.m; the local cc rejects
+#       `-arch arm64` and `-mmacosx-version-min=11.0`
+#
+# The helper arrives through `tauri -> tao -> dispatch2 -> block2 -> objc2` and
+# `tauri-plugin-dialog -> rfd -> dispatch2`, so our own feature flags cannot
+# switch it off — cargo unifies features across the graph. Nothing short of a
+# real Apple SDK (osxcross, cargo-zigbuild) checks this crate for macOS. Recorded
+# in MACOS-UNVERIFIED.md; see ADD-005.
 objc2 = { version = "0.6.4", default-features = false, features = ["std"] }
 objc2-foundation = { version = "0.3.2", default-features = false, features = [
   "std",

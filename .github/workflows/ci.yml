@@ -1,9 +1,29 @@
 name: ci
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Windows is the verified platform (ADD-005). macOS runs on tags and manual
+# dispatch only.
+#
+# This is a budget decision, not a technical one: the repository is private, the
+# free Actions allowance is exhausted, and macOS runners bill at 10× the Linux
+# rate. It reverts when there is real Apple hardware to test on.
+#
+# The consequence, stated plainly so nobody has to infer it: **a green run of
+# this workflow says nothing about macOS.** The macOS code is written and has
+# never been compiled. See MACOS-UNVERIFIED.md.
+# ─────────────────────────────────────────────────────────────────────────────
+
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
+  workflow_dispatch:
+    inputs:
+      macos:
+        description: 'Also run the macOS jobs (billed at 10×)'
+        type: boolean
+        default: false
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -14,29 +34,23 @@ env:
   RUSTFLAGS: '-D warnings'
 
 jobs:
-  # ── The gate. Everything SPEC-V1 §11 asks for, on both platforms. ──────────
-  # A green build on one platform is not a green build (CLAUDE.md §6).
+  # ── The gate, on the verified platform. Every push, every PR. ──────────────
   verify:
-    name: verify-v1 (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+    name: verify-v1 (windows-latest)
+    runs-on: windows-latest
     env:
       # AC03 times the verifier comparison: 51 batches of 20,000 iterations per
       # input class, median, and it fails if the two medians differ by more than
       # 25%. It shares its test binary with two Argon2 tests, and the harness
-      # runs those *concurrently with it* by default — so on a 3-core shared
-      # runner the measurement partly reflects the scheduler rather than the
-      # comparison.
+      # runs those *concurrently with it* by default — so on a shared runner the
+      # measurement partly reflects the scheduler rather than the comparison.
       #
       # It passed twice in isolation and failed inside `cargo test --workspace`
-      # in the same macOS job, once this run took src-tauri from four test
-      # binaries to eight. Serialising makes both measurement phases see the same
-      # quiet machine. It changes no assertion and no tolerance: the frozen test
-      # is untouched, and a timing test measuring contention is measuring the
-      # wrong thing.
+      # in the same job, once this run took src-tauri from four test binaries to
+      # eight. Serialising makes both measurement phases see the same quiet
+      # machine. It changes no assertion and no tolerance: the frozen test is
+      # untouched, and a timing test measuring contention is measuring the wrong
+      # thing.
       RUST_TEST_THREADS: 1
     steps:
       - uses: actions/checkout@v5
@@ -64,6 +78,8 @@ jobs:
       # command that touches src-tauri.
       - run: pnpm build
 
+      # Prints the ADD-005 banner as its first line. Read it: it is the only
+      # thing in this log that tells you what the run does *not* cover.
       - name: pnpm verify:v1
         run: pnpm verify:v1
 
@@ -79,13 +95,20 @@ jobs:
       - name: EFF wordlist is intact
         run: pnpm check:wordlist
 
+      # CLAUDE.md §7: unsafe only in platform/, only with a SAFETY comment, and the
+      # scoped allow only in lib.rs. It reads source text rather than compiling, so
+      # it is the ONE check in this job that covers the macOS files — worth having
+      # precisely because nothing else here does.
+      - name: unsafe is confined to platform/
+        run: pnpm check:unsafe
+
       # AC22 runs keyring-crypto's redaction test in release. The store's domain
       # model holds the actual passwords, card numbers and TOTP seeds, and release
       # is where a formatter inlines differently — so it gets the same treatment.
       - name: store redaction holds in release
         run: cargo test -p keyring-store --test redaction --release
 
-  # ── Supply chain, once. Platform-independent, so it does not need the matrix.
+  # ── Supply chain, once. Platform-independent, so it needs no matrix. ────────
   supply-chain:
     runs-on: ubuntu-latest
     steps:
@@ -106,16 +129,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm audit --audit-level high
 
-  # ── A shippable bundle on both platforms, with the size budget enforced. ────
+  # ── The Windows bundle, with the size budget enforced. ─────────────────────
   bundle:
-    name: bundle (${{ matrix.os }})
+    name: bundle (windows-latest)
     needs: [verify]
     if: github.event_name == 'push'
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
@@ -126,20 +145,111 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: '1.94.1'
-          # macos-latest is arm64: a default build ships nothing that runs on an
-          # Intel Mac (SPEC-V1 §8).
-          targets: ${{ matrix.os == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
       - uses: Swatinem/rust-cache@v2
       - run: pnpm install --frozen-lockfile
 
       - name: Build bundle
-        run: pnpm tauri build ${{ matrix.os == 'macos-latest' && '--target universal-apple-darwin' || '' }}
+        run: pnpm tauri build
 
       - name: Installer size budget (20 MB target, 25 MB ceiling)
         run: pnpm check:bundle-size 20 25
 
       - uses: actions/upload-artifact@v4
         with:
-          name: keyring-${{ matrix.os }}
+          name: keyring-windows-latest
+          path: target/**/bundle/**
+          if-no-files-found: error
+
+  # ── macOS: the first compile this code will ever get. ──────────────────────
+  #
+  # Tags and manual dispatch only (ADD-005). Everything below has been written
+  # against the real crate signatures and never built, so expect the first run to
+  # fail on something structural rather than on a subtle bug — that is what
+  # "unverified" means here, and MACOS-UNVERIFIED.md is the checklist for
+  # working through it.
+  #
+  # `continue-on-error` is deliberate and is **not** a way to ignore failures: it
+  # keeps a tag from being blocked by a platform the project has already declared
+  # unverified. Read the log. When macOS is green and stays green, delete this
+  # line and the policy along with it.
+  verify-macos:
+    name: verify-v1 (macos-latest, UNVERIFIED PLATFORM)
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.macos
+    runs-on: macos-latest
+    continue-on-error: true
+    env:
+      RUST_TEST_THREADS: 1
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: '1.94.1'
+          components: rustfmt, clippy
+          # macos-latest is arm64: a default build ships nothing that runs on an
+          # Intel Mac (SPEC-V1 §8).
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny,cargo-audit
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+      # Split out from verify:v1 on purpose. The single most likely macOS failure
+      # is "it does not compile", and that deserves its own red step rather than
+      # being buried inside a 42-check verifier run.
+      - name: cargo check (the first compile this code has ever had)
+        run: cargo check --workspace --all-targets
+
+      - name: unsafe is confined to platform/
+        run: pnpm check:unsafe
+
+      - name: pnpm verify:v1
+        run: pnpm verify:v1
+
+      - name: MACOS-UNVERIFIED checklist
+        if: always()
+        run: |
+          echo "::notice::macOS is an unverified platform (ADD-005). Work through MACOS-UNVERIFIED.md against this log."
+
+  bundle-macos:
+    name: bundle (macos-latest, UNVERIFIED PLATFORM)
+    needs: [verify-macos]
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.macos
+    runs-on: macos-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: '1.94.1'
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build bundle
+        run: pnpm tauri build --target universal-apple-darwin
+
+      - name: Installer size budget (20 MB target, 25 MB ceiling)
+        run: pnpm check:bundle-size 20 25
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: keyring-macos-latest-UNVERIFIED
           path: target/**/bundle/**
           if-no-files-found: error

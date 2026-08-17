@@ -49,6 +49,19 @@ pub enum AppStateKey {
     LastBreachCheckAt,
     /// Unix milliseconds of the last update-manifest check.
     LastUpdateCheckAt,
+    /// Whether unattended update checks are permitted (SPEC-V1 §7.7, ADD-004).
+    ///
+    /// App state rather than vault state, and readable before unlock, because
+    /// §7.7 checks on launch. Putting it in the encrypted settings would mean the
+    /// only moment the preference is legible is a moment after the one it governs,
+    /// so a locked app would either check against the user's wishes or never check
+    /// at all.
+    ///
+    /// It is a preference, not an authorization decision, so §4.5's rule that
+    /// nothing here may be load-bearing still holds: an attacker who flips it can
+    /// suppress an update check, which is a nuisance, and cannot cause an unsigned
+    /// artefact to be installed — that is the signature's job, not this flag's.
+    UpdateChecksEnabled,
 }
 
 impl AppStateKey {
@@ -66,12 +79,13 @@ impl AppStateKey {
             Self::ContentProtectionEnabled => "content_protection_enabled",
             Self::LastBreachCheckAt => "last_breach_check_at",
             Self::LastUpdateCheckAt => "last_update_check_at",
+            Self::UpdateChecksEnabled => "update_checks_enabled",
         }
     }
 
     /// Every permitted key. Used by the test that pins the list to §4.5.
     #[must_use]
-    pub const fn all() -> [Self; 10] {
+    pub const fn all() -> [Self; 11] {
         [
             Self::ThemeId,
             Self::ThemeMode,
@@ -83,6 +97,7 @@ impl AppStateKey {
             Self::ContentProtectionEnabled,
             Self::LastBreachCheckAt,
             Self::LastUpdateCheckAt,
+            Self::UpdateChecksEnabled,
         ]
     }
 }

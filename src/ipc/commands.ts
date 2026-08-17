@@ -550,3 +550,22 @@ export function updateCheck(): Promise<UpdateCheckDto> {
 export function updateInstall(): Promise<void> {
   return callVoid('update_install');
 }
+
+/**
+ * Turn unattended update checks on or off.
+ *
+ * The other half of §7.7's "user-visible, disableable". Persists to app state, so
+ * the preference is honoured on the next launch before the vault is unlocked. Read
+ * the current position from {@link updateCheck}'s `checksEnabled`.
+ *
+ * Turning checks off does not disable {@link updateInstall}: the cadence governs
+ * unattended checks, and a user who clicks "install" has asked for one.
+ *
+ * @throws {IpcError} `noVault` if no vault exists yet — the setting has nowhere to
+ * live until then, `storage`.
+ *
+ * @beta
+ */
+export function updateChecksSetEnabled(enabled: boolean): Promise<void> {
+  return callVoid('update_checks_set_enabled', { enabled });
+}

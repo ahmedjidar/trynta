@@ -17,6 +17,11 @@
 //
 // Exit code is 0 only when FAIL == 0.
 //
+// PLATFORM SCOPE (ADD-005). Windows is the verified platform. macOS code is
+// written and has never been compiled. A green run of this verifier says nothing
+// about macOS, so every output path — human and JSON — states that. Removing the
+// banner is the one edit to this file that would make it lie.
+//
 // Usage:
 //   pnpm verify:v1                 run everything
 //   pnpm verify:v1 -- --run 1      only criteria scoped to run 1
@@ -30,6 +35,39 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
+
+// ── Platform scope (ADD-005) ────────────────────────────────────────────────
+//
+// Windows is the verified platform. macOS is written, never compiled, unknown.
+// This is a budget decision — private repo, free Actions minutes exhausted, macOS
+// runners bill at 10× — and it reverts once there is real Apple hardware.
+//
+// The banner prints on every run, twice, and in the JSON. It is not decoration: a
+// reader who sees `PASS 30  FAIL 0  VERIFY OK` and nothing else will conclude the
+// product is verified, and on macOS that conclusion is wrong by the width of an
+// entire platform.
+const VERIFIED_PLATFORM = 'win32';
+const UNVERIFIED_PLATFORMS = ['darwin'];
+
+/** The scope statement, as lines. Printed on every non-JSON run. */
+function platformBanner() {
+  const onVerified = process.platform === VERIFIED_PLATFORM;
+  if (onVerified) {
+    return [
+      'PLATFORM SCOPE (ADD-005): this run covers Windows only.',
+      '  macOS is written, NEVER COMPILED, and unverified. Nothing here tests it.',
+      '  Checklist for real hardware: MACOS-UNVERIFIED.md',
+    ];
+  }
+  const label = UNVERIFIED_PLATFORMS.includes(process.platform)
+    ? `${process.platform} is an UNVERIFIED PLATFORM (ADD-005).`
+    : `${process.platform} is not a supported platform (SPEC-V1 §8 ships macOS and Windows).`;
+  return [
+    `PLATFORM SCOPE (ADD-005): ${label}`,
+    '  Windows is the verified platform; results here are a first look, not a gate.',
+    '  Work through MACOS-UNVERIFIED.md against this log rather than trusting a pass.',
+  ];
+}
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -300,32 +338,134 @@ const CRITERIA = [
   },
   {
     id: 'AC21',
-    title: 'Every item above passes on macOS and Windows',
+    // Retitled by ADD-005, which overrides SPEC-V1 §8's parity requirement. The
+    // original title was "Every item above passes on macOS and Windows" and its two
+    // checks were a grep for both runner labels and a statement that always
+    // returned ok. That is no longer the policy, and — more to the point — it was
+    // never a test: the second check could not fail.
+    //
+    // These four are the ADD-005 verification clause, executable. They are
+    // STRICTER than what they replace, not looser: each one can fail, and three of
+    // them fail the moment someone quietly reinstates a claim of parity.
+    title: 'Platform scope is stated honestly (ADD-005 supersedes §8 parity)',
     checks: [
       {
-        name: 'CI matrix declares macos-latest and windows-latest and invokes verify:v1',
+        name: 'CI runs the gate on Windows for every push',
         run: 1,
         fn: () => {
           const ci = readIfPresent('.github/workflows/ci.yml');
           if (!ci) return { ok: false, detail: '.github/workflows/ci.yml is missing' };
-          const missing = [];
-          if (!ci.includes('macos-latest')) missing.push('macos-latest');
-          if (!ci.includes('windows-latest')) missing.push('windows-latest');
-          if (!/verify:v1/.test(ci)) missing.push('a verify:v1 invocation');
-          return missing.length === 0
-            ? { ok: true, detail: `ci.yml runs verify:v1 on macos-latest and windows-latest (host here: ${process.platform})` }
-            : { ok: false, detail: `ci.yml is missing: ${missing.join(', ')}` };
+          if (!/runs-on:\s*windows-latest/.test(ci)) {
+            return { ok: false, detail: 'no windows-latest job in ci.yml' };
+          }
+          if (!/verify:v1/.test(ci)) {
+            return { ok: false, detail: 'ci.yml never invokes verify:v1' };
+          }
+          // The Windows gate must not itself be gated. If the only verify job sits
+          // behind a tag or a dispatch input, nothing runs on an ordinary push and
+          // the project has no gate at all.
+          const verifyJob = ci.slice(ci.indexOf('  verify:'), ci.indexOf('  supply-chain:'));
+          if (/refs\/tags|inputs\./.test(verifyJob)) {
+            return {
+              ok: false,
+              detail: 'the Windows verify job is conditional — it must run on every push',
+            };
+          }
+          return { ok: true, detail: 'verify-v1 runs on windows-latest, unconditionally, on push' };
         },
       },
       {
-        name: 'green on the other platform',
+        name: 'macOS jobs are gated to tags or manual dispatch and labelled unverified',
         run: 1,
-        fn: () => ({
-          ok: true,
-          detail:
-            `this host is ${process.platform}; cross-platform proof is the CI matrix result, ` +
-            `not a local assertion — treat a single-platform green as half a green`,
-        }),
+        fn: () => {
+          const ci = readIfPresent('.github/workflows/ci.yml');
+          if (!ci) return { ok: false, detail: '.github/workflows/ci.yml is missing' };
+          if (!/macos-latest/.test(ci)) {
+            return {
+              ok: false,
+              detail:
+                'no macOS job at all. ADD-005 defers macOS, it does not delete it — ' +
+                'a tag must still get the first compile.',
+            };
+          }
+          if (!/startsWith\(github\.ref, 'refs\/tags\/v'\)/.test(ci)) {
+            return {
+              ok: false,
+              detail:
+                'macOS jobs are not gated to tags. Unconditional macOS runs bill at ' +
+                '10x, which is the whole reason ADD-005 exists.',
+            };
+          }
+          if (!/UNVERIFIED/.test(ci)) {
+            return {
+              ok: false,
+              detail:
+                'no macOS job name says UNVERIFIED. A green tick beside "macos-latest" ' +
+                'reads as parity to everyone who did not read the addendum.',
+            };
+          }
+          return {
+            ok: true,
+            detail: 'macOS runs on refs/tags/v* or workflow_dispatch, labelled UNVERIFIED',
+          };
+        },
+      },
+      {
+        name: 'the macOS verification checklist exists and is tracked in git',
+        run: 1,
+        fn: () => {
+          const doc = readIfPresent('MACOS-UNVERIFIED.md');
+          if (!doc) return { ok: false, detail: 'MACOS-UNVERIFIED.md is missing' };
+          const tracked = exec('git ls-files --error-unmatch MACOS-UNVERIFIED.md');
+          if (!tracked.ok) {
+            return {
+              ok: false,
+              detail:
+                'MACOS-UNVERIFIED.md exists but is not tracked by git. A checklist that ' +
+                'lives only on one machine is not a checklist.',
+            };
+          }
+          // A file that says "macOS is unverified" and lists nothing is worse than no
+          // file: it looks like the work was done.
+          // Tolerant of prettier's table padding: it aligns cells, so the row id
+          // is `| A1  |` rather than `| A1 |`. The first version of this check
+          // matched the unpadded form and reported zero rows after a format pass.
+          const rows = (doc.match(/^\|\s*[A-F]\d+\s*\|/gm) ?? []).length;
+          if (rows < 10) {
+            return {
+              ok: false,
+              detail: `only ${rows} checklist rows — this should enumerate every macOS path`,
+            };
+          }
+          return { ok: true, detail: `MACOS-UNVERIFIED.md tracked, ${rows} executable checklist rows` };
+        },
+      },
+      {
+        name: 'no document still claims macOS parity',
+        run: 1,
+        fn: () => {
+          const offenders = [];
+          for (const file of ['CLAUDE.md', 'SECURITY.md', 'README.md']) {
+            const text = readIfPresent(file);
+            if (!text) continue;
+            if (/Windows is not a port/i.test(text)) {
+              offenders.push(`${file} still says "Windows is not a port"`);
+            }
+            if (/ships on both or ships on neither/i.test(text)) {
+              offenders.push(`${file} still claims every feature ships on both platforms`);
+            }
+          }
+          const claude = readIfPresent('CLAUDE.md');
+          if (claude && !/never compiled/i.test(claude)) {
+            offenders.push(
+              'CLAUDE.md does not state that macOS has never been compiled — ' +
+                'removing the parity claim is not the same as replacing it',
+            );
+          }
+          return offenders.length === 0
+            ? { ok: true, detail: 'CLAUDE.md and SECURITY.md state the actual position' }
+            : { ok: false, detail: offenders.join('; ') };
+        },
       },
     ],
   },
@@ -411,6 +551,8 @@ function main() {
     if (OPTS.run.length) console.log(`filter: run ${OPTS.run.join(',')}`);
     if (OPTS.only.length) console.log(`filter: ${OPTS.only.join(',')}`);
     console.log('');
+    for (const line of platformBanner()) console.log(line);
+    console.log('');
   }
 
   for (const criterion of CRITERIA) {
@@ -445,7 +587,20 @@ function main() {
   if (OPTS.json) {
     console.log(
       JSON.stringify(
-        { platform: process.platform, pass, fail, skip, elapsedMs: Date.now() - started, results },
+        {
+          platform: process.platform,
+          verifiedPlatform: VERIFIED_PLATFORM,
+          // A consumer reading only `pass`/`fail` would conclude the product is
+          // verified. ADD-005 says no output may imply that, machine-readable
+          // included.
+          unverifiedPlatforms: UNVERIFIED_PLATFORMS,
+          coversThisRun: process.platform === VERIFIED_PLATFORM ? 'the verified platform' : 'an UNVERIFIED platform',
+          pass,
+          fail,
+          skip,
+          elapsedMs: Date.now() - started,
+          results,
+        },
         null,
         2,
       ),
@@ -462,6 +617,10 @@ function main() {
   }
   console.log('');
   console.log(fail === 0 ? 'VERIFY OK' : `VERIFY FAILED — ${fail} check${fail === 1 ? '' : 's'} failing`);
+  // Repeated deliberately. `VERIFY OK` is the line that gets quoted in a commit
+  // message or a status update, and on its own it reads as "the product is fine".
+  // ADD-005 requires that it never read that way while a platform is unverified.
+  for (const line of platformBanner()) console.log(line);
   console.log('');
 
   return fail === 0 ? 0 : 1;

@@ -26,6 +26,11 @@
 //!   platform — nothing else, no identifier."* The plugin builds the request from
 //!   the configured URL; no code here contributes a parameter, and none may start
 //!   to.
+//! - **The toggle.** §7.7 requires the check to be disableable, and ADD-004 put
+//!   `update_checks_enabled` in §4.5's `app_state` list so the preference is legible
+//!   before unlock — which is when the check runs. In encrypted settings it would
+//!   only become readable a moment after the moment it governs, so a locked app
+//!   would either check against the user's wishes or never check at all.
 //!
 //! **Not yet configured.** `tauri.conf.json` carries an empty `plugins.updater`,
 //! because a real one needs a signing keypair whose private half belongs in the
@@ -45,20 +50,6 @@ use crate::commands::dto::{UpdateCheckDto, UpdateInfoDto, UpdateStatusDto};
 use crate::commands::AppState;
 use crate::error::AppError;
 use crate::services::updater::{self, Decision, Skipped};
-
-/// Whether update checks are on.
-///
-/// **A constant, and that is a known gap.** §7.7 requires the check to be
-/// disableable, and the toggle has nowhere to live yet: §4.5's `app_state` key list
-/// is exhaustive and does not include one, and the encrypted settings blob cannot
-/// be read before unlock — which is precisely when §7.7 wants the check to run.
-/// Resolving that is a spec conversation, not something to decide here by adding a
-/// key.
-///
-/// It is safe to leave as `true` today only because no endpoint is configured, so
-/// no request can be made whether this is `true` or `false`. **It must not stay a
-/// constant past the commit that configures an endpoint.**
-const CHECKS_ENABLED: bool = true;
 
 /// Progress event emitted while an update downloads.
 const PROGRESS_EVENT: &str = "update://progress";
@@ -87,6 +78,7 @@ pub async fn update_check(
     let current = updater::current_version().to_owned();
     let now = state.session.now_ms();
     let last = last_check(&state)?;
+    let enabled = checks_enabled(&state)?;
 
     let next_eligible_at = last.saturating_add(updater::MIN_INTERVAL_MS);
     let mut dto = UpdateCheckDto {
@@ -95,9 +87,10 @@ pub async fn update_check(
         available: None,
         checked_at: (last > 0).then_some(last),
         next_eligible_at,
+        checks_enabled: enabled,
     };
 
-    match updater::decide(CHECKS_ENABLED, last, now) {
+    match updater::decide(enabled, last, now) {
         Decision::Skip(Skipped::Disabled) => {
             dto.status = UpdateStatusDto::Disabled;
             return Ok(dto);
@@ -208,6 +201,21 @@ pub async fn update_install(app: AppHandle) -> Result<(), AppError> {
     Ok(())
 }
 
+/// Whether the user has left unattended update checks on (SPEC-V1 §4.5, §7.7).
+///
+/// Read from `app_state`, which is legible before unlock — the property that makes
+/// this work at all, since §7.7 checks on launch. An absent value means
+/// [`ENABLED_BY_DEFAULT`]; so does a value we cannot parse, because the failure mode
+/// of a corrupted preference must not be a silently dark patch channel.
+fn checks_enabled(state: &State<'_, AppState>) -> Result<bool, AppError> {
+    let Ok(file) = state.session.file() else {
+        // No vault yet. Nothing has been configured, so nothing has been turned off.
+        return Ok(updater::ENABLED_BY_DEFAULT);
+    };
+    let stored = file.state_get(AppStateKey::UpdateChecksEnabled)?;
+    Ok(updater::checks_enabled_from(stored.as_deref()))
+}
+
 /// The stored cadence stamp, or `0` if there is nothing to read.
 ///
 /// A missing vault file is not an error here. §7.7 says the updater must not
@@ -225,5 +233,36 @@ fn stamp_check(state: &State<'_, AppState>, now_ms: i64) -> Result<(), AppError>
     if let Ok(file) = state.session.file() {
         file.state_set_i64(AppStateKey::LastUpdateCheckAt, now_ms)?;
     }
+    Ok(())
+}
+
+/// Turn unattended update checks on or off (SPEC-V1 §7.7).
+///
+/// §7.7 requires the check to be *"user-visible, disableable"*. This is the second
+/// half of that: `update_check` reports the state in [`UpdateCheckDto::status`] as
+/// `disabled`, and this sets it.
+///
+/// Writes to `app_state`, so the preference is legible on the next launch before
+/// the vault is unlocked. Requires a vault file to exist — there is nowhere else to
+/// put it — which is not a real limitation: the setting lives on a screen that only
+/// exists once the user has a vault.
+///
+/// Turning checks off does **not** disable `update_install`. The cadence governs
+/// unattended checks; a user who has switched off the background check and then
+/// clicks "check for updates" has asked for one.
+///
+/// # Errors
+///
+/// [`AppError::NoVault`] if no vault file exists yet; [`AppError::Storage`] if the
+/// write fails.
+#[tauri::command]
+pub fn update_checks_set_enabled(
+    state: State<'_, AppState>,
+    enabled: bool,
+) -> Result<(), AppError> {
+    state.session.file()?.state_set(
+        AppStateKey::UpdateChecksEnabled,
+        updater::checks_enabled_to(enabled),
+    )?;
     Ok(())
 }

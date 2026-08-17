@@ -1376,4 +1376,11 @@ pub struct UpdateCheckDto {
     /// Earliest time an unattended check may run again, Unix milliseconds.
     #[ts(type = "number")]
     pub next_eligible_at: i64,
+    /// Whether unattended checks are switched on (`app_state.update_checks_enabled`).
+    ///
+    /// Reported separately from `status` because the settings screen needs the
+    /// toggle's position even when the answer to *this* call was `upToDate` or
+    /// `checkedRecently`. `status == "disabled"` implies this is `false`; the
+    /// converse does not hold.
+    pub checks_enabled: bool,
 }

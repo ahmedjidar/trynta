@@ -25,4 +25,13 @@ checkedAt: number | null,
 /**
  * Earliest time an unattended check may run again, Unix milliseconds.
  */
-nextEligibleAt: number, };
+nextEligibleAt: number, 
+/**
+ * Whether unattended checks are switched on (`app_state.update_checks_enabled`).
+ *
+ * Reported separately from `status` because the settings screen needs the
+ * toggle's position even when the answer to *this* call was `upToDate` or
+ * `checkedRecently`. `status == "disabled"` implies this is `false`; the
+ * converse does not hold.
+ */
+checksEnabled: boolean, };

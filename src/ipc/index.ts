@@ -44,6 +44,7 @@ export {
   vaultSetColor,
   totpCurrent,
   updateCheck,
+  updateChecksSetEnabled,
   updateInstall,
   vaultsList,
 } from './commands';
