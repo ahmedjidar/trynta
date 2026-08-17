@@ -61,6 +61,16 @@ fn count(n: usize) -> u32 {
 pub fn security_report_run(state: State<'_, AppState>) -> Result<SecurityReportDto, AppError> {
     let now = state.session.now_ms();
 
+    // One authority for "when was the last check", and §4.5 says it is this key.
+    // Taking it from the cache's own `fetched_at` instead would let the report and
+    // `security_breach_check` disagree — clearing the encrypted cache leaves
+    // `app_state` behind, and the UI would then offer a refresh the check refuses.
+    // Read outside the closure: `file()` and `with_session` take the same lock.
+    let last_check = state
+        .session
+        .file()?
+        .state_get_i64(AppStateKey::LastBreachCheckAt)?;
+
     let dto = state.session.with_session(|session| {
         let cache = session
             .app_cache_get(AppCacheKey::BreachCache)?
@@ -124,9 +134,6 @@ pub fn security_report_run(state: State<'_, AppState>) -> Result<SecurityReportD
             HealthScore::Scored { score, breakdown } => (Some(score), Some(breakdown.into())),
         };
 
-        let checked_at =
-            (assessment.inputs.logins > 0 && cache.fetched_at > 0).then_some(cache.fetched_at);
-
         Ok(SecurityReportDto {
             score,
             breakdown,
@@ -145,8 +152,8 @@ pub fn security_report_run(state: State<'_, AppState>) -> Result<SecurityReportD
                     item_ids: group.items.clone(),
                 })
                 .collect(),
-            breach_checked_at: checked_at,
-            breach_refresh_available: BreachCache::may_refresh(cache.fetched_at, now),
+            breach_checked_at: (last_check > 0).then_some(last_check),
+            breach_refresh_available: BreachCache::may_refresh(last_check, now),
         })
     })?;
 
@@ -240,7 +247,11 @@ pub fn security_breach_check(state: State<'_, AppState>) -> Result<BreachCheckDt
     };
 
     let ran = refreshed.fetched > 0;
-    let checked_at = refreshed.cache.fetched_at;
+    // Reported from `app_state`, the same authority `security_report_run` reads, not
+    // from the cache's internal `fetched_at`. The two can differ if the encrypted
+    // cache was cleared while the stamp survived, and a UI told two different
+    // "last checked" times by two commands is a UI that will show the wrong one.
+    let checked_at = if ran { now } else { last };
 
     // ── Phase C, under the lock again: persist ──
     if attempting {
