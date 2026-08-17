@@ -15,3 +15,6 @@
 @import './theme/tokens.css';
 @import './theme/a11y.css';
 @import './theme/base.css';
+@import './components/components.css';
+@import './app/shell.css';
+@import './features/items/items.css';

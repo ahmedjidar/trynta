@@ -62,6 +62,7 @@ export type { CustomFieldDto } from './generated/CustomFieldDto';
 export type { GeneratedDto } from './generated/GeneratedDto';
 export type { GeneratedKindDto } from './generated/GeneratedKindDto';
 export type { HistoryEntryDto } from './generated/HistoryEntryDto';
+export type { IconDto } from './generated/IconDto';
 export type { PassphraseOptionsDto } from './generated/PassphraseOptionsDto';
 export type { PasswordOptionsDto } from './generated/PasswordOptionsDto';
 export type { TotpCodeDto } from './generated/TotpCodeDto';

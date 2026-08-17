@@ -1,0 +1,345 @@
+/*
+ * Window shell — components.md §1, §2, §3.
+ *
+ * Every value is a token reference. Row heights are fixed rather than
+ * padding-derived, which is the handoff's choice and the reason panes align across
+ * the window (components.md conventions).
+ */
+
+/* ── Window — §1 ──────────────────────────────────────────────────────────── */
+
+.desk {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  padding: var(--space-10) var(--space-6);
+  background: var(--surface-desk);
+  overflow: auto;
+}
+
+.window {
+  display: flex;
+  flex-direction: column;
+  width: min(var(--window-width), 100%);
+  height: min(var(--window-height), 100%);
+  /* §1: "Desk is width: max-content, so the window overflows right and the sidebar
+     stays reachable — it never crushes." Expressed as a min-width so the flex
+     children cannot compress past the point where the sidebar is usable. */
+  min-width: calc(var(--width-sidebar) + var(--width-list));
+  background: var(--surface-app);
+  border-radius: var(--radius-window);
+  box-shadow: var(--shadow-window);
+  overflow: hidden;
+}
+
+.window__body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── Title bar — §2 ───────────────────────────────────────────────────────── */
+
+.titlebar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex: none;
+  height: var(--row-toolbar);
+  padding-left: var(--pad-traffic-lights);
+  padding-right: var(--pad-chrome);
+  background: var(--surface-chrome);
+  backdrop-filter: var(--blur-vibrancy);
+  border-bottom: 1px solid var(--border-hairline);
+  z-index: var(--z-chrome);
+}
+
+.titlebar__lights {
+  display: flex;
+  gap: var(--space-2);
+  flex: none;
+}
+
+.light {
+  width: var(--space-3);
+  height: var(--space-3);
+  border-radius: var(--radius-circle);
+}
+
+.light--close {
+  background: var(--window-close);
+}
+.light--minimise {
+  background: var(--window-minimise);
+}
+.light--zoom {
+  background: var(--window-zoom);
+}
+
+.titlebar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: none;
+}
+
+.wordmark__mark {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-xs);
+  background: var(--accent);
+}
+
+.wordmark__text {
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-title);
+}
+
+.search-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  /* Centred in the bar: auto margins rather than a fixed offset, so the bar keeps
+     working when the brand or the action group changes width. */
+  margin-inline: auto;
+  width: var(--width-search);
+  max-width: 100%;
+  height: var(--size-control);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--surface-panel);
+  border: 1px solid var(--border-hairline);
+  box-shadow: var(--shadow-inner-top);
+  /* Finding 2: `--text-muted` fails AA for body text, and a placeholder is text. */
+  color: var(--text-caption-aa);
+  font-size: var(--text-caption);
+  transition:
+    border-color var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard);
+}
+
+.search-trigger:hover {
+  border-color: var(--border-strong);
+  box-shadow: 0 0 0 var(--space-1) var(--accent-subtle);
+}
+
+.search-trigger__label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.kbd {
+  flex: none;
+  padding: 0 var(--space-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xs);
+  color: var(--text-caption-aa);
+  font-family: inherit;
+  font-size: var(--text-micro);
+  line-height: var(--leading-micro);
+}
+
+.titlebar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: none;
+}
+
+.toolbar-action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-15);
+  height: var(--size-control);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-hairline);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-inner-top);
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  text-transform: capitalize;
+  transition:
+    background var(--duration-quick) var(--ease-standard),
+    color var(--duration-quick) var(--ease-standard),
+    transform var(--duration-instant) var(--ease-standard);
+}
+
+.toolbar-action:hover {
+  background: var(--surface-raised);
+  color: var(--text-primary);
+}
+
+.toolbar-action:active {
+  transform: scale(var(--press-scale-sm));
+}
+
+/* ── Sidebar — §3 ─────────────────────────────────────────────────────────── */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  width: var(--width-sidebar);
+  background: var(--surface-sidebar);
+  backdrop-filter: var(--blur-vibrancy);
+  border-right: 1px solid var(--border-hairline);
+}
+
+.sidebar__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-3) var(--space-3) 0;
+}
+
+.sidebar__group + .sidebar__group {
+  margin-top: var(--space-4);
+}
+
+.section-label {
+  display: flex;
+  align-items: center;
+  height: var(--row-sidebar-label);
+  /* Finding 2 again: these are 11px uppercase labels, which is text. */
+  color: var(--text-caption-aa);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.nav-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-25);
+  height: var(--row-sidebar);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: var(--text-body);
+  font-weight: var(--weight-regular);
+  transition: background var(--duration-quick) var(--ease-standard);
+}
+
+.nav-row + .nav-row {
+  margin-top: var(--row-gap);
+}
+
+.nav-row:hover {
+  background: var(--surface-hover);
+}
+
+.nav-row[data-selected] {
+  background: var(--surface-selected);
+  color: var(--text-primary);
+  font-weight: var(--weight-medium);
+}
+
+.nav-row__slot {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--icon-slot);
+  height: var(--icon-slot);
+}
+
+.vault-dot {
+  width: var(--dot-vault);
+  height: var(--dot-vault);
+  border-radius: var(--radius-xs);
+  /* UNSTYLED: awaiting handoff vault-accent-tokens. HO-001 specifies a "vault
+     swatch" and vaults carry a `colorToken` such as `vault.accent.3`, but the token
+     layer defines no `--vault-accent-*`. Rendering it in `--accent` is honest —
+     every vault looks the same until the ramp arrives — where inventing seven
+     colours would be designing. Raised for HO-002. */
+  background: var(--accent);
+}
+
+.nav-row__label {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.nav-row__count {
+  flex: none;
+  color: var(--text-caption-aa);
+  font-size: var(--text-micro);
+  font-variant-numeric: tabular-nums;
+}
+
+.nav-row__badge {
+  flex: none;
+  min-width: var(--size-badge);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-full);
+  background: var(--status-warning-subtle);
+  /* Finding 6: in light theme `--status-warning` is 3.68:1 as text. */
+  color: var(--status-warning-text);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-bold);
+  line-height: var(--size-badge);
+  text-align: center;
+}
+
+.sync-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: none;
+  height: var(--row-footer-sidebar);
+  padding: 0 var(--pad-traffic-lights);
+  border-top: 1px solid var(--border-hairline);
+  color: var(--text-caption-aa);
+  font-size: var(--text-micro);
+}
+
+.sync-footer__dot {
+  width: var(--dot-sync);
+  height: var(--dot-sync);
+  border-radius: var(--radius-circle);
+  background: var(--accent);
+}
+
+/* ── Panes ────────────────────────────────────────────────────────────────── */
+
+.pane {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  background: var(--surface-panel);
+}
+
+.pane__content {
+  max-width: var(--measure-pane);
+  padding: var(--pad-pane-top) var(--pad-pane) var(--pad-pane-bottom);
+}
+
+.pane__title {
+  font-size: var(--text-display);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-display);
+  letter-spacing: var(--tracking-display);
+}
+
+.pane__prose {
+  max-width: var(--measure-prose);
+  margin-top: var(--space-2);
+  color: var(--text-secondary);
+  font-size: var(--text-body);
+  line-height: var(--leading-relaxed);
+  text-wrap: pretty;
+}
+
+/* A pane with no handoff-specified composition yet. Structural only, and visibly
+   unfinished rather than plausibly finished. */
+.pane--unstyled .pane__content > * + * {
+  margin-top: var(--space-4);
+}

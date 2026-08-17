@@ -19,7 +19,7 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 use crate::index::{ItemSource, ListQuery, QuickFilters, SortOrder};
-use crate::services::{generator, history, report, totp};
+use crate::services::{generator, history, icons, report, totp};
 
 /// Where the vault is (SPEC-V1 §5).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -129,6 +129,14 @@ pub struct ItemSummaryDto {
     pub subtitle: Option<String>,
     /// Whether a TOTP configuration exists. Never the secret itself.
     pub has_totp: bool,
+    /// How to draw the identity tile (ADD-001).
+    ///
+    /// Resolved in Rust, deliberately: the frontend gets a bundled icon key or a
+    /// monogram, and **never a URL and never a domain**. That is what makes it
+    /// impossible for the webview to construct an icon request even by accident —
+    /// it has nothing to construct one from. It also keeps the Public Suffix List
+    /// out of JavaScript.
+    pub icon: IconDto,
     /// Favourite flag.
     pub is_favorite: bool,
     /// Always false in V1; sharing is SPEC-V2.
@@ -150,6 +158,7 @@ impl From<&IndexRow> for ItemSummaryDto {
             title: row.title.clone(),
             subtitle: row.subtitle.clone(),
             has_totp: row.has_totp,
+            icon: IconDto::from(icons::resolve(&row.urls, &row.title)),
             is_favorite: row.favorite,
             is_shared: false,
             revision: row.revision,
@@ -1498,4 +1507,41 @@ pub struct ThemeCatalogDto {
     /// settings blob. Report this rather than letting the UI infer "the user has no
     /// themes" from an empty list, which is a different and alarming statement.
     pub locked: bool,
+}
+
+// ── Identity tiles (ADD-001) ────────────────────────────────────────────────
+
+/// How to draw an item's identity tile.
+///
+/// The wire form of [`icons::Icon`]. Carries a bundled key or a monogram, and
+/// nothing a URL could be built from — see the note on [`ItemSummaryDto::icon`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase",
+    tag = "kind"
+)]
+pub enum IconDto {
+    /// A bundled SVG at `icons/<key>.svg`, loaded under `img-src 'self'`.
+    Bundled {
+        /// Key into the bundled set. Never user-supplied, never a URL.
+        key: String,
+    },
+    /// A locally generated monogram.
+    Monogram {
+        /// One or two uppercase initials.
+        initials: String,
+        /// Which `--identity-N` fill to use, `1..=7`.
+        tone: u8,
+    },
+}
+
+impl From<icons::Icon> for IconDto {
+    fn from(icon: icons::Icon) -> Self {
+        match icon {
+            icons::Icon::Bundled { key } => Self::Bundled { key },
+            icons::Icon::Monogram { initials, tone } => Self::Monogram { initials, tone },
+        }
+    }
 }

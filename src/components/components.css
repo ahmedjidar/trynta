@@ -1,0 +1,95 @@
+/*
+ * Shared presentational components. HO-001 components.md is the reference for every
+ * value; nothing here is a value, only token references.
+ */
+
+/* ── Identity tile — components.md §4, §6 ─────────────────────────────────── */
+
+.tile {
+  display: grid;
+  place-items: center;
+  flex: none;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--surface-panel);
+  box-shadow:
+    inset 0 0 0 0.5px var(--border-strong),
+    var(--shadow-lift);
+}
+
+/* The seven identity tones. A monogram tile fills with one; a bundled icon keeps
+   `--surface-panel` behind it so a transparent SVG reads correctly. */
+.tile[data-tone='1'] {
+  background: var(--identity-1);
+}
+.tile[data-tone='2'] {
+  background: var(--identity-2);
+}
+.tile[data-tone='3'] {
+  background: var(--identity-3);
+}
+.tile[data-tone='4'] {
+  background: var(--identity-4);
+}
+.tile[data-tone='5'] {
+  background: var(--identity-5);
+}
+.tile[data-tone='6'] {
+  background: var(--identity-6);
+}
+.tile[data-tone='7'] {
+  background: var(--identity-7);
+}
+
+.tile--sm {
+  width: var(--size-avatar-sm);
+  height: var(--size-avatar-sm);
+  border-radius: var(--radius-sm);
+}
+
+.tile--md {
+  width: var(--size-tile);
+  height: var(--size-tile);
+}
+
+.tile--lg {
+  width: var(--size-tile-lg);
+  height: var(--size-tile-lg);
+  border-radius: var(--radius-xl);
+}
+
+.tile--xl {
+  width: var(--size-tile-xl);
+  height: var(--size-tile-xl);
+  border-radius: var(--radius-2xl);
+}
+
+.tile__monogram {
+  color: var(--identity-text);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-none);
+  letter-spacing: var(--tracking-badge);
+}
+
+.tile--sm .tile__monogram {
+  font-size: var(--text-badge-sm);
+}
+.tile--lg .tile__monogram {
+  font-size: var(--text-tile);
+}
+.tile--xl .tile__monogram {
+  font-size: var(--text-tile-lock);
+}
+
+.tile__icon {
+  width: var(--favicon-inlay);
+  height: var(--favicon-inlay);
+  border-radius: var(--radius-xs);
+}
+
+.tile--lg .tile__icon {
+  width: var(--size-tile);
+  height: var(--size-tile);
+  border-radius: var(--radius-md);
+}
