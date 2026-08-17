@@ -23,6 +23,21 @@ jobs:
       matrix:
         os: [macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    env:
+      # AC03 times the verifier comparison: 51 batches of 20,000 iterations per
+      # input class, median, and it fails if the two medians differ by more than
+      # 25%. It shares its test binary with two Argon2 tests, and the harness
+      # runs those *concurrently with it* by default — so on a 3-core shared
+      # runner the measurement partly reflects the scheduler rather than the
+      # comparison.
+      #
+      # It passed twice in isolation and failed inside `cargo test --workspace`
+      # in the same macOS job, once this run took src-tauri from four test
+      # binaries to eight. Serialising makes both measurement phases see the same
+      # quiet machine. It changes no assertion and no tolerance: the frozen test
+      # is untouched, and a timing test measuring contention is measuring the
+      # wrong thing.
+      RUST_TEST_THREADS: 1
     steps:
       - uses: actions/checkout@v5
 
