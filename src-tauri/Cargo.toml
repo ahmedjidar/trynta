@@ -9,7 +9,18 @@ default-run = "keyring"
 
 [lib]
 name = "keyring_lib"
-crate-type = ["lib", "cdylib", "staticlib"]
+# `lib` only. `cdylib` and `staticlib` are what Tauri's mobile targets need, and
+# SPEC-V1 §8 ships macOS and Windows — so they bought nothing and cost something
+# real: three crate types with the same output name collide on
+# `keyring_lib.lib`/`.pdb`, which cargo has been warning about, and in a release
+# build that resolves into **two instances of `keyring_store`** in one test. The
+# symptom is `expected keyring_store::model::SecretField, found SecretField`.
+#
+# It surfaced when AC22's `lock/zeroize test in release` row started executing:
+# that row had been `skip` since run 1, so no test importing both `keyring_lib`
+# and `keyring_store` had ever been compiled in release. A local run passed on
+# stale artifacts; CI's fresh build did not.
+crate-type = ["lib"]
 
 [build-dependencies]
 tauri-build = "2.6.3"
