@@ -1384,3 +1384,118 @@ pub struct UpdateCheckDto {
     /// converse does not hold.
     pub checks_enabled: bool,
 }
+
+// ── Theme (SPEC-V1 §7.6) ────────────────────────────────────────────────────
+
+/// Which palette the app should render.
+///
+/// `System` is resolved in the frontend from `prefers-color-scheme`, not here: the
+/// webview is the only side that can see the media query, and resolving it in Rust
+/// would mean storing a value that disagrees with what is on screen the moment the
+/// OS setting changes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub enum ThemeModeDto {
+    /// Follow the OS. The default, because it is the only one that is never wrong
+    /// on first launch.
+    #[default]
+    System,
+    /// Always dark — the token layer's base.
+    Dark,
+    /// Always light.
+    Light,
+}
+
+impl ThemeModeDto {
+    /// The stored `app_state.theme_mode` value.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::System => "system",
+            Self::Dark => "dark",
+            Self::Light => "light",
+        }
+    }
+
+    /// Parse a stored value. `None` for anything unrecognised, so a hand-edited
+    /// `app_state` falls back to the default rather than to an arbitrary mode.
+    #[must_use]
+    pub fn parse(raw: &str) -> Option<Self> {
+        match raw.trim() {
+            "system" => Some(Self::System),
+            "dark" => Some(Self::Dark),
+            "light" => Some(Self::Light),
+            _ => None,
+        }
+    }
+}
+
+/// An imported theme, as the picker needs it.
+///
+/// Carries the token values, because applying them is the frontend's job — they have
+/// already been through the Rust validator, and re-validating in the webview would
+/// imply the webview is a trust boundary it is not.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub struct ThemeDto {
+    /// Stable id, also the `app_state.theme_id` value.
+    pub id: String,
+    /// Display name.
+    pub name: String,
+    /// Which built-in mode this theme replaces.
+    pub mode: ThemeVariantDto,
+    /// Custom-property name to value, sorted so applying twice is byte-identical.
+    #[ts(type = "Record<string, string>")]
+    pub tokens: std::collections::BTreeMap<String, String>,
+}
+
+/// Which of the two built-in palettes a theme replaces.
+///
+/// Distinct from [`ThemeModeDto`] on purpose: a theme is dark **or** light, never
+/// "system". Sharing one enum would make `mode: system` representable on a theme,
+/// which is meaningless.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub enum ThemeVariantDto {
+    /// Replaces the dark palette.
+    Dark,
+    /// Replaces the light palette.
+    Light,
+}
+
+impl From<&crate::services::theme::Theme> for ThemeDto {
+    fn from(theme: &crate::services::theme::Theme) -> Self {
+        use crate::services::theme::ThemeMode;
+        Self {
+            id: theme.id.clone(),
+            name: theme.name.clone(),
+            mode: match theme.mode {
+                ThemeMode::Dark => ThemeVariantDto::Dark,
+                ThemeMode::Light => ThemeVariantDto::Light,
+            },
+            tokens: theme.tokens.clone(),
+        }
+    }
+}
+
+/// Answer to `theme_list` (SPEC-V1 §6).
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub struct ThemeCatalogDto {
+    /// The stored mode.
+    pub mode: ThemeModeDto,
+    /// The active imported theme's id, or `null` for the built-in palette.
+    pub active_id: Option<String>,
+    /// Imported themes. Empty while `locked` is true — see below.
+    pub imported: Vec<ThemeDto>,
+    /// Whether the vault is locked.
+    ///
+    /// While it is, `imported` is empty because theme values live in the encrypted
+    /// settings blob. Report this rather than letting the UI infer "the user has no
+    /// themes" from an empty list, which is a different and alarming statement.
+    pub locked: bool,
+}

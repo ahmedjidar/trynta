@@ -1,49 +1,175 @@
 /*
- * Token layer — structure only.
+ * Element base. Structure and reset only — every value reaches through a token.
  *
- * This file declares WHICH tokens exist and maps them into Tailwind's theme. It
- * declares no values: every value arrives from a design handoff in
- * `src/theme/tokens.css`. A value here would be design, and design is not ours
- * to invent (CLAUDE.md §3).
+ * This file used to declare a Tailwind `@theme` block mapping a set of invented
+ * `--kr-*` names. Those were a placeholder from before any handoff existed, and
+ * none of them matched the names HO-001 actually delivers, so the mapping pointed
+ * at nothing. It is gone rather than renamed: the handoff's token names are the
+ * contract, and a second set of aliases over the top is one more place for the two
+ * to drift.
  *
- * A theme is data: a named set of values for exactly these custom properties,
- * loadable at runtime without a reload. The loader lands in run 2 and uses
- * constructible stylesheets (`CSSStyleSheet` + `document.adoptedStyleSheets`),
- * because the production CSP is `style-src 'self'` with no `unsafe-inline`
- * (SPEC-V1 §7.6).
+ * Tailwind stays imported for its preflight reset. Components are styled with
+ * hand-written CSS against the tokens, because that is what "handoffs drop in with
+ * minimal translation" (CLAUDE.md §2) means for a design specified as fixed row
+ * heights, per-element letter-spacing and composite shadows. Expressing
+ * `--tracking-secret-masked` as an arbitrary-value utility would be more
+ * translation, not less.
+ *
+ * FONT: the design specifies Manrope. It is not bundled — `font-src 'self'` means
+ * a webfont has to ship in the binary, and fetching one from a CDN is the same leak
+ * ADD-001 exists to prevent. `--font-sans` already carries a system fallback chain,
+ * so the app renders correctly and looks slightly different. Tracked as a missing
+ * asset, like the EFF wordlist.
  */
 
-@theme {
-  --color-surface: var(--kr-color-surface);
-  --color-surface-raised: var(--kr-color-surface-raised);
-  --color-surface-sunken: var(--kr-color-surface-sunken);
-  --color-border: var(--kr-color-border);
-  --color-border-strong: var(--kr-color-border-strong);
-  --color-text: var(--kr-color-text);
-  --color-text-muted: var(--kr-color-text-muted);
-  --color-text-inverted: var(--kr-color-text-inverted);
-  --color-accent: var(--kr-color-accent);
-  --color-accent-hover: var(--kr-color-accent-hover);
-  --color-accent-text: var(--kr-color-accent-text);
-  --color-danger: var(--kr-color-danger);
-  --color-warning: var(--kr-color-warning);
-  --color-success: var(--kr-color-success);
-  --color-focus-ring: var(--kr-color-focus-ring);
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
 
-  --radius-sm: var(--kr-radius-sm);
-  --radius-md: var(--kr-radius-md);
-  --radius-lg: var(--kr-radius-lg);
-  --radius-full: var(--kr-radius-full);
+html,
+body,
+#root {
+  height: 100%;
+}
 
-  --font-sans: var(--kr-font-sans);
-  --font-mono: var(--kr-font-mono);
+body {
+  margin: 0;
+  background: var(--surface-desk);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-body);
+  letter-spacing: var(--tracking-tight);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
 
-  --ease-standard: var(--kr-ease-standard);
-  --ease-emphasised: var(--kr-ease-emphasised);
+/* The app is a desktop window, not a document. Nothing here scrolls or selects
+ * by accident, and a rubber-band scroll on the shell looks broken. */
+body {
+  overflow: hidden;
+  user-select: none;
+  cursor: default;
+}
+
+/* Text the user may genuinely want to copy by hand opts back in. */
+[data-selectable],
+input,
+textarea {
+  user-select: text;
+  cursor: auto;
+}
+
+button {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: default;
+}
+
+input,
+textarea,
+select {
+  margin: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+}
+
+/* Never suppressed, and never the browser default either: the handoff's
+ * accessibility gap list opens with "interactive rows, chips, copy actions,
+ * switches and segments are `div`s with `onClick`". They are real controls here,
+ * and this is the ring they get (see a11y.css, finding 1). */
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+a {
+  color: var(--accent-text);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+/* Screen-reader-only, for labels the design conveys visually by position or icon. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Scrollbar — components.md §16. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+::-webkit-scrollbar {
+  width: var(--scrollbar-width);
+  height: var(--scrollbar-width);
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--scrollbar-radius);
+  border: var(--scrollbar-inset) solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /*
- * Motion is a token too, and reduced motion is not optional (SPEC-V1 §10).
+ * Reduced motion. `tokens.css` already collapses every duration token, which
+ * covers anything driven by a token. This is the belt for animations that name a
+ * duration directly and for smooth scrolling, which no token governs.
  */
 @media (prefers-reduced-motion: reduce) {
   *,

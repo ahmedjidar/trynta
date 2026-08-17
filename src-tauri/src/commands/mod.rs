@@ -26,6 +26,7 @@ pub mod dto;
 pub mod generator;
 pub mod items;
 pub mod security;
+pub mod theme;
 pub mod totp;
 pub mod updates;
 pub mod vaults;

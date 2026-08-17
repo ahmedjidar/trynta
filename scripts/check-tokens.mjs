@@ -50,6 +50,51 @@ function walk(dir, out = []) {
 
 const isTokenLayer = (rel) => TOKEN_LAYER.some((t) => rel === t || rel.startsWith(t + sep));
 
+/**
+ * Strip comments from a file, preserving line structure.
+ *
+ * Line-at-a-time stripping was the original approach and it was wrong: a block
+ * comment spanning lines — every doc comment in this codebase — left its body looking
+ * like code, so a contrast report quoting the value it *recommends* read as a
+ * hardcoded colour. The check has to tell a value from an explanation of one, or the
+ * only way to document a colour decision is to not write it down.
+ *
+ * Newlines are preserved so reported line numbers still point at the real line.
+ * String contents are NOT stripped: a colour in a string literal is a hardcoded
+ * colour, and that is the case this whole script exists for.
+ */
+function stripComments(text) {
+  let out = '';
+  let inBlock = false;
+  let inLine = false;
+  for (let i = 0; i < text.length; i += 1) {
+    const two = text.slice(i, i + 2);
+    if (!inBlock && !inLine && two === '/*') {
+      inBlock = true;
+      i += 1;
+      continue;
+    }
+    if (inBlock && two === '*/') {
+      inBlock = false;
+      i += 1;
+      continue;
+    }
+    if (!inBlock && !inLine && two === '//') {
+      inLine = true;
+      i += 1;
+      continue;
+    }
+    const ch = text[i];
+    if (ch === '\n') {
+      inLine = false;
+      out += ch;
+      continue;
+    }
+    out += inBlock || inLine ? ' ' : ch;
+  }
+  return out;
+}
+
 const findings = [];
 let scanned = 0;
 let exempt = 0;
@@ -62,14 +107,20 @@ for (const dir of SCAN_DIRS) {
       continue;
     }
     scanned += 1;
-    const lines = readFileSync(file, 'utf8').split(/\r?\n/);
-    lines.forEach((line, i) => {
-      // A comment explaining why there is no value is not a value.
-      const code = line.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/.*$/, '');
+    const source = readFileSync(file, 'utf8');
+    // A comment explaining a value is not a value. Stripped across the whole file
+    // rather than per line, so block comments are handled.
+    const code = stripComments(source).split(/\r?\n/);
+    const original = source.split(/\r?\n/);
+    code.forEach((line, i) => {
       for (const { name, re } of PATTERNS) {
         re.lastIndex = 0;
-        const m = re.exec(code);
-        if (m) findings.push(`${rel}:${i + 1}  ${name}  ${m[0]}   ${line.trim().slice(0, 80)}`);
+        const m = re.exec(line);
+        if (m) {
+          findings.push(
+            `${rel}:${i + 1}  ${name}  ${m[0]}   ${(original[i] ?? '').trim().slice(0, 80)}`,
+          );
+        }
       }
     });
   }

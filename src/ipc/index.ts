@@ -42,6 +42,10 @@ export {
   vaultDelete,
   vaultRename,
   vaultSetColor,
+  themeDelete,
+  themeImport,
+  themeList,
+  themeSet,
   totpCurrent,
   updateCheck,
   updateChecksSetEnabled,
@@ -82,6 +86,10 @@ export type { RiskKindDto } from './generated/RiskKindDto';
 export type { SecretPresence } from './generated/SecretPresence';
 export type { SecurityReportDto } from './generated/SecurityReportDto';
 export type { SortOrderDto } from './generated/SortOrderDto';
+export type { ThemeCatalogDto } from './generated/ThemeCatalogDto';
+export type { ThemeDto } from './generated/ThemeDto';
+export type { ThemeModeDto } from './generated/ThemeModeDto';
+export type { ThemeVariantDto } from './generated/ThemeVariantDto';
 export type { TotpAlgorithmDto } from './generated/TotpAlgorithmDto';
 export type { TotpConfigInput } from './generated/TotpConfigInput';
 export type { UpdateCheckDto } from './generated/UpdateCheckDto';

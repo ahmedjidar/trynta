@@ -1,11 +1,17 @@
 /*
  * Entry stylesheet. Order matters:
- *   1. Tailwind, which reads the token layer through @theme
- *   2. the token layer itself — the ONLY place raw values may appear
+ *   1. Tailwind's preflight
+ *   2. the token layer — the ONLY place raw values may appear
+ *   3. contrast aliases, which need the tokens to alias
+ *   4. element base
  *
- * Zero hardcoded colour, spacing, radius, type or duration values below this
- * line, or anywhere else in the codebase. `pnpm check:tokens` enforces it.
+ * Component stylesheets are appended as each surface lands.
+ *
+ * Zero hardcoded colour, spacing, radius, type or duration values below the token
+ * layer, or anywhere else in the codebase. `pnpm check:tokens` enforces it and
+ * exempts `src/theme/tokens.css` alone.
  */
 @import 'tailwindcss';
-@import './theme/base.css';
 @import './theme/tokens.css';
+@import './theme/a11y.css';
+@import './theme/base.css';

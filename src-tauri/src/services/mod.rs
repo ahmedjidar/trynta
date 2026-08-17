@@ -24,6 +24,7 @@ pub mod generator;
 pub mod hibp;
 pub mod history;
 pub mod report;
+pub mod settings;
 pub mod strength;
 pub mod theme;
 pub mod totp;

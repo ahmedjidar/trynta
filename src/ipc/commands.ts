@@ -25,6 +25,9 @@ import type { GeneratedDto } from './generated/GeneratedDto';
 import type { HistoryEntryDto } from './generated/HistoryEntryDto';
 import type { PassphraseOptionsDto } from './generated/PassphraseOptionsDto';
 import type { PasswordOptionsDto } from './generated/PasswordOptionsDto';
+import type { ThemeCatalogDto } from './generated/ThemeCatalogDto';
+import type { ThemeDto } from './generated/ThemeDto';
+import type { ThemeModeDto } from './generated/ThemeModeDto';
 import type { TotpCodeDto } from './generated/TotpCodeDto';
 import type { UpdateCheckDto } from './generated/UpdateCheckDto';
 import type { ActivityEventDto } from './generated/ActivityEventDto';
@@ -568,4 +571,64 @@ export function updateInstall(): Promise<void> {
  */
 export function updateChecksSetEnabled(enabled: boolean): Promise<void> {
   return callVoid('update_checks_set_enabled', { enabled });
+}
+
+// ── Theme (SPEC-V1 §7.6) ────────────────────────────────────────────────────
+
+/**
+ * Every theme the user can pick, plus the stored selection.
+ *
+ * Works with the vault locked, which is the point — the lock screen renders in the
+ * user's mode. While locked, `imported` is empty and `locked` is `true`: theme
+ * values live in the encrypted settings blob, so they are genuinely unavailable
+ * rather than absent. Show the picker disabled, not empty.
+ *
+ * @throws {IpcError} `noVault` before a vault exists, `storage`.
+ *
+ * @beta
+ */
+export function themeList(): Promise<ThemeCatalogDto> {
+  return call<ThemeCatalogDto>('theme_list');
+}
+
+/**
+ * Set the mode, and optionally the active imported theme.
+ *
+ * Pass `id: null` for the built-in palette. An `id` naming no stored theme is
+ * refused rather than stored, so the selection and what renders cannot disagree.
+ *
+ * @throws {IpcError} `notFound` for an unknown id, `locked` if an id is given while
+ * locked — verifying it needs the settings blob — `storage`.
+ *
+ * @beta
+ */
+export function themeSet(id: string | null, mode: ThemeModeDto): Promise<void> {
+  return callVoid('theme_set', { id, mode });
+}
+
+/**
+ * Validate and store a theme document.
+ *
+ * Validation happens in Rust (SPEC-V1 §7.6) and this is the only way a theme enters
+ * the app. Importing does **not** activate — call {@link themeSet} for that — so
+ * adding a theme never changes what the user is looking at as a side effect.
+ *
+ * @throws {IpcError} `invalid` if the document is refused, which includes every
+ * spelling of `url()` and a full theme list; `locked`; `storage`.
+ *
+ * @beta
+ */
+export function themeImport(document: string): Promise<ThemeDto> {
+  return call<ThemeDto>('theme_import', { document });
+}
+
+/**
+ * Remove an imported theme, clearing the selection if it was active.
+ *
+ * @throws {IpcError} `notFound`, `locked`, `storage`.
+ *
+ * @beta
+ */
+export function themeDelete(id: string): Promise<void> {
+  return callVoid('theme_delete', { id });
 }
