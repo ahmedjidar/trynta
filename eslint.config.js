@@ -9,9 +9,28 @@ export default tseslint.config(
 
   // ── Node-side tooling ──────────────────────────────────────────────────────
   {
-    files: ['scripts/**/*.mjs', '*.config.ts', 'e2e/**/*.ts'],
+    files: ['scripts/**/*.mjs', '*.config.ts'],
     languageOptions: { globals: globals.node },
     ...js.configs.recommended,
+  },
+
+  // ── E2E harness ────────────────────────────────────────────────────────────
+  // Its own block with a TypeScript parser. It was previously lumped in with the
+  // `.mjs` tooling, which uses the plain JS parser — so every type annotation in
+  // `wdio.conf.ts` was a parse error rather than a lint finding.
+  //
+  // Not type-checked: the specs run against WebdriverIO's ambient globals, which are
+  // declared by the runner rather than by a tsconfig project, and wiring a project
+  // service for two files would mean a third tsconfig for no extra safety.
+  {
+    files: ['e2e/**/*.ts'],
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
+    rules: {
+      // The specs run inside the page through `browser.execute`, where the callback is
+      // serialised and evaluated in the webview. Node's rules about scope do not apply.
+      'no-undef': 'off',
+    },
   },
 
   // ── Application source ─────────────────────────────────────────────────────

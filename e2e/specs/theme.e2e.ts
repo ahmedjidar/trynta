@@ -61,9 +61,16 @@ describe('AC17 — dark and light both render', () => {
     expect(surface).not.toBe('');
     expect(surface.startsWith('var(')).toBe(false);
 
-    const body = await computedBackground('body');
-    expect(body).not.toBe('');
-    expect(body).not.toBe('rgba(0, 0, 0, 0)');
+    // Opaque, tested as a property rather than by matching a colour string. A literal
+    // here would be a hardcoded colour in the repo — which `check:tokens` fails,
+    // correctly — and parsing the alpha is what the assertion actually means.
+    const opaque = await browser.execute(() => {
+      const background = globalThis.getComputedStyle(document.body).backgroundColor;
+      const parts = /[\d.]+/g.exec(background) === null ? [] : background.match(/[\d.]+/g);
+      const alpha = parts && parts.length === 4 ? Number(parts[3]) : 1;
+      return alpha > 0;
+    });
+    expect(opaque).toBe(true);
   });
 
   it('resolves the light palette to a different colour', async () => {

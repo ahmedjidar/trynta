@@ -24,6 +24,7 @@ import { Sidebar } from './Sidebar';
 import { TitleBar } from './TitleBar';
 import { useNavigation } from './navigation';
 import { Toast } from '../components/Toast';
+import { Generator } from '../features/generator/Generator';
 import { ItemDetail } from '../features/items/ItemDetail';
 import { ItemList } from '../features/items/ItemList';
 import { useClearCache, useItemDetail, useItems, useVaults } from '../features/items/useItems';
@@ -143,6 +144,8 @@ function Shell() {
               />
               <DetailPane onCopied={onCopied} onFailed={onFailed} />
             </>
+          ) : surface === 'generator' ? (
+            <Generator onCopied={onCopied} onFailed={onFailed} />
           ) : (
             <PanePlaceholder surface={surface} />
           )}
