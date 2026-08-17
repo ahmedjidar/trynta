@@ -61,7 +61,10 @@ export default tseslint.config(
   // through the typed bindings in src/ipc/, so the whole surface is mockable.
   {
     files: ['src/**/*.{ts,tsx}'],
-    ignores: ['src/ipc/client.ts'],
+    // `src/ipc/` IS the funnel this rule exists to enforce, so it cannot be subject to
+    // it. `client.ts` owns `invoke`; `window.ts` owns the window API, which is a Tauri
+    // surface rather than a command and has no `invoke` of its own.
+    ignores: ['src/ipc/client.ts', 'src/ipc/window.ts'],
     rules: {
       'no-restricted-imports': [
         'error',

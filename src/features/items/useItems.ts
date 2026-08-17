@@ -15,14 +15,15 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 
 import { useNavigation } from '../../app/navigation';
-import { itemsList, vaultsList } from '../../ipc';
-import type { ItemSummaryDto, VaultSummaryDto } from '../../ipc';
+import { itemGet, itemsList, vaultsList } from '../../ipc';
+import type { ItemDetailDto, ItemSummaryDto, VaultSummaryDto } from '../../ipc';
 
 /** Query keys, in one place so an invalidation cannot miss one. */
 export const keys = {
   items: (source: unknown, filters: unknown, sort: unknown, search: string) =>
     ['items', source, filters, sort, search] as const,
   vaults: ['vaults'] as const,
+  detail: (id: string) => ['item', id] as const,
 };
 
 /** Shared options: nothing about a local vault benefits from a stale window. */
@@ -52,6 +53,21 @@ export function useVaults() {
   return useQuery<VaultSummaryDto[]>({
     queryKey: keys.vaults,
     queryFn: () => vaultsList(),
+    ...LOCAL,
+  });
+}
+
+/**
+ * One item's metadata and secret presence.
+ *
+ * Disabled while nothing is selected, so selecting and deselecting does not leave a
+ * stale detail query in flight. Returns presence flags, never a secret value.
+ */
+export function useItemDetail(id: string | null) {
+  return useQuery<ItemDetailDto>({
+    queryKey: keys.detail(id ?? ''),
+    queryFn: () => itemGet(id ?? ''),
+    enabled: id !== null,
     ...LOCAL,
   });
 }

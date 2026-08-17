@@ -39,331 +39,335 @@
 
   /* ---------------------------------------------------------------- SURFACE
      Ordered back-to-front: desk sits behind the window, raised sits on top. */
-  --surface-desk: #020202; /* desktop behind the app window   */
-  --surface-app: #080a0f; /* window base                     */
-  --surface-panel: #0b0e14; /* content panes, sheets, popovers */
-  --surface-raised: #101420; /* grouped rows, cards, inputs     */
-  --surface-chrome: rgba(11, 14, 20, 0.74); /* title bar (blurred) */
-  --surface-sidebar: rgba(6, 8, 13, 0.7); /* source list (blurred)*/
-  --surface-veil: rgba(0, 0, 0, 0.22); /* modal scrim         */
+  --surface-desk:              #020202;   /* desktop behind the app window   */
+  --surface-app:               #080A0F;   /* window base                     */
+  --surface-panel:             #0B0E14;   /* content panes, sheets, popovers */
+  --surface-raised:            #101420;   /* grouped rows, cards, inputs     */
+  --surface-chrome:            rgba(11, 14, 20, .74); /* title bar (blurred) */
+  --surface-sidebar:           rgba(6, 8, 13, .70);   /* source list (blurred)*/
+  --surface-veil:              rgba(0, 0, 0, .22);    /* modal scrim         */
 
   /* Interaction fills laid over any surface */
-  --surface-hover: rgba(255, 255, 255, 0.045);
-  --surface-selected: rgba(157, 165, 245, 0.13);
-  --surface-knob: #ffffff; /* switch thumb, both themes       */
+  --surface-hover:             rgba(255, 255, 255, .045);
+  --surface-selected:          rgba(157, 165, 245, .13);
+  --surface-knob:              #FFFFFF;   /* switch thumb, both themes       */
 
   /* ------------------------------------------------------------------- TEXT */
-  --text-primary: #f5f6fa;
-  --text-secondary: #ffffff80; /* body meta, control labels      */
-  --text-muted: #ffffff60; /* captions, counts, placeholders */
-  --text-on-accent: #0b0e14;
-  --text-inverse: #080a0f; /* on --text-primary, e.g. toast  */
+  --text-primary:              #F5F6FA;
+  --text-secondary:            #FFFFFF80;  /* body meta, control labels      */
+  --text-muted:                #FFFFFF60;  /* captions, counts, placeholders */
+  --text-on-accent:            #0B0E14;
+  --text-inverse:              #080A0F;    /* on --text-primary, e.g. toast  */
 
   /* ------------------------------------------------------------------ LINES */
-  --border-hairline: #ffffff0d; /* dividers, card outlines        */
-  --border-strong: #ffffff1a; /* inputs, meter troughs, chips   */
+  --border-hairline:           #FFFFFF0D;  /* dividers, card outlines        */
+  --border-strong:             #FFFFFF1A;  /* inputs, meter troughs, chips   */
 
   /* ----------------------------------------------------------------- ACCENT */
-  --accent: #9da5f5;
-  --accent-hover: #b6bcff;
-  --accent-subtle: rgba(157, 165, 245, 0.15); /* badge/chip fill  */
+  --accent:                    #9DA5F5;
+  --accent-hover:              #B6BCFF;
+  --accent-subtle:             rgba(157, 165, 245, .15); /* badge/chip fill  */
 
   /* ----------------------------------------------------------------- STATUS */
-  --status-warning: #fbbf24;
-  --status-warning-subtle: rgba(251, 191, 36, 0.13);
-  --status-danger: #f87171;
-  --status-danger-subtle: rgba(248, 113, 113, 0.13);
-  --status-info: #4cc9e0;
-  --status-success: var(--accent);
+  --status-warning:            #FBBF24;
+  --status-warning-subtle:     rgba(251, 191, 36, .13);
+  --status-danger:             #F87171;
+  --status-danger-subtle:      rgba(248, 113, 113, .13);
+  --status-info:               #4CC9E0;
+  --status-success:            var(--accent);
 
   /* Password-strength ramp — maps 1–4 onto the status scale */
-  --strength-1: var(--status-danger);
-  --strength-2: var(--status-warning);
-  --strength-3: var(--accent);
-  --strength-4: var(--accent);
-  --strength-empty: var(--border-strong);
+  --strength-1:                var(--status-danger);
+  --strength-2:                var(--status-warning);
+  --strength-3:                var(--accent);
+  --strength-4:                var(--accent);
+  --strength-empty:            var(--border-strong);
 
   /* --------------------------------------------------- IDENTITY TILE RAMP
      Fallback monogram tiles behind favicons. Fixed across themes: all
      carry white text at >= 5.6:1 (see contrast-report.md). */
-  --identity-1: #3f4ca8;
-  --identity-2: #2f6e8f;
-  --identity-3: #8a5a2b;
-  --identity-4: #6b4c8f;
-  --identity-5: #2e6b5b;
-  --identity-6: #8f4a55;
-  --identity-7: #4a6b2e;
-  --identity-text: #ffffff;
+  --identity-1:                #3F4CA8;
+  --identity-2:                #2F6E8F;
+  --identity-3:                #8A5A2B;
+  --identity-4:                #6B4C8F;
+  --identity-5:                #2E6B5B;
+  --identity-6:                #8F4A55;
+  --identity-7:                #4A6B2E;
+  --identity-text:             #FFFFFF;
 
   /* --------------------------------------------------------- WINDOW CONTROL
      macOS traffic lights. Decorative; never carries text. */
-  --window-close: #f0655a;
-  --window-minimise: #f5bd4f;
-  --window-zoom: #5bc454;
+  --window-close:              #F0655A;
+  --window-minimise:           #F5BD4F;
+  --window-zoom:               #5BC454;
 
   /* ------------------------------------------------------------- ELEVATION */
-  --shadow-hairline: 0 0 0 0.5px rgba(255, 255, 255, 0.07);
-  --shadow-lift: none; /* light-only micro shadow         */
-  --shadow-window: 0 0 0 0.5px rgba(255, 255, 255, 0.07), 0 32px 90px rgba(0, 0, 0, 0.75);
-  --shadow-sheet: var(--shadow-window);
-  --shadow-knob: 0 0 0 0.5px rgba(0, 0, 0, 0.3), 0 2px 5px rgba(0, 0, 0, 0.4);
-  --shadow-segment: 0 0 0 0.5px var(--border-strong), 0 1px 3px rgba(0, 0, 0, 0.09);
-  --shadow-inner-top: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  --shadow-accent-glow: 0 4px 14px var(--accent-subtle);
-  --shadow-accent-glow-lg: 0 6px 18px var(--accent-subtle);
-  --shadow-focus-ring: 0 0 0 3.5px var(--accent-subtle);
-  --shadow-card-outline: 0 0 0 1px var(--border-hairline);
+  --shadow-hairline:           0 0 0 .5px rgba(255, 255, 255, .07);
+  --shadow-lift:               none;      /* light-only micro shadow         */
+  --shadow-window:             0 0 0 .5px rgba(255, 255, 255, .07),
+                               0 32px 90px rgba(0, 0, 0, .75);
+  --shadow-sheet:              var(--shadow-window);
+  --shadow-knob:               0 0 0 .5px rgba(0, 0, 0, .3),
+                               0 2px 5px rgba(0, 0, 0, .4);
+  --shadow-segment:            0 0 0 .5px var(--border-strong),
+                               0 1px 3px rgba(0, 0, 0, .09);
+  --shadow-inner-top:          inset 0 1px 0 rgba(255, 255, 255, .05);
+  --shadow-accent-glow:        0 4px 14px var(--accent-subtle);
+  --shadow-accent-glow-lg:     0 6px 18px var(--accent-subtle);
+  --shadow-focus-ring:         0 0 0 3.5px var(--accent-subtle);
+  --shadow-card-outline:       0 0 0 1px var(--border-hairline);
 
   /* ------------------------------------------------------------------ BLUR */
-  --blur-vibrancy: saturate(180%) blur(28px); /* chrome, sidebar */
-  --blur-veil: blur(8px); /* modal scrim     */
+  --blur-vibrancy:             saturate(180%) blur(28px); /* chrome, sidebar */
+  --blur-veil:                 blur(8px);                 /* modal scrim     */
 
   /* ======================================================= TYPOGRAPHY ===== */
-  --font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-sans:  "Manrope", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono:  ui-monospace, "SF Mono", Menlo, monospace;
 
-  --weight-regular: 500;
-  --weight-medium: 600;
-  --weight-bold: 700;
-  --weight-heavy: 800;
+  --weight-regular:            500;
+  --weight-medium:             600;
+  --weight-bold:               700;
+  --weight-heavy:              800;
 
   /* Size scale. 7 primary steps (micro → display) plus 4 component-only
      sizes used by badges, chips and monospace secrets. */
-  --text-micro: 11px; /* uppercase section labels, kbd hints */
-  --text-caption: 12px; /* field labels, meta, counts          */
-  --text-body: 13px; /* default control + row size          */
-  --text-body-lg: 13.5px; /* directory row names                 */
-  --text-heading: 15px; /* pane + sheet titles                 */
-  --text-title: 20px; /* lock screen title                   */
-  --text-display: 28px; /* view titles, item names, counters    */
-  --text-metric: 40px; /* vault-health score                   */
+  --text-micro:                11px;   /* uppercase section labels, kbd hints */
+  --text-caption:              12px;   /* field labels, meta, counts          */
+  --text-body:                 13px;   /* default control + row size          */
+  --text-body-lg:              13.5px; /* directory row names                 */
+  --text-heading:              15px;   /* pane + sheet titles                 */
+  --text-title:                20px;   /* lock screen title                   */
+  --text-display:              28px;   /* view titles, item names, counters    */
+  --text-metric:               40px;   /* vault-health score                   */
 
-  --text-badge-xs: 9.5px; /* 2FA pill                            */
-  --text-badge-sm: 10px; /* identity stack monograms            */
-  --text-badge: 10.5px; /* risk tags                           */
-  --text-chip: 11.5px; /* filter chips, Copy buttons          */
-  --text-control: 12.5px; /* buttons, segmented control          */
-  --text-input-lg: 15px; /* command palette query               */
-  --text-secret: 13px; /* revealed passwords                  */
-  --text-secret-lg: 19px; /* one-time code                       */
-  --text-secret-xl: 21px; /* generator output                     */
-  --text-tile: 22px; /* new-item preview monogram           */
-  --text-tile-lock: 24px; /* lock screen mark                    */
+  --text-badge-xs:             9.5px;  /* 2FA pill                            */
+  --text-badge-sm:             10px;   /* identity stack monograms            */
+  --text-badge:                10.5px; /* risk tags                           */
+  --text-chip:                 11.5px; /* filter chips, Copy buttons          */
+  --text-control:              12.5px; /* buttons, segmented control          */
+  --text-input-lg:             15px;   /* command palette query               */
+  --text-secret:               13px;   /* revealed passwords                  */
+  --text-secret-lg:            19px;   /* one-time code                       */
+  --text-secret-xl:            21px;   /* generator output                     */
+  --text-tile:                 22px;   /* new-item preview monogram           */
+  --text-tile-lock:            24px;   /* lock screen mark                    */
 
   /* Line heights — absolute, so rows land on the 4pt grid */
-  --leading-micro: 15px;
-  --leading-caption: 16px;
-  --leading-body: 18px;
-  --leading-relaxed: 20px;
-  --leading-control: 22px;
-  --leading-chip: 24px;
-  --leading-metric: 30px;
-  --leading-secret: 32px;
-  --leading-display: 34px;
-  --leading-none: 1;
+  --leading-micro:             15px;
+  --leading-caption:           16px;
+  --leading-body:              18px;
+  --leading-relaxed:           20px;
+  --leading-control:           22px;
+  --leading-chip:              24px;
+  --leading-metric:            30px;
+  --leading-secret:            32px;
+  --leading-display:           34px;
+  --leading-none:              1;
 
-  --tracking-label: 0.06em; /* uppercase micro labels             */
-  --tracking-badge: 0.04em;
-  --tracking-tight: -0.01em; /* row + control text                 */
-  --tracking-title: -0.015em;
-  --tracking-display: -0.028em;
-  --tracking-metric: -0.03em;
-  --tracking-secret-masked: 0.1em;
-  --tracking-secret-shown: 0.02em;
-  --tracking-otp: 0.1em;
+  --tracking-label:            .06em;   /* uppercase micro labels             */
+  --tracking-badge:            .04em;
+  --tracking-tight:            -.01em;  /* row + control text                 */
+  --tracking-title:            -.015em;
+  --tracking-display:          -.028em;
+  --tracking-metric:           -.03em;
+  --tracking-secret-masked:    .1em;
+  --tracking-secret-shown:     .02em;
+  --tracking-otp:              .1em;
 
   /* ============================================================ SPACE ===== */
   /* 4pt base. Steps 025/05 exist only for hairline optics. */
-  --space-025: 1px;
-  --space-05: 2px;
-  --space-1: 4px;
-  --space-15: 6px;
-  --space-2: 8px;
-  --space-25: 10px;
-  --space-3: 12px;
-  --space-35: 14px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-7: 28px;
-  --space-8: 32px;
-  --space-10: 40px;
-  --space-12: 48px;
+  --space-025:                 1px;
+  --space-05:                  2px;
+  --space-1:                   4px;
+  --space-15:                  6px;
+  --space-2:                   8px;
+  --space-25:                  10px;
+  --space-3:                   12px;
+  --space-35:                  14px;
+  --space-4:                   16px;
+  --space-5:                   20px;
+  --space-6:                   24px;
+  --space-7:                   28px;
+  --space-8:                   32px;
+  --space-10:                  40px;
+  --space-12:                  48px;
 
   /* Composite paddings — the four gutter contexts in the app */
-  --pad-pane: var(--space-8); /* detail pane sides         */
-  --pad-pane-wide: var(--space-10); /* full-width pane sides     */
-  --pad-pane-top: var(--space-7);
-  --pad-pane-bottom: var(--space-12);
-  --pad-row: var(--space-4); /* grouped row sides         */
-  --pad-card: var(--space-4);
-  --pad-sheet: var(--space-5);
-  --pad-chrome: var(--space-4);
-  --pad-traffic-lights: var(--space-5); /* true macOS 20px inset     */
+  --pad-pane:                  var(--space-8);   /* detail pane sides         */
+  --pad-pane-wide:             var(--space-10);  /* full-width pane sides     */
+  --pad-pane-top:              var(--space-7);
+  --pad-pane-bottom:           var(--space-12);
+  --pad-row:                   var(--space-4);   /* grouped row sides         */
+  --pad-card:                  var(--space-4);
+  --pad-sheet:                 var(--space-5);
+  --pad-chrome:                var(--space-4);
+  --pad-traffic-lights:        var(--space-5);   /* true macOS 20px inset     */
 
   /* ============================================================ RADIUS ==== */
-  --radius-xs: 5px; /* favicon inlay, kbd cap             */
-  --radius-sm: 7px; /* segment pill, small tiles          */
-  --radius-md: 9px; /* 32px identity tiles, inputs        */
-  --radius-lg: 12px; /* grouped lists, cards               */
-  --radius-xl: 16px; /* detail tile, sheets, buttons       */
-  --radius-2xl: 18px; /* lock screen mark                   */
-  --radius-window: 20px;
-  --radius-full: 999px; /* capsules — chips, pills, switches  */
-  --radius-circle: 50%; /* avatars, traffic lights, knob      */
+  --radius-xs:                 5px;    /* favicon inlay, kbd cap             */
+  --radius-sm:                 7px;    /* segment pill, small tiles          */
+  --radius-md:                 9px;    /* 32px identity tiles, inputs        */
+  --radius-lg:                 12px;   /* grouped lists, cards               */
+  --radius-xl:                 16px;   /* detail tile, sheets, buttons       */
+  --radius-2xl:                18px;   /* lock screen mark                   */
+  --radius-window:             20px;
+  --radius-full:               999px;  /* capsules — chips, pills, switches  */
+  --radius-circle:             50%;    /* avatars, traffic lights, knob      */
 
   /* ============================================================ SIZE ====== */
   /* Control + row heights. Every interactive row is a fixed step. */
-  --size-badge: 17px;
-  --size-badge-lg: 20px;
-  --size-tag: 22px;
-  --size-chip: 24px; /* also switch height, min hit inset  */
-  --size-avatar-xs: 18px;
-  --size-avatar-sm: 24px;
-  --size-avatar: 28px;
-  --size-avatar-lg: 36px;
-  --size-field: 28px; /* inline edit input                  */
-  --size-input: 30px; /* sheet field input                  */
-  --size-control: 32px; /* buttons, toolbar pills             */
-  --size-segment: 34px; /* segmented control track            */
-  --size-input-lg: 36px;
-  --size-toast: 36px;
-  --size-button-lg: 40px; /* lock screen                        */
-  --size-tile: 32px; /* list row identity tile             */
-  --size-tile-lg: 56px; /* detail header tile                 */
-  --size-tile-xl: 64px; /* new-item preview tile              */
+  --size-badge:                17px;
+  --size-badge-lg:             20px;
+  --size-tag:                  22px;
+  --size-chip:                 24px;   /* also switch height, min hit inset  */
+  --size-avatar-xs:            18px;
+  --size-avatar-sm:            24px;
+  --size-avatar:               28px;
+  --size-avatar-lg:            36px;
+  --size-field:                28px;   /* inline edit input                  */
+  --size-input:                30px;   /* sheet field input                  */
+  --size-control:              32px;   /* buttons, toolbar pills             */
+  --size-segment:              34px;   /* segmented control track            */
+  --size-input-lg:             36px;
+  --size-toast:                36px;
+  --size-button-lg:            40px;   /* lock screen                        */
+  --size-tile:                 32px;   /* list row identity tile             */
+  --size-tile-lg:              56px;   /* detail header tile                 */
+  --size-tile-xl:              64px;   /* new-item preview tile              */
 
-  --row-toolbar: 52px; /* title bar                          */
-  --row-list-header: 44px;
-  --row-filter-bar: 40px;
-  --row-sidebar: 30px;
-  --row-sidebar-label: 24px;
-  --row-item: 60px; /* comfortable density                */
-  --row-item-compact: 40px;
-  --row-field: 48px; /* detail grouped row                 */
-  --row-option: 52px; /* generator grouped row              */
-  --row-risk: 56px;
-  --row-setting: 60px; /* min-height, wraps                  */
-  --row-directory: 64px; /* min-height                         */
-  --row-palette: 40px;
-  --row-footer: 32px;
-  --row-footer-sidebar: 40px;
-  --row-sheet-header: 56px;
-  --row-sheet-footer: 60px;
+  --row-toolbar:               52px;   /* title bar                          */
+  --row-list-header:           44px;
+  --row-filter-bar:            40px;
+  --row-sidebar:               30px;
+  --row-sidebar-label:         24px;
+  --row-item:                  60px;   /* comfortable density                */
+  --row-item-compact:          40px;
+  --row-field:                 48px;   /* detail grouped row                 */
+  --row-option:                52px;   /* generator grouped row              */
+  --row-risk:                  56px;
+  --row-setting:               60px;   /* min-height, wraps                  */
+  --row-directory:             64px;   /* min-height                         */
+  --row-palette:               40px;
+  --row-footer:                32px;
+  --row-footer-sidebar:        40px;
+  --row-sheet-header:          56px;
+  --row-sheet-footer:          60px;
 
   /* Runtime density switch — JS writes these two only */
-  --row-h: var(--row-item);
-  --row-gap: var(--space-05);
+  --row-h:                     var(--row-item);
+  --row-gap:                   var(--space-05);
 
   /* Meters and indicators */
-  --meter-height: 5px;
-  --meter-height-sm: 4px; /* OTP countdown                      */
-  --meter-gap: var(--space-1);
-  --dot-flag: 6px;
-  --dot-sync: 6px;
-  --dot-vault: 8px;
-  --icon-size: 16px;
-  --icon-stroke: 1.75;
-  --icon-slot: 16px;
-  --favicon-inlay: 20px; /* on --size-tile                     */
+  --meter-height:              5px;
+  --meter-height-sm:           4px;    /* OTP countdown                      */
+  --meter-gap:                 var(--space-1);
+  --dot-flag:                  6px;
+  --dot-sync:                  6px;
+  --dot-vault:                 8px;
+  --icon-size:                 16px;
+  --icon-stroke:               1.75;
+  --icon-slot:                 16px;
+  --favicon-inlay:             20px;   /* on --size-tile                     */
 
   /* ============================================================ LAYOUT ==== */
-  --window-width: 1360px;
-  --window-height: 880px;
-  --width-sidebar: 240px;
-  --width-list: 320px;
-  --width-field-label: 96px;
-  --width-search: 380px;
-  --measure-pane: 704px; /* detail, generator, settings        */
-  --measure-pane-wide: 880px; /* security, people                   */
-  --measure-prose: 62ch;
-  --width-sheet-invite: 520px;
-  --width-sheet-new: 560px;
-  --width-palette: 600px;
-  --width-lock: 296px;
-  --height-sheet-max: 752px;
-  --height-palette-max: 420px;
-  --offset-palette-top: 112px;
-  --offset-sheet-top: 64px;
-  --offset-toast-bottom: var(--space-6);
+  --window-width:              1360px;
+  --window-height:             880px;
+  --width-sidebar:             240px;
+  --width-list:                320px;
+  --width-field-label:         96px;
+  --width-search:              380px;
+  --measure-pane:              704px;  /* detail, generator, settings        */
+  --measure-pane-wide:         880px;  /* security, people                   */
+  --measure-prose:             62ch;
+  --width-sheet-invite:        520px;
+  --width-sheet-new:           560px;
+  --width-palette:             600px;
+  --width-lock:                296px;
+  --height-sheet-max:          752px;
+  --height-palette-max:        420px;
+  --offset-palette-top:        112px;
+  --offset-sheet-top:          64px;
+  --offset-toast-bottom:       var(--space-6);
 
-  --scrollbar-width: 14px;
-  --scrollbar-inset: 5px;
-  --scrollbar-radius: 10px;
+  --scrollbar-width:           14px;
+  --scrollbar-inset:           5px;
+  --scrollbar-radius:          10px;
 
   /* ============================================================ MOTION ==== */
-  --duration-instant: 0.12s; /* press feedback                     */
-  --duration-fast: 0.14s;
-  --duration-quick: 0.16s; /* row + chip background              */
-  --duration-base: 0.18s; /* button, input                      */
-  --duration-moderate: 0.2s; /* colour crossfade, veil             */
-  --duration-slow: 0.26s; /* switch travel, sheet entry         */
-  --duration-slower: 0.28s; /* segmented indicator                */
-  --duration-toast: 0.32s;
-  --duration-meter: 0.38s; /* strength bar fill                  */
-  --duration-countdown: 0.9s; /* OTP trough drain                   */
-  --duration-lock: 0.3s;
+  --duration-instant:          .12s;   /* press feedback                     */
+  --duration-fast:             .14s;
+  --duration-quick:            .16s;   /* row + chip background              */
+  --duration-base:             .18s;   /* button, input                      */
+  --duration-moderate:         .2s;    /* colour crossfade, veil             */
+  --duration-slow:             .26s;   /* switch travel, sheet entry         */
+  --duration-slower:           .28s;   /* segmented indicator                */
+  --duration-toast:            .32s;
+  --duration-meter:            .38s;   /* strength bar fill                  */
+  --duration-countdown:        .9s;    /* OTP trough drain                   */
+  --duration-lock:             .3s;
 
-  --stagger-meter: 60ms; /* per strength segment               */
+  --stagger-meter:             60ms;   /* per strength segment               */
 
-  --ease-standard: ease;
-  --ease-linear: linear;
-  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1); /* Apple curve  */
+  --ease-standard:             ease;
+  --ease-linear:               linear;
+  --ease-spring:               cubic-bezier(.32, .72, 0, 1); /* Apple curve  */
 
-  --press-scale: 0.97;
-  --press-scale-sm: 0.96;
-  --press-scale-icon: 0.92;
+  --press-scale:               .97;
+  --press-scale-sm:            .96;
+  --press-scale-icon:          .92;
 
   /* ============================================== Z-INDEX ================= */
-  --z-chrome: 3;
-  --z-toast: 5;
-  --z-overlay: 6;
-  --z-lock: 7;
+  --z-chrome:                  3;
+  --z-toast:                   5;
+  --z-overlay:                 6;
+  --z-lock:                    7;
 }
 
 /* ==========================================================================
    LIGHT THEME — colour overrides only
    ========================================================================== */
-[data-theme='light'] {
+[data-theme="light"] {
   color-scheme: light;
 
-  --surface-desk: #e4e6ec;
-  --surface-app: #f6f7fa;
-  --surface-panel: #ffffff;
-  --surface-raised: #fafbfd;
-  --surface-chrome: rgba(239, 240, 245, 0.76);
-  --surface-sidebar: rgba(243, 244, 248, 0.7);
-  --surface-veil: rgba(0, 0, 0, 0.22);
+  --surface-desk:              #E4E6EC;
+  --surface-app:               #F6F7FA;
+  --surface-panel:             #FFFFFF;
+  --surface-raised:            #FAFBFD;
+  --surface-chrome:            rgba(239, 240, 245, .76);
+  --surface-sidebar:           rgba(243, 244, 248, .70);
+  --surface-veil:              rgba(0, 0, 0, .22);
 
-  --surface-hover: rgba(17, 19, 24, 0.04);
-  --surface-selected: rgba(92, 101, 235, 0.1);
+  --surface-hover:             rgba(17, 19, 24, .04);
+  --surface-selected:          rgba(92, 101, 235, .10);
 
-  --text-primary: #111318;
-  --text-secondary: #5a6070;
-  --text-muted: #8b91a1;
-  --text-on-accent: #ffffff;
-  --text-inverse: #f6f7fa;
+  --text-primary:              #111318;
+  --text-secondary:            #5A6070;
+  --text-muted:                #8B91A1;
+  --text-on-accent:            #FFFFFF;
+  --text-inverse:              #F6F7FA;
 
-  --border-hairline: rgba(17, 19, 24, 0.07);
-  --border-strong: rgba(17, 19, 24, 0.12);
+  --border-hairline:           rgba(17, 19, 24, .07);
+  --border-strong:             rgba(17, 19, 24, .12);
 
-  --accent: #5c65eb;
-  --accent-hover: #4a53de;
-  --accent-subtle: rgba(92, 101, 235, 0.11);
+  --accent:                    #5C65EB;
+  --accent-hover:              #4A53DE;
+  --accent-subtle:             rgba(92, 101, 235, .11);
 
-  --status-warning: #b37a0b;
-  --status-warning-subtle: rgba(251, 191, 36, 0.14);
-  --status-danger: #d2453b;
-  --status-danger-subtle: rgba(248, 113, 113, 0.13);
-  --status-info: #2c8fa8;
+  --status-warning:            #B37A0B;
+  --status-warning-subtle:     rgba(251, 191, 36, .14);
+  --status-danger:             #D2453B;
+  --status-danger-subtle:      rgba(248, 113, 113, .13);
+  --status-info:               #2C8FA8;
 
-  --shadow-hairline: 0 0 0 0.5px rgba(17, 19, 24, 0.07);
-  --shadow-lift: 0 0.5px 1px rgba(17, 19, 24, 0.05);
-  --shadow-window:
-    0 0 0 0.5px rgba(17, 19, 24, 0.07), 0 2px 8px rgba(17, 19, 24, 0.05),
-    0 32px 80px rgba(17, 19, 24, 0.15);
-  --shadow-knob: 0 0 0 0.5px rgba(0, 0, 0, 0.05), 0 2px 5px rgba(0, 0, 0, 0.16);
-  --shadow-inner-top: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --shadow-hairline:           0 0 0 .5px rgba(17, 19, 24, .07);
+  --shadow-lift:               0 .5px 1px rgba(17, 19, 24, .05);
+  --shadow-window:             0 0 0 .5px rgba(17, 19, 24, .07),
+                               0 2px 8px rgba(17, 19, 24, .05),
+                               0 32px 80px rgba(17, 19, 24, .15);
+  --shadow-knob:               0 0 0 .5px rgba(0, 0, 0, .05),
+                               0 2px 5px rgba(0, 0, 0, .16);
+  --shadow-inner-top:          inset 0 1px 0 rgba(255, 255, 255, .7);
 }
 
 /* --------------------------------------------------------------------------
@@ -371,19 +375,10 @@
    -------------------------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
   :root {
-    --duration-instant: 0.01ms;
-    --duration-fast: 0.01ms;
-    --duration-quick: 0.01ms;
-    --duration-base: 0.01ms;
-    --duration-moderate: 0.01ms;
-    --duration-slow: 0.01ms;
-    --duration-slower: 0.01ms;
-    --duration-toast: 0.01ms;
-    --duration-meter: 0.01ms;
-    --duration-lock: 0.01ms;
-    --stagger-meter: 0ms;
-    --press-scale: 1;
-    --press-scale-sm: 1;
-    --press-scale-icon: 1;
+    --duration-instant: .01ms; --duration-fast: .01ms;  --duration-quick: .01ms;
+    --duration-base:    .01ms; --duration-moderate: .01ms; --duration-slow: .01ms;
+    --duration-slower:  .01ms; --duration-toast: .01ms; --duration-meter: .01ms;
+    --duration-lock:    .01ms; --stagger-meter: 0ms;
+    --press-scale: 1; --press-scale-sm: 1; --press-scale-icon: 1;
   }
 }

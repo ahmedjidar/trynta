@@ -11,6 +11,14 @@ Cargo.lock
 # Received design artifacts are never reformatted — they are a delivery, not source.
 handoffs/HO-*
 
+# The token layer is a handoff, extracted VERBATIM from the Claude Design project.
+# Prettier had been reformatting it — lowercasing hex, collapsing the column
+# alignment, rewriting `.74` as `0.74` — so the file was byte-different from the
+# source it claims to copy while still being described as verbatim. The values were
+# equivalent, which is exactly what made it easy to miss. Diffing against the design
+# source has to be a byte comparison for that claim to mean anything.
+src/theme/tokens.css
+
 # Documents owned by their authors, not by a formatter.
 CLAUDE.md
 README.md

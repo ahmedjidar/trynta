@@ -11,6 +11,7 @@
  */
 
 export { IpcError, IpcTransportError } from './client';
+export { revealWindow } from './window';
 
 export {
   accountCreate,

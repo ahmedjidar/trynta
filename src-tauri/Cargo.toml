@@ -23,13 +23,13 @@ name = "keyring_lib"
 crate-type = ["lib"]
 
 [build-dependencies]
-tauri-build = "2.6.3"
+tauri-build = { version = "2.6.3", features = [] }
 
 [dependencies]
 keyring-crypto = { path = "../crates/keyring-crypto" }
 keyring-store = { path = "../crates/keyring-store" }
 
-tauri = "2.11.5"
+tauri = { version = "2.11.5", features = [] }
 tauri-plugin-dialog = "2.7.2"            # backup export/restore, theme import (§7.5, §7.8)
 tauri-plugin-opener = "2.5.4"            # open URLs in the default browser (§7.2, §7.4)
 tauri-plugin-single-instance = "2.4.3"   # two processes on one SQLite file is a corruption path

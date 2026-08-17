@@ -15,6 +15,8 @@ import { useRef } from 'react';
 import type { KeyboardEvent } from 'react';
 
 import { CATEGORIES, sameSource, useNavigation } from './navigation';
+import { Glyph } from '../components/Glyph';
+import type { GlyphName } from '../components/Glyph';
 import type { ItemSourceDto, VaultSummaryDto } from '../ipc';
 
 export interface SidebarProps {
@@ -37,6 +39,7 @@ interface Row {
   count?: number | undefined;
   badge?: number | undefined;
   colorToken?: string | undefined;
+  glyph?: GlyphName | undefined;
 }
 
 export function Sidebar({ vaults, counts, riskCount }: SidebarProps) {
@@ -50,7 +53,13 @@ export function Sidebar({ vaults, counts, riskCount }: SidebarProps) {
     {
       label: 'Vaults',
       rows: [
-        { key: 'all', label: 'All items', source: { source: 'all' }, count: counts.all },
+        {
+          key: 'all',
+          label: 'All items',
+          source: { source: 'all' },
+          count: counts.all,
+          glyph: 'all' as const,
+        },
         ...vaults.map((v) => ({
           key: `vault:${v.id}`,
           label: v.name,
@@ -68,21 +77,39 @@ export function Sidebar({ vaults, counts, riskCount }: SidebarProps) {
           label: 'Favourites',
           source: { source: 'favorites' },
           count: counts.favorites,
+          glyph: 'favorite' as const,
         },
         ...CATEGORIES.map((c) => ({
           key: `category:${c.kind}`,
           label: c.label,
           source: { source: 'category' as const, kind: c.kind },
           count: counts[c.kind],
+          glyph: c.glyph,
         })),
       ],
     },
     {
       label: 'Tools',
       rows: [
-        { key: 'generator', label: 'Generator', surface: 'generator' as const },
-        { key: 'security', label: 'Security', surface: 'security' as const, badge: riskCount },
-        { key: 'settings', label: 'Settings', surface: 'settings' as const },
+        {
+          key: 'generator',
+          label: 'Generator',
+          surface: 'generator' as const,
+          glyph: 'generate' as const,
+        },
+        {
+          key: 'security',
+          label: 'Security report',
+          surface: 'security' as const,
+          badge: riskCount,
+          glyph: 'security' as const,
+        },
+        {
+          key: 'settings',
+          label: 'Settings',
+          surface: 'settings' as const,
+          glyph: 'settings' as const,
+        },
       ],
     },
   ];
@@ -164,6 +191,8 @@ export function Sidebar({ vaults, counts, riskCount }: SidebarProps) {
                   <span className="nav-row__slot" aria-hidden="true">
                     {row.colorToken ? (
                       <span className="vault-dot" data-color={row.colorToken} />
+                    ) : row.glyph ? (
+                      <Glyph name={row.glyph} />
                     ) : null}
                   </span>
                   <span className="nav-row__label">{row.label}</span>

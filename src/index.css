@@ -16,5 +16,7 @@
 @import './theme/a11y.css';
 @import './theme/base.css';
 @import './components/components.css';
+@import './components/controls.css';
 @import './app/shell.css';
 @import './features/items/items.css';
+@import './features/items/detail.css';

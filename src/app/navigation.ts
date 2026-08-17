@@ -10,6 +10,7 @@
 
 import { create } from 'zustand';
 
+import type { GlyphName } from '../components/Glyph';
 import type { ItemKindDto, ItemSourceDto, QuickFiltersDto, SortOrderDto } from '../ipc';
 
 /** The surfaces HO-001 covers. */
@@ -85,10 +86,27 @@ export function sameSource(a: ItemSourceDto, b: ItemSourceDto): boolean {
   return true;
 }
 
-/** The four item categories, in the order the sidebar lists them. */
-export const CATEGORIES: readonly { kind: ItemKindDto; label: string }[] = [
-  { kind: 'login', label: 'Logins' },
-  { kind: 'card', label: 'Cards' },
-  { kind: 'identity', label: 'Identities' },
-  { kind: 'secureNote', label: 'Notes' },
+/**
+ * The four item categories, in the order and with the labels and glyphs the design's
+ * `CATS` list uses (Logins, Secure notes, Cards, Identities).
+ */
+export const CATEGORIES: readonly { kind: ItemKindDto; label: string; glyph: GlyphName }[] = [
+  { kind: 'login', label: 'Logins', glyph: 'login' },
+  { kind: 'secureNote', label: 'Secure notes', glyph: 'note' },
+  { kind: 'card', label: 'Cards', glyph: 'card' },
+  { kind: 'identity', label: 'Identities', glyph: 'identity' },
 ];
+
+/** The label for a source, for the list column's title (design: `listTitle`). */
+export function sourceLabel(source: ItemSourceDto, vaultName?: string): string {
+  switch (source.source) {
+    case 'all':
+      return 'All items';
+    case 'favorites':
+      return 'Favourites';
+    case 'vault':
+      return vaultName ?? 'Vault';
+    case 'category':
+      return CATEGORIES.find((c) => c.kind === source.kind)?.label ?? 'Items';
+  }
+}

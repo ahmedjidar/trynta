@@ -23,9 +23,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Sidebar } from './Sidebar';
 import { TitleBar } from './TitleBar';
 import { useNavigation } from './navigation';
+import { Toast } from '../components/Toast';
+import { ItemDetail } from '../features/items/ItemDetail';
 import { ItemList } from '../features/items/ItemList';
-import { useClearCache, useItems, useVaults } from '../features/items/useItems';
-import { accountLock, appPlatformInfo, itemCopyField } from '../ipc';
+import { useClearCache, useItemDetail, useItems, useVaults } from '../features/items/useItems';
+import { accountLock, appPlatformInfo, itemCopyField, revealWindow } from '../ipc';
 import { useThemeStore } from '../theme/store';
 
 /**
@@ -51,17 +53,29 @@ function Shell() {
 
   const items = useItems();
   const vaults = useVaults();
-  const [modifierKey, setModifierKey] = useState('Ctrl');
+  const [platform, setPlatform] = useState({ modifierKey: 'Ctrl', os: 'windows' });
+  const [toast, setToast] = useState<string | null>(null);
+
+  const onCopied = useCallback((what: string) => {
+    setToast(what);
+  }, []);
+  const onFailed = useCallback((message: string) => {
+    setToast(message);
+  }, []);
 
   useEffect(() => {
-    void hydrate();
+    // Reveal the window only once the theme has been applied. The window is created
+    // hidden so the first frame is never the wrong palette; see app/window.ts.
+    void hydrate().finally(() => {
+      void revealWindow();
+    });
   }, [hydrate]);
 
   useEffect(() => {
     // SPEC-V1 §8: never hardcode the modifier. It resolves from the platform.
     appPlatformInfo()
       .then((info) => {
-        setModifierKey(info.modifierKey);
+        setPlatform({ modifierKey: info.modifierKey, os: info.os });
       })
       .catch(() => {
         // Keep the default. A wrong shortcut hint is cosmetic; failing to render
@@ -76,17 +90,21 @@ function Shell() {
     // §4.9 violation. Order for the worse failure.
     clearCache();
     void accountLock().catch(() => {
-      // UNSTYLED: awaiting handoff toast. components.md §15 specifies the surface
-      // that would report this.
+      setToast('Could not lock');
     });
   }, [clearCache]);
 
   const onCopy = useCallback((id: string) => {
     // Rust reads the item, writes the OS clipboard and returns nothing. The
     // plaintext never enters the webview (CLAUDE.md §4.3).
-    void itemCopyField(id, { field: 'password' }).catch(() => {
-      // UNSTYLED: awaiting handoff toast.
-    });
+    itemCopyField(id, { field: 'password' }).then(
+      () => {
+        setToast('Password copied');
+      },
+      () => {
+        setToast('Could not copy');
+      },
+    );
   }, []);
 
   // Risk state comes from the security report, which is a later stage. Empty until
@@ -107,7 +125,8 @@ function Shell() {
             // UNSTYLED: awaiting handoff command-palette (components.md §14).
           }}
           onLock={onLock}
-          modifierKey={modifierKey}
+          modifierKey={platform.modifierKey}
+          os={platform.os}
         />
         <div className="window__body">
           <Sidebar vaults={vaults.data ?? []} counts={counts} riskCount={0} />
@@ -122,31 +141,67 @@ function Shell() {
                   // UNSTYLED: awaiting handoff new-item-sheet (components.md §14).
                 }}
               />
-              <ItemDetailPlaceholder />
+              <DetailPane onCopied={onCopied} onFailed={onFailed} />
             </>
           ) : (
             <PanePlaceholder surface={surface} />
           )}
         </div>
+
+        <Toast
+          message={toast}
+          onDismiss={() => {
+            setToast(null);
+          }}
+          // Until settings are read this is the §7.5 default. The toast must not claim
+          // a clear that is switched off, so it takes the value rather than a literal.
+          clipboardSeconds={30}
+        />
       </div>
     </div>
   );
 }
 
-function ItemDetailPlaceholder() {
+interface DetailPaneProps {
+  onCopied: (what: string) => void;
+  onFailed: (message: string) => void;
+}
+
+function DetailPane({ onCopied, onFailed }: DetailPaneProps) {
   const selectedId = useNavigation((s) => s.selectedId);
+  const items = useItems();
+  const detail = useItemDetail(selectedId);
+
+  const summary = items.data?.find((i) => i.id === selectedId);
+
+  if (selectedId === null || !summary) {
+    return (
+      <section className="pane" aria-label="Item detail">
+        <div className="pane__content">
+          <p className="pane__prose">Select an item.</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (!detail.data) {
+    // No skeleton: components.md §4 records that the prototype has no loading state
+    // because the data is local, and specifies one only "if remote calls are added".
+    // An empty pane for one frame is closer to the design than an invented shimmer.
+    return <section className="pane" aria-label="Item detail" />;
+  }
+
   return (
-    <section className="pane pane--unstyled" aria-label="Item detail">
-      <div className="pane__content">
-        {/* UNSTYLED: awaiting handoff item-detail (components.md §6). */}
-        <h2 className="pane__title">Item detail</h2>
-        <p className="pane__prose">
-          {selectedId === null
-            ? 'Select an item.'
-            : 'Not built yet — the detail pane is the next run-3 stage. HO-001 §6 specifies it.'}
-        </p>
-      </div>
-    </section>
+    <ItemDetail
+      summary={summary}
+      detail={detail.data}
+      // Risk bands come from the security report. Until it has run there is no band,
+      // and §7.4's "never 'safe'" applies: 0 renders an empty meter labelled
+      // "Not checked" rather than a green one.
+      strength={{ band: 0, label: 'Not checked' }}
+      onCopied={onCopied}
+      onFailed={onFailed}
+    />
   );
 }
 
