@@ -15,5 +15,6 @@ pub mod exact;
 pub mod generator;
 pub mod history;
 pub mod report;
+pub mod strength;
 pub mod theme;
 pub mod totp;

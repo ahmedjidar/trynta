@@ -50,6 +50,19 @@ hmac = { workspace = true }
 sha1 = { workspace = true }
 sha2 = { workspace = true }
 
+# SPEC-V1 §7.4 names zxcvbn for the "weak" check, so this is the spec's choice
+# rather than a new one. `default-features = false` drops the `builder` /
+# `derive_builder` pair, which exists to construct an options struct we do not
+# use: the estimator is called with the password and the item's own non-secret
+# fields as user inputs, and nothing else is configured.
+#
+# It scores secrets, so per CLAUDE.md §2 the surface matters: pure Rust, no
+# `unsafe`, no I/O, no network, MIT, and it never sees anything we do not already
+# hold in memory. Its dictionaries are compiled in, so the check is offline —
+# which is the point, because a strength estimator that phoned home would be a
+# fourth outbound request.
+zxcvbn = { version = "3.1.1", default-features = false }
+
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
