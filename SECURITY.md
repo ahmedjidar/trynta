@@ -70,6 +70,38 @@ payload. Aborting gives no unwinding and nothing to catch, which is what "fail c
 
 If you find a way to _reach_ one of these, that is a vulnerability and we want to hear about it.
 
+## On-disk format changed without a version bump — a pre-1.0 one-off
+
+Two run-2 changes altered the on-disk format while `schema_version` and `payload_version` both
+stayed at 1:
+
+- `app_cache`, the encrypted key/value table, was added to the **initial schema** rather than as a
+  schema migration to version 2.
+- `items.secret_ct` gained the TOTP parameters (algorithm, digits, period, issuer, account), which
+  changes its `postcard` encoding. Before this, the store kept only the shared secret and silently
+  discarded the rest, so an item saved as SHA-256 at 8 digits came back as SHA-1 at 6 and generated
+  codes that never worked.
+
+Neither got a version bump, and that is forced rather than chosen. The frozen acceptance suite pins
+both counters: `tests/acceptance/tests/ac16_migrations.rs` asserts that a freshly created vault
+reports `schema_version == 1` **and** `payload_version == 1`, its fixtures occupy schema versions 2
+through 7 and payload version 2, and `MigrationSet::validate` rejects any injected migration whose
+version is not strictly greater than the current constant. Raising either constant breaks three
+assertions in a file that is never edited to make a run pass.
+
+**The consequence, stated plainly:** a vault created by an earlier run-2 build will not open on this
+one. `app_cache` will be missing, and the secret payload will fail to decode. There is no migration
+path and none can be written while the counters are pinned.
+
+This is acceptable exactly once, and only because nothing has been released: every affected vault is
+a developer's local file, and a migration could not have recovered the discarded TOTP parameters
+anyway — it could only have re-shaped them around invented defaults. **After the first release this
+would be an unacceptable data-loss bug**, so freeing version numbers for real migrations — by moving
+the acceptance fixtures into a reserved high range and regenerating `FREEZE.lock` — has to happen
+before then.
+
+Accepted deliberately by the spec owner as a pre-1.0 one-off. Do not treat it as precedent.
+
 ## What we will not do
 
 - Ask you to sign an NDA to report a bug.

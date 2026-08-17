@@ -36,6 +36,8 @@ export {
   itemsList,
   itemToggleFavorite,
   itemUpsert,
+  securityBreachCheck,
+  securityReportRun,
   vaultAdd,
   vaultDelete,
   vaultRename,
@@ -48,6 +50,7 @@ export type { AccountStatus } from './generated/AccountStatus';
 export type { ActivityEventDto } from './generated/ActivityEventDto';
 export type { ActivityKindDto } from './generated/ActivityKindDto';
 export type { AppError } from './generated/AppError';
+export type { BreachCheckDto } from './generated/BreachCheckDto';
 export type { CustomFieldDto } from './generated/CustomFieldDto';
 export type { GeneratedDto } from './generated/GeneratedDto';
 export type { GeneratedKindDto } from './generated/GeneratedKindDto';
@@ -68,7 +71,13 @@ export type { ListQueryDto } from './generated/ListQueryDto';
 export type { PlatformInfo } from './generated/PlatformInfo';
 export type { QuickFiltersDto } from './generated/QuickFiltersDto';
 export type { SecretFieldDto } from './generated/SecretFieldDto';
+export type { HealthBreakdownDto } from './generated/HealthBreakdownDto';
+export type { HealthTermDto } from './generated/HealthTermDto';
+export type { ReuseGroupDto } from './generated/ReuseGroupDto';
+export type { RiskDto } from './generated/RiskDto';
+export type { RiskKindDto } from './generated/RiskKindDto';
 export type { SecretPresence } from './generated/SecretPresence';
+export type { SecurityReportDto } from './generated/SecurityReportDto';
 export type { SortOrderDto } from './generated/SortOrderDto';
 export type { TotpAlgorithmDto } from './generated/TotpAlgorithmDto';
 export type { TotpConfigInput } from './generated/TotpConfigInput';

@@ -301,3 +301,180 @@ pub fn reuse_groups(passwords: &[(Uuid, &str)]) -> Vec<ReuseGroup> {
 pub fn reused_item_count(groups: &[ReuseGroup]) -> usize {
     groups.iter().map(|g| g.items.len()).sum()
 }
+
+// ── Assembling a whole report (SPEC-V1 §7.4) ────────────────────────────────
+
+use crate::services::breach::{self, BreachStatus, RangeSource};
+use crate::services::strength::{self, Band, Strength};
+
+/// One item as the report sees it.
+///
+/// Borrowed throughout: the caller holds the passwords in `Zeroizing` buffers and
+/// this type never copies one, so a report over 500 items makes no second copy of
+/// any secret.
+#[derive(Debug, Clone, Copy)]
+pub struct ItemUnderReview<'a> {
+    /// Item id.
+    pub id: Uuid,
+    /// Title, for the risk list.
+    pub title: &'a str,
+    /// Subtitle, for the risk list.
+    pub subtitle: &'a str,
+    /// The password. Never stored, never returned.
+    pub password: &'a str,
+    /// Whether a TOTP configuration exists.
+    pub has_totp: bool,
+}
+
+/// Why an item appears in the risk list.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RiskKind {
+    /// Found in a breach corpus.
+    Breached,
+    /// Under §7.4's crack-time threshold.
+    Weak,
+    /// Shared with at least one other item.
+    Reused,
+}
+
+/// One entry in the risk list.
+///
+/// Carries the item's id and the *shape* of the problem, never the password and
+/// never anything derived from it beyond the figures §7.4 asks to be shown.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Risk {
+    /// Which item.
+    pub item_id: Uuid,
+    /// Why.
+    pub kind: RiskKind,
+    /// Appearances in a breach corpus, when `kind` is `Breached`.
+    pub breach_count: Option<u32>,
+    /// Estimated offline crack time in seconds, when `kind` is `Weak`.
+    pub crack_seconds: Option<u64>,
+}
+
+/// A whole report.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Assessment {
+    /// The counts the score was computed from, so the UI can show its working.
+    pub inputs: HealthInputs,
+    /// The score and its breakdown.
+    pub score: HealthScore,
+    /// Every flagged item, most severe first.
+    pub risks: Vec<Risk>,
+    /// Reuse groups, so the user sees what else is affected (SPEC-V1 §7.4).
+    pub groups: Vec<ReuseGroup>,
+    /// Items whose breach status could not be determined.
+    ///
+    /// Reported separately and never folded into `breached` or into a clean sheet:
+    /// §7.4 says *"Offline → 'not checked,' never 'safe.'"*
+    pub not_checked: usize,
+}
+
+/// Run the whole report (SPEC-V1 §7.4).
+///
+/// `two_factor_capable` is **0** for now, which redistributes the 2FA weight into
+/// 43.75 / 31.25 / 25 exactly as §7.4 prescribes. Knowing which services support a
+/// second factor needs the bundled directory, and §7.4 makes redistribution
+/// permission a precondition for shipping one — `THIRD-PARTY-NOTICES.md` still
+/// records it as unverified. Reporting every item as not-capable is the honest
+/// stand-in: it neither credits nor penalises anyone for a factor we cannot know
+/// about, and the alternative — guessing from the domain — would flag real items
+/// on no evidence.
+///
+/// `breach` should be a cache-only source. AC14 requires a report to make **zero**
+/// requests, and [`crate::services::breach::CachedOnly`] makes that structural
+/// rather than a promise.
+#[must_use]
+pub fn assess_all(items: &[ItemUnderReview<'_>], breach: &dyn RangeSource) -> Assessment {
+    let groups = reuse_groups(
+        &items
+            .iter()
+            .map(|item| (item.id, item.password))
+            .collect::<Vec<_>>(),
+    );
+    let reused_ids: std::collections::BTreeSet<Uuid> =
+        groups.iter().flat_map(|g| g.items.iter().copied()).collect();
+
+    let mut risks = Vec::new();
+    let mut breached = 0;
+    let mut weak = 0;
+    let mut not_checked = 0;
+    let mut two_factor_enabled = 0;
+
+    for item in items {
+        if item.has_totp {
+            two_factor_enabled += 1;
+        }
+
+        let status = breach::check_one(item.password, breach);
+        match status {
+            BreachStatus::Breached { count } => {
+                breached += 1;
+                risks.push(Risk {
+                    item_id: item.id,
+                    kind: RiskKind::Breached,
+                    breach_count: Some(count),
+                    crack_seconds: None,
+                });
+            }
+            BreachStatus::NotChecked => not_checked += 1,
+            BreachStatus::NotBreached => {}
+        }
+
+        let assessed: Strength = strength::assess(item.password, &[item.title, item.subtitle]);
+        if assessed.weak {
+            weak += 1;
+            risks.push(Risk {
+                item_id: item.id,
+                kind: RiskKind::Weak,
+                breach_count: None,
+                crack_seconds: Some(assessed.crack_seconds),
+            });
+        }
+
+        if reused_ids.contains(&item.id) {
+            risks.push(Risk {
+                item_id: item.id,
+                kind: RiskKind::Reused,
+                breach_count: None,
+                crack_seconds: None,
+            });
+        }
+    }
+
+    // Breached first, then weak, then reused: that is the order in which a user
+    // should act, and a list sorted any other way buries the urgent items.
+    risks.sort_by_key(|risk| match risk.kind {
+        RiskKind::Breached => 0,
+        RiskKind::Weak => 1,
+        RiskKind::Reused => 2,
+    });
+
+    let inputs = HealthInputs {
+        logins: items.len(),
+        breached,
+        weak,
+        reused: reused_item_count(&groups),
+        // See the doc comment: 0 until the 2FA directory has a cleared licence.
+        two_factor_capable: 0,
+        two_factor_enabled,
+    };
+
+    Assessment {
+        inputs,
+        score: health(inputs),
+        risks,
+        groups,
+        not_checked,
+    }
+}
+
+/// The meter band for one password, for the item detail view (SPEC-V1 §7.2).
+///
+/// Exposed here so the detail view and the report agree by construction rather
+/// than by two callers happening to use the same threshold.
+#[must_use]
+pub fn band_of(password: &str, context: &[&str]) -> Band {
+    strength::assess(password, context).band
+}

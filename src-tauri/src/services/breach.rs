@@ -24,7 +24,7 @@
 //! that records exactly what it was asked for proves the complementary half — that
 //! the only thing we ever hand a transport is five hex characters.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
@@ -291,5 +291,70 @@ impl RangeSource for CachedOnly<'_> {
             // Not an error the caller should report: a missing range means this
             // password has not been checked, which is a status, not a failure.
             .ok_or(BreachError::Unreachable)
+    }
+}
+
+/// The outcome of a cache refresh.
+#[derive(Debug, Clone)]
+pub struct Refreshed {
+    /// The cache to store. Rebuilt, not merged — see [`refresh`].
+    pub cache: BreachCache,
+    /// How many prefixes were fetched successfully.
+    pub fetched: usize,
+    /// How many could not be reached. Their items read as "not checked".
+    pub failed: usize,
+}
+
+/// Rebuild the range cache for exactly the prefixes still in use.
+///
+/// Two decisions live here rather than in the command, because both are the kind
+/// of thing that is easy to get subtly wrong and impossible to notice afterwards:
+///
+/// **The cache is rebuilt, not appended to.** Only `wanted` survives. SPEC-V1 §7.4
+/// calls a plaintext cache of these prefixes *"a filter that massively narrows an
+/// offline attack"*; ours is encrypted, but the same reasoning says not to keep the
+/// prefix of a password the user changed six months ago. An append-only cache grows
+/// into a record of every password the vault has ever held.
+///
+/// **A failed request keeps its previous body.** Dropping it would turn one
+/// unreachable prefix into a downgrade from "breached" to "not checked", which is
+/// the one direction §7.4 says never to move in silently.
+///
+/// `fetched_at` advances only if something was actually fetched. A refresh that
+/// reached nothing must not start the 24-hour clock — being offline once would
+/// otherwise cost the user a day.
+#[must_use]
+pub fn refresh(
+    previous: &BreachCache,
+    wanted: &BTreeSet<Prefix>,
+    source: &dyn RangeSource,
+    now_ms: i64,
+) -> Refreshed {
+    let mut cache = BreachCache::default();
+    let mut fetched = 0;
+    let mut failed = 0;
+
+    for prefix in wanted {
+        if let Ok(body) = source.fetch(*prefix) {
+            cache.put(*prefix, body, now_ms);
+            fetched += 1;
+        } else {
+            failed += 1;
+            if let Some(stale) = previous.get(*prefix) {
+                cache.put(*prefix, stale.to_owned(), now_ms);
+            }
+        }
+    }
+
+    cache.fetched_at = if fetched > 0 {
+        now_ms
+    } else {
+        previous.fetched_at
+    };
+
+    Refreshed {
+        cache,
+        fetched,
+        failed,
     }
 }

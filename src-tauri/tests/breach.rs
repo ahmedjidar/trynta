@@ -286,3 +286,118 @@ fn an_error_never_quotes_a_password_or_a_hash() {
         assert!(!rendered.contains(KNOWN_PASSWORD), "{rendered}");
     }
 }
+
+// ── Refreshing the cache (SPEC-V1 §7.4) ─────────────────────────────────────
+
+/// Answers for some prefixes and refuses the rest, so the carry-over and pruning
+/// rules can be checked without a network.
+struct Partial {
+    answers: std::collections::BTreeMap<String, String>,
+    asked: RefCell<Vec<String>>,
+}
+
+impl RangeSource for Partial {
+    fn fetch(&self, prefix: Prefix) -> Result<String, BreachError> {
+        self.asked.borrow_mut().push(prefix.as_str().to_owned());
+        self.answers
+            .get(prefix.as_str())
+            .cloned()
+            .ok_or(BreachError::Unreachable)
+    }
+}
+
+/// A body that reports `password` as breached.
+fn hit_body() -> String {
+    format!("{KNOWN_SUFFIX}:9999\n0000000000000000000000000000000000000:0\n")
+}
+
+#[test]
+fn a_refresh_prunes_prefixes_no_longer_in_use() {
+    let (kept, _) = breach::split(KNOWN_PASSWORD);
+    let (dropped, _) = breach::split("a password the user has since changed");
+
+    let mut previous = BreachCache::default();
+    previous.put(kept, hit_body(), 1_000);
+    previous.put(dropped, "0000000000000000000000000000000000000:0\n".into(), 1_000);
+    assert_eq!(previous.len(), 2);
+
+    let source = Partial {
+        answers: [(kept.as_str().to_owned(), hit_body())].into_iter().collect(),
+        asked: RefCell::new(Vec::new()),
+    };
+
+    let wanted = [kept].into_iter().collect();
+    let out = breach::refresh(&previous, &wanted, &source, 2_000);
+
+    assert_eq!(out.fetched, 1);
+    assert_eq!(out.failed, 0);
+    assert_eq!(
+        out.cache.len(),
+        1,
+        "the cache is rebuilt for what is in use, not appended to"
+    );
+    assert!(
+        out.cache.get(dropped).is_none(),
+        "a prefix whose password is gone must not be retained — §7.4 calls this \
+         cache a filter that narrows an offline attack"
+    );
+    assert_eq!(out.cache.fetched_at, 2_000);
+    assert_eq!(
+        source.asked.borrow().as_slice(),
+        &[kept.as_str().to_owned()],
+        "only prefixes still in use are requested"
+    );
+}
+
+#[test]
+fn a_failed_request_keeps_the_previous_answer() {
+    let (prefix, _) = breach::split(KNOWN_PASSWORD);
+
+    let mut previous = BreachCache::default();
+    previous.put(prefix, hit_body(), 1_000);
+
+    // A source that answers nothing.
+    let source = Partial {
+        answers: std::collections::BTreeMap::new(),
+        asked: RefCell::new(Vec::new()),
+    };
+
+    let wanted = [prefix].into_iter().collect();
+    let out = breach::refresh(&previous, &wanted, &source, 2_000);
+
+    assert_eq!(out.fetched, 0);
+    assert_eq!(out.failed, 1);
+    assert_eq!(
+        breach::check_one(KNOWN_PASSWORD, &CachedOnly { cache: &out.cache }),
+        BreachStatus::Breached { count: 9999 },
+        "one unreachable prefix must not downgrade a known hit to 'not checked'"
+    );
+    assert_eq!(
+        out.cache.fetched_at, 1_000,
+        "a refresh that reached nothing must not start the 24-hour clock"
+    );
+    assert!(
+        !BreachCache::may_refresh(out.cache.fetched_at, 1_000 + MIN_INTERVAL_MS - 1),
+        "and the interval is still measured from the last successful check"
+    );
+}
+
+#[test]
+fn a_prefix_never_seen_before_and_unreachable_is_simply_absent() {
+    let (prefix, _) = breach::split(KNOWN_PASSWORD);
+    let source = Partial {
+        answers: std::collections::BTreeMap::new(),
+        asked: RefCell::new(Vec::new()),
+    };
+
+    let wanted = [prefix].into_iter().collect();
+    let out = breach::refresh(&BreachCache::default(), &wanted, &source, 2_000);
+
+    assert_eq!(out.failed, 1);
+    assert!(out.cache.is_empty());
+    assert_eq!(
+        breach::check_one(KNOWN_PASSWORD, &CachedOnly { cache: &out.cache }),
+        BreachStatus::NotChecked,
+        "absent is 'not checked', never 'safe'"
+    );
+}

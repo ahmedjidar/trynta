@@ -90,9 +90,14 @@ name = "openssl-sys"
 
 # TLS is rustls-only. ring reaching us by any other route is a supply-chain
 # surprise, and the only network code in the product is HIBP and the updater.
+#
+# The list is the *actual* path (`ureq → rustls → ring`, and `rustls-webpki`
+# alongside), not a generous superset. Listing `ureq` itself would permit a future
+# version to depend on ring directly, and the point of the ban is that any new
+# route has to be noticed.
 [[bans.deny]]
 name = "ring"
-wrappers = ["rustls", "rustls-webpki", "webpki", "ureq"]
+wrappers = ["rustls", "rustls-webpki"]
 
 [licenses]
 version = 2
@@ -113,8 +118,18 @@ allow = [
     "Zlib",
     "MPL-2.0",
     "BSL-1.0",
-    # ring, reached through rustls when the HIBP client and updater land in run 3.
+    # ring's licence text before 0.17 expressed itself this way. We are on 0.17
+    # ("Apache-2.0 AND ISC", both already above), so this currently matches
+    # nothing — kept because a downgrade would otherwise fail the build for a
+    # licence we have already reviewed and accepted.
     "OpenSSL",
+    # webpki-roots, reached through ureq. This is not code: it is the Mozilla CA
+    # root store repackaged as a Rust crate, and CDLA-Permissive-2.0 is a data
+    # licence with no copyleft and no attribution obligation beyond keeping the
+    # notice. ADD-002 Q13 accepted the webpki-roots trade-off explicitly — roots
+    # ship with app updates rather than tracking the OS store — and this is the
+    # licence half of that decision. Recorded in THIRD-PARTY-NOTICES.md.
+    "CDLA-Permissive-2.0",
 ]
 
 [sources]

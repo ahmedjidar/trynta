@@ -8,11 +8,20 @@
 //!
 //! Anything here that handles a secret returns it in a `Zeroizing` buffer and
 //! carries no secret in its error type.
+//!
+//! **One module breaks the no-network rule, and it is the only one that may.**
+//! [`hibp`] is the HIBP range transport. It is separate from [`breach`] so that
+//! everything privacy-relevant — the SHA-1 split, which five characters may leave
+//! the machine, how a response is parsed — stays in a module with no network code
+//! in it, and so the pipe can be audited on its own. Nothing else here opens a
+//! socket, and [`breach::CachedOnly`] exists so the security report is structurally
+//! incapable of reaching one.
 
 pub mod base32;
 pub mod breach;
 pub mod exact;
 pub mod generator;
+pub mod hibp;
 pub mod history;
 pub mod report;
 pub mod strength;

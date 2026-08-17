@@ -25,6 +25,7 @@ pub mod app;
 pub mod dto;
 pub mod generator;
 pub mod items;
+pub mod security;
 pub mod totp;
 pub mod vaults;
 

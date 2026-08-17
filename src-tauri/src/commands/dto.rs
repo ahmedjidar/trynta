@@ -19,7 +19,7 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 use crate::index::{ItemSource, ListQuery, QuickFilters, SortOrder};
-use crate::services::{generator, history, totp};
+use crate::services::{generator, history, report, totp};
 
 /// Where the vault is (SPEC-V1 §5).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -1128,4 +1128,190 @@ impl From<totp::Code> for TotpCodeDto {
             period: c.period,
         }
     }
+}
+
+// ── The security report (SPEC-V1 §7.4) ──────────────────────────────────────
+
+/// One weighted term of the health score.
+///
+/// The arithmetic crosses the boundary because §7.4 requires the breakdown to be
+/// *"always visible — the user should see why, not just what."* A UI that has the
+/// weights and fractions can render the reasoning; one that gets only a number has
+/// to restate the formula and will eventually restate it wrongly.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub struct HealthTermDto {
+    /// Weight actually applied, after any redistribution.
+    pub weight: f64,
+    /// The fraction earned, `0.0..=1.0`.
+    pub fraction: f64,
+    /// `weight × fraction`, unrounded.
+    pub points: f64,
+}
+
+impl From<report::Term> for HealthTermDto {
+    fn from(t: report::Term) -> Self {
+        Self {
+            weight: t.weight,
+            fraction: t.fraction,
+            points: t.points,
+        }
+    }
+}
+
+/// The four terms behind a health score, in display order.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub struct HealthBreakdownDto {
+    /// Not-breached term.
+    pub breached: HealthTermDto,
+    /// Not-weak term.
+    pub weak: HealthTermDto,
+    /// Not-reused term.
+    pub reused: HealthTermDto,
+    /// Two-factor term. `weight` is `0` while no item is known to be capable.
+    pub two_factor: HealthTermDto,
+}
+
+impl From<report::Breakdown> for HealthBreakdownDto {
+    fn from(b: report::Breakdown) -> Self {
+        Self {
+            breached: b.breached.into(),
+            weak: b.weak.into(),
+            reused: b.reused.into(),
+            two_factor: b.two_factor.into(),
+        }
+    }
+}
+
+/// Why an item appears in the risk list.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub enum RiskKindDto {
+    /// Found in a breach corpus.
+    Breached,
+    /// Under §7.4's crack-time threshold.
+    Weak,
+    /// Shared with at least one other item.
+    Reused,
+}
+
+impl From<report::RiskKind> for RiskKindDto {
+    fn from(k: report::RiskKind) -> Self {
+        match k {
+            report::RiskKind::Breached => Self::Breached,
+            report::RiskKind::Weak => Self::Weak,
+            report::RiskKind::Reused => Self::Reused,
+        }
+    }
+}
+
+/// One flagged item.
+///
+/// Carries the *shape* of the problem and nothing derived from the password beyond
+/// the two figures §7.4 asks to be displayed. There is no field here a password
+/// could be recovered from, and no field a password could be put in.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub struct RiskDto {
+    /// Which item.
+    #[ts(type = "string")]
+    pub item_id: Uuid,
+    /// Title, so the list renders without a second round trip.
+    pub title: String,
+    /// Subtitle, same reason.
+    pub subtitle: Option<String>,
+    /// Why it is flagged.
+    pub kind: RiskKindDto,
+    /// Appearances in a breach corpus, when `kind` is `breached`.
+    pub breach_count: Option<u32>,
+    /// Estimated offline crack time in seconds, when `kind` is `weak`.
+    #[ts(type = "number | null")]
+    pub crack_seconds: Option<u64>,
+}
+
+/// A set of items sharing one password (SPEC-V1 §7.4).
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub struct ReuseGroupDto {
+    /// Every item using it. Always two or more. The password itself is never here.
+    #[ts(type = "string[]")]
+    pub item_ids: Vec<Uuid>,
+}
+
+/// Answer to `security_report_run` (SPEC-V1 §6, §7.4).
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub struct SecurityReportDto {
+    /// 0–100, or `null` for "not enough data" — §7.4: *"not 0, not 100."*
+    pub score: Option<u8>,
+    /// The arithmetic. `null` exactly when `score` is.
+    pub breakdown: Option<HealthBreakdownDto>,
+    /// Logins with a password, the denominator of the first three terms.
+    pub logins: u32,
+    /// How many are breached.
+    pub breached: u32,
+    /// How many are weak.
+    pub weak: u32,
+    /// How many participate in a reuse group.
+    pub reused: u32,
+    /// How many are known to support a second factor.
+    ///
+    /// **`0` for now.** Knowing this needs the bundled 2FA directory, whose licence
+    /// is still unverified in `THIRD-PARTY-NOTICES.md`, and §7.4 makes shipping one
+    /// a precondition for the 2FA term carrying weight. While this is `0` the
+    /// weight redistributes into the other three terms and no item is credited or
+    /// penalised for a factor we cannot know about.
+    pub two_factor_capable: u32,
+    /// How many capable items have a TOTP configured.
+    pub two_factor_enabled: u32,
+    /// Items whose breach status is unknown.
+    ///
+    /// §7.4: *"Offline → 'not checked,' never 'safe.'"* Kept separate from
+    /// `breached` so the UI can never present an unchecked item as clean.
+    pub not_checked: u32,
+    /// Every flagged item, breached first, then weak, then reused.
+    pub risks: Vec<RiskDto>,
+    /// Reuse groups, so the user sees what else is affected.
+    pub reuse_groups: Vec<ReuseGroupDto>,
+    /// When the breach cache was last refreshed, Unix milliseconds.
+    #[ts(type = "number | null")]
+    pub breach_checked_at: Option<i64>,
+    /// Whether a refresh is allowed now (SPEC-V1 §7.4: at most once per 24 h).
+    pub breach_refresh_available: bool,
+}
+
+/// Answer to `security_breach_check` (SPEC-V1 §6, §7.4).
+///
+/// Reports what the check *did*, not just whether it succeeded, so the UI can tell
+/// the user the truth in all three cases: it ran, it was inside the 24-hour
+/// interval, or it ran and some prefixes could not be reached. §7.4 requires
+/// unreachable to read as "not checked" rather than "safe", and a result that
+/// collapsed those cases into one boolean would make that impossible to say.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub struct BreachCheckDto {
+    /// Whether anything was actually fetched. `false` inside the 24-hour interval.
+    pub ran: bool,
+    /// When HIBP was last reached, Unix milliseconds.
+    #[ts(type = "number | null")]
+    pub checked_at: Option<i64>,
+    /// Earliest time another check may run, Unix milliseconds.
+    #[ts(type = "number")]
+    pub next_eligible_at: i64,
+    /// Distinct password prefixes this check needed.
+    pub prefixes_requested: u32,
+    /// How many were fetched.
+    pub prefixes_fetched: u32,
+    /// How many could not be reached. Their items read as "not checked".
+    pub prefixes_failed: u32,
+    /// How many ranges the cache now holds.
+    pub cached_prefixes: u32,
 }

@@ -7,9 +7,11 @@ directory, which carry their own terms.
 Software dependencies are covered separately by `cargo deny check licenses` and the allow-list in
 `deny.toml`; this file is for **data and assets** shipped inside the binary.
 
-> Status: nothing below is bundled yet. Each section lands with the run that introduces the asset,
-> and **an asset may not ship before its licence line is filled in.** ADD-001 and SPEC-V1 §7.4 both
-> make that a precondition, not a follow-up.
+> Status: **one section is live** — the Mozilla CA root store, compiled in since run 2. Everything
+> else is a placeholder for an asset that has not been vendored, and **an asset may not ship before
+> its licence line is filled in.** ADD-001 and SPEC-V1 §7.4 both make that a precondition, not a
+> follow-up. A section headed "run 3" with a blank licence field is not bundled; check the
+> dependency or the assets directory rather than trusting the heading.
 
 ---
 
@@ -60,9 +62,36 @@ Bundled, versioned with the app, never fetched.
 | Source  | _to be filled in_                                                                                    |
 | Licence | _**must be verified before shipping.** SPEC-V1 §7.4 makes redistribution permission a precondition._ |
 
-## Public Suffix List — run 1 onward
+**Not shipped, and not fetched to work around that.** `security_report_run` reports
+`twoFactorCapable = 0` while no directory is bundled, which triggers §7.4's documented
+redistribution — the 20-point 2FA term becomes 0 and the other three weights become
+43.75 / 31.25 / 25. The score is therefore fully defined without the directory, and no item is
+credited or penalised for a second factor we have no basis to claim exists. Guessing capability from
+the domain was considered and rejected: it would flag real items on no evidence.
+`src-tauri/tests/report_two_factor.rs` pins that path with the arithmetic written out, so shipping a
+directory later cannot silently change every score without a failing test.
 
-Compiled into the binary via the `psl` crate for registrable-domain (eTLD+1) matching.
+## Mozilla CA root store — run 2 onward
+
+Compiled into the binary via `webpki-roots`, reached through `ureq` → `rustls`. It is the trust
+anchor set for the two outbound requests the product makes (SPEC-V1 §7.4, §7.7).
+
+| Field   | Value                                                        |
+| ------- | ------------------------------------------------------------ |
+| Source  | Mozilla CA Certificate Program, via the `webpki-roots` crate |
+| Licence | CDLA-Permissive-2.0 (a data licence; no copyleft)            |
+
+Listed here rather than left to `cargo deny` because it is **data compiled into the binary**, not
+code, and because the trade-off is a security decision rather than a licensing one: bundling the
+roots means they are updated by an app update rather than by the OS. ADD-002 Q13 accepted that
+explicitly on the grounds that §7.7's updater makes it a real channel. The consequence to hold onto:
+**a root store revocation reaches users at the speed of our release cadence.** If the updater ever
+stops shipping, this becomes a reason to move to the platform verifier.
+
+## Public Suffix List — run 3
+
+To be compiled into the binary via the `psl` crate for registrable-domain (eTLD+1) matching. **Not a
+dependency yet** — autofill and the §7.4 fix flow are the callers, and both are run 3.
 
 | Field   | Value                                           |
 | ------- | ----------------------------------------------- |

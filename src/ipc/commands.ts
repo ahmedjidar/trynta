@@ -20,6 +20,7 @@
 
 import { call, callVoid } from './client';
 import type { AccountStatus } from './generated/AccountStatus';
+import type { BreachCheckDto } from './generated/BreachCheckDto';
 import type { GeneratedDto } from './generated/GeneratedDto';
 import type { HistoryEntryDto } from './generated/HistoryEntryDto';
 import type { PassphraseOptionsDto } from './generated/PassphraseOptionsDto';
@@ -32,6 +33,7 @@ import type { ItemSummaryDto } from './generated/ItemSummaryDto';
 import type { ListQueryDto } from './generated/ListQueryDto';
 import type { PlatformInfo } from './generated/PlatformInfo';
 import type { SecretFieldDto } from './generated/SecretFieldDto';
+import type { SecurityReportDto } from './generated/SecurityReportDto';
 import type { VaultStateDto } from './generated/VaultStateDto';
 import type { VaultSummaryDto } from './generated/VaultSummaryDto';
 
@@ -459,4 +461,49 @@ export function generatorHistoryClear(): Promise<void> {
  */
 export function totpCurrent(id: string): Promise<TotpCodeDto> {
   return call<TotpCodeDto>('totp_current', { id });
+}
+
+// ── Security report (SPEC-V1 §7.4) ──────────────────────────────────────────
+
+/**
+ * Run the security report.
+ *
+ * Makes no network requests. Anything the breach cache has no answer for comes
+ * back in `notChecked` rather than counted as clean, and the UI must present it
+ * that way — SPEC-V1 §7.4: *"Offline → 'not checked,' never 'safe.'"*
+ *
+ * `breakdown` is non-null exactly when `score` is. Render it: §7.4 requires the
+ * arithmetic to be visible, not just the total.
+ *
+ * `twoFactorCapable` is `0` until the bundled 2FA directory ships, which is why
+ * the breakdown's `twoFactor.weight` is `0` and the other three weights are
+ * 43.75 / 31.25 / 25. Read the weights from the response rather than hardcoding
+ * them, so shipping the directory does not need a frontend change.
+ *
+ * @throws {IpcError} `locked`.
+ *
+ * @beta
+ */
+export function securityReportRun(): Promise<SecurityReportDto> {
+  return call<SecurityReportDto>('security_report_run');
+}
+
+/**
+ * Refresh the HIBP range cache.
+ *
+ * Call this once after unlock. It is the only binding here that reaches the
+ * network, and it enforces §7.4's cadence itself: inside 24 hours of the last
+ * successful check it resolves with `ran: false` and sends nothing. There is
+ * deliberately no way to force it.
+ *
+ * It may take tens of seconds — one request per distinct password — so do not
+ * await it on a path the user is waiting behind. `prefixesFailed` above zero means
+ * some items are now "not checked"; that is a state to show, not an error.
+ *
+ * @throws {IpcError} `locked`, `storage`.
+ *
+ * @beta
+ */
+export function securityBreachCheck(): Promise<BreachCheckDto> {
+  return call<BreachCheckDto>('security_breach_check');
 }

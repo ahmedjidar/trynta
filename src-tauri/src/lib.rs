@@ -76,6 +76,8 @@ pub fn run() {
             commands::generator::generator_history_copy,
             commands::generator::generator_history_clear,
             commands::totp::totp_current,
+            commands::security::security_report_run,
+            commands::security::security_breach_check,
             commands::app::app_platform_info,
         ])
         .run(tauri::generate_context!())

@@ -211,6 +211,89 @@ impl VaultFile {
         self.header.lock().expect("header lock").schema_version
     }
 
+    /// Read one `app_state` value (SPEC-V1 §4.5).
+    ///
+    /// On `VaultFile` rather than on `Session`, because §4.5's entire reason for
+    /// existing is that these are readable **before** unlock — the theme has to
+    /// render the unlock screen and the backoff counter has to gate it.
+    ///
+    /// [`AppStateKey`] is a closed enum, so this cannot be used to read anything
+    /// §4.5 does not permit. Nothing here is secret and nothing here may be
+    /// trusted for an authorization decision.
+    ///
+    /// # Errors
+    ///
+    /// [`StoreError::Database`].
+    ///
+    /// # Panics
+    ///
+    /// If the internal lock is poisoned, which can only happen if another thread
+    /// panicked while holding it.
+    pub fn state_get(&self, key: AppStateKey) -> Result<Option<String>, StoreError> {
+        let conn = self.conn.lock().expect("connection lock");
+        app_state::get(&conn, key)
+    }
+
+    /// Read one `app_state` value as a timestamp or counter, absent as `0`.
+    ///
+    /// # Errors
+    ///
+    /// [`StoreError::Database`].
+    ///
+    /// # Panics
+    ///
+    /// If the internal lock is poisoned, which can only happen if another thread
+    /// panicked while holding it.
+    pub fn state_get_i64(&self, key: AppStateKey) -> Result<i64, StoreError> {
+        let conn = self.conn.lock().expect("connection lock");
+        app_state::get_i64(&conn, key)
+    }
+
+    /// Write one `app_state` value.
+    ///
+    /// # Errors
+    ///
+    /// [`StoreError::Database`].
+    ///
+    /// # Panics
+    ///
+    /// If the internal lock is poisoned, which can only happen if another thread
+    /// panicked while holding it.
+    pub fn state_set(&self, key: AppStateKey, value: &str) -> Result<(), StoreError> {
+        let conn = self.conn.lock().expect("connection lock");
+        app_state::set(&conn, key, value)
+    }
+
+    /// Write one `app_state` timestamp or counter.
+    ///
+    /// # Errors
+    ///
+    /// [`StoreError::Database`].
+    ///
+    /// # Panics
+    ///
+    /// If the internal lock is poisoned, which can only happen if another thread
+    /// panicked while holding it.
+    pub fn state_set_i64(&self, key: AppStateKey, value: i64) -> Result<(), StoreError> {
+        let conn = self.conn.lock().expect("connection lock");
+        app_state::set_i64(&conn, key, value)
+    }
+
+    /// Delete one `app_state` value. Deleting an absent one is success.
+    ///
+    /// # Errors
+    ///
+    /// [`StoreError::Database`].
+    ///
+    /// # Panics
+    ///
+    /// If the internal lock is poisoned, which can only happen if another thread
+    /// panicked while holding it.
+    pub fn state_clear(&self, key: AppStateKey) -> Result<(), StoreError> {
+        let conn = self.conn.lock().expect("connection lock");
+        app_state::clear(&conn, key)
+    }
+
     /// A copy of the parsed header, for the backup module's account comparison.
     pub(crate) fn header_snapshot(&self) -> Header {
         self.header.lock().expect("header lock").clone()
