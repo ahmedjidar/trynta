@@ -378,6 +378,39 @@ const CRITERIA = [
         name: 'macOS jobs are gated to tags or manual dispatch and labelled unverified',
         run: 1,
         fn: () => {
+          // Every workflow, not just ci.yml. bundle.yml also runs macOS, and a check
+          // that read one file would miss an unconditional macOS job added to the
+          // other — which is the cheapest way to reintroduce the cost this policy
+          // exists to avoid.
+          const files = ['.github/workflows/ci.yml', '.github/workflows/bundle.yml'];
+          for (const file of files) {
+            const text = readIfPresent(file);
+            if (!text) continue;
+            if (!/macos-latest/.test(text)) continue;
+            const gated =
+              /startsWith\(github\.ref, 'refs\/tags\/v'\)/.test(text) ||
+              /tags:\s*\['v\*'\]/.test(text);
+            if (!gated) {
+              return {
+                ok: false,
+                detail: `${file} runs macOS without a tag gate — macOS runners bill at 10x`,
+              };
+            }
+            // The exact phrase, not just "UNVERIFIED". The first version of this
+            // check matched the latter and passed vacuously: every one of these files
+            // mentions MACOS-UNVERIFIED.md, so a grep for the bare word is satisfied
+            // by a documentation link while the job name says nothing.
+            if (!text.includes('UNVERIFIED PLATFORM')) {
+              return {
+                ok: false,
+                detail:
+                  `${file} has a macOS job whose name does not carry "UNVERIFIED ` +
+                  `PLATFORM". A green tick, or a .dmg on a release page, reads as ` +
+                  `parity to everyone who did not read the addendum.`,
+              };
+            }
+          }
+
           const ci = readIfPresent('.github/workflows/ci.yml');
           if (!ci) return { ok: false, detail: '.github/workflows/ci.yml is missing' };
           if (!/macos-latest/.test(ci)) {
@@ -396,12 +429,12 @@ const CRITERIA = [
                 '10x, which is the whole reason ADD-005 exists.',
             };
           }
-          if (!/UNVERIFIED/.test(ci)) {
+          if (!ci.includes('UNVERIFIED PLATFORM')) {
             return {
               ok: false,
               detail:
-                'no macOS job name says UNVERIFIED. A green tick beside "macos-latest" ' +
-                'reads as parity to everyone who did not read the addendum.',
+                'no macOS job name carries "UNVERIFIED PLATFORM". A green tick beside ' +
+                '"macos-latest" reads as parity to everyone who did not read the addendum.',
             };
           }
           return {

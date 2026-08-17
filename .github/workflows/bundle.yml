@@ -2,6 +2,16 @@ name: release
 
 # Signed, notarised artefacts. Separate from ci.yml because it needs signing
 # secrets, and signing secrets must never be reachable from a fork's pull request.
+#
+# PLATFORM SCOPE (ADD-005). Windows is the verified platform. The macOS artefact is
+# built from code that has never been compiled anywhere else, so it is named
+# UNVERIFIED PLATFORM and cannot block the Windows release. A draft release with a
+# .dmg sitting beside a .msi implies parity more strongly than any prose, which is
+# why the job name has to carry the caveat into the release page.
+#
+# Do not publish the macOS artefact to users until MACOS-UNVERIFIED.md has been
+# worked through. `releaseDraft: true` is what makes that a decision someone takes
+# rather than a default.
 on:
   push:
     tags: ['v*']
@@ -12,12 +22,16 @@ permissions:
 
 jobs:
   release:
-    name: release (${{ matrix.os }})
+    name: >-
+      release (${{ matrix.os }}${{ matrix.os == 'macos-latest' && ', UNVERIFIED PLATFORM' || '' }})
     strategy:
       fail-fast: false
       matrix:
         os: [macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    # ADD-005: an unverified platform must not block a Windows release. Remove this
+    # together with the policy, not before.
+    continue-on-error: ${{ matrix.os == 'macos-latest' }}
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
