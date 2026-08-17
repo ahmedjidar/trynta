@@ -22,6 +22,7 @@ use keyring_store::{Session, SessionKeys, VaultFile};
 use thiserror::Error;
 
 use crate::autolock::{should_lock, AutoLockSetting, Clock, LockTrigger};
+use crate::index::SearchIndex;
 use crate::platform::Platform;
 
 /// Where the vault is (SPEC-V1 §5).
@@ -66,6 +67,8 @@ struct Inner {
     state: VaultState,
     file: Option<Arc<VaultFile>>,
     keys: Option<SessionKeys>,
+    /// The decrypted metadata index. Dropped on lock, which wipes it.
+    index: Option<SearchIndex>,
     /// Ownership token for a clipboard write we made, so lock can clear it
     /// without destroying something the user copied since.
     clipboard_token: Option<u64>,
@@ -103,6 +106,7 @@ impl SessionManager {
                 state: VaultState::Uninitialised,
                 file: None,
                 keys: None,
+                index: None,
                 clipboard_token: None,
                 last_activity_ms: now,
                 last_password_unlock_ms: None,
@@ -211,6 +215,50 @@ impl SessionManager {
         }
     }
 
+    /// Decrypt every item's metadata and build the search index (SPEC-V1 §4.7).
+    ///
+    /// Called once, immediately after [`SessionManager::adopt`]. Separate from
+    /// `adopt` because it can fail and a failed index must not leave a
+    /// half-unlocked vault: the keys are already adopted, so a caller that
+    /// cannot build the index can still lock cleanly.
+    ///
+    /// # Errors
+    ///
+    /// Whatever the store reports while decrypting metadata.
+    pub fn build_index(&self) -> Result<usize, SessionError> {
+        let rows = self.with_session(|s| s.index_rows().map_err(|_| SessionError::Locked))?;
+        let count = rows.len();
+        self.lock_inner().index = Some(SearchIndex::build(rows));
+        Ok(count)
+    }
+
+    /// Run `f` against the search index.
+    ///
+    /// # Errors
+    ///
+    /// [`SessionError::Locked`] if there is no index, which is the same thing as
+    /// the vault being locked.
+    pub fn with_index<T, F>(&self, f: F) -> Result<T, SessionError>
+    where
+        F: FnOnce(&SearchIndex) -> T,
+    {
+        let inner = self.lock_inner();
+        inner.index.as_ref().map(f).ok_or(SessionError::Locked)
+    }
+
+    /// Mutate the search index in place.
+    ///
+    /// # Errors
+    ///
+    /// [`SessionError::Locked`] if there is no index.
+    pub fn with_index_mut<T, F>(&self, f: F) -> Result<T, SessionError>
+    where
+        F: FnOnce(&mut SearchIndex) -> T,
+    {
+        let mut inner = self.lock_inner();
+        inner.index.as_mut().map(f).ok_or(SessionError::Locked)
+    }
+
     /// Enter [`VaultState::Unlocking`].
     ///
     /// # Errors
@@ -276,6 +324,9 @@ impl SessionManager {
         // Dropping the keys is the lock. `SessionKeys` owns a `Zeroizing` MUK
         // and zeroizing dalek keys, so this wipes rather than merely releases.
         drop(inner.keys.take());
+        // And the index with them: it holds every title, username and URL, which
+        // is the account inventory even though none of it is a secret field.
+        drop(inner.index.take());
         inner.state = match inner.file {
             Some(_) => VaultState::Locked,
             None => VaultState::Uninitialised,

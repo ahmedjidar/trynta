@@ -17,9 +17,9 @@ use zeroize::Zeroizing;
 
 use crate::error::StoreError;
 use crate::model::{
-    CustomField, CustomFieldKind, ItemBody, ItemBodyMeta, ItemDraft, ItemMeta, ItemMetaPayload,
-    ItemSecretPayload, ItemSummary, PasswordHistoryEntry, SecretField, VaultKind, VaultMetaPayload,
-    VaultSummary, PASSWORD_HISTORY_LIMIT,
+    CustomField, CustomFieldKind, IndexRow, ItemBody, ItemBodyMeta, ItemDraft, ItemMeta,
+    ItemMetaPayload, ItemSecretPayload, ItemSummary, PasswordHistoryEntry, SecretField, VaultKind,
+    VaultMetaPayload, VaultSummary, PASSWORD_HISTORY_LIMIT,
 };
 
 fn uuid_bytes(id: Uuid) -> [u8; 16] {
@@ -595,6 +595,78 @@ pub(crate) fn items_list(conn: &Connection, muk: &Muk) -> Result<Vec<ItemSummary
         });
     }
     Ok(out)
+}
+
+/// Build the in-memory index (SPEC-V1 §4.7).
+///
+/// Decrypts every live item's `meta_ct` exactly once. `secret_ct` is never
+/// touched: unlocking a vault must not materialise every password, which is the
+/// whole reason for the split in §3.4.
+pub(crate) fn index_rows(conn: &Connection, muk: &Muk) -> Result<Vec<IndexRow>, StoreError> {
+    let mut stmt = conn
+        .prepare("SELECT id, vault_id, revision, updated_at FROM items WHERE deleted_at IS NULL")?;
+    let rows = stmt.query_map([], |r| {
+        Ok((
+            r.get::<_, Vec<u8>>(0)?,
+            r.get::<_, Vec<u8>>(1)?,
+            r.get::<_, i64>(2)?,
+            r.get::<_, i64>(3)?,
+        ))
+    })?;
+
+    let mut out = Vec::new();
+    for row in rows {
+        let (id_bytes, vault_bytes, revision, updated_at) = row?;
+        let id = uuid_from(&id_bytes)?;
+        let (item_key, key_id) = item_key(conn, muk, id)?;
+        let meta = read_meta_payload(conn, &item_key, id, key_id, revision.unsigned_abs())?;
+
+        let (username, urls, has_totp) = match &meta.body {
+            ItemBodyMeta::Login {
+                username,
+                urls,
+                has_totp,
+            } => (Some(username.clone()), urls.clone(), *has_totp),
+            _ => (None, Vec::new(), false),
+        };
+
+        out.push(IndexRow {
+            id,
+            vault_id: uuid_from(&vault_bytes)?,
+            kind: meta.kind,
+            title: meta.title.clone(),
+            username,
+            urls,
+            tags: meta.tags.clone(),
+            favorite: meta.favorite,
+            has_totp,
+            revision: revision.unsigned_abs(),
+            created_at: meta.created_at,
+            updated_at,
+            subtitle: subtitle_for(&meta.body),
+        });
+    }
+    Ok(out)
+}
+
+/// The type-appropriate one-line subtitle for a row.
+fn subtitle_for(body: &ItemBodyMeta) -> Option<String> {
+    match body {
+        ItemBodyMeta::Login { username, .. } => Some(username.clone()),
+        ItemBodyMeta::SecureNote => None,
+        ItemBodyMeta::Card {
+            cardholder, last4, ..
+        } => Some(
+            last4
+                .as_ref()
+                .map_or_else(|| cardholder.clone(), |l| format!("{cardholder} ···· {l}")),
+        ),
+        ItemBodyMeta::Identity {
+            first_name,
+            last_name,
+            ..
+        } => Some(format!("{first_name} {last_name}").trim().to_owned()),
+    }
 }
 
 /// One item's decrypted metadata.

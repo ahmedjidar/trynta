@@ -173,16 +173,53 @@ fn a_corrupted_dpapi_blob_reads_as_unreadable_not_as_success() {
 
 #[test]
 fn hello_availability_is_reported_honestly() {
+    use keyring_lib::platform::windows::winrt::block_on;
+    use windows::Security::Credentials::KeyCredentialManager;
+    use windows::Security::Credentials::UI::{
+        UserConsentVerifier, UserConsentVerifierAvailability,
+    };
+
     let hello = WindowsHello::new();
     assert_eq!(hello.kind(), BiometricKind::WindowsHello);
 
-    // Whatever the answer, record it: a CI log that says "Hello unavailable on
-    // this runner" is evidence; a test that passes either way silently is not.
-    let available = hello.is_available();
-    println!("windows-hello-available={available}");
+    // Record what the machine actually offers rather than asserting a value.
+    // A log line saying "no biometric device on this runner" is evidence; a
+    // test that passes either way without saying which is not.
+    //
+    // Both APIs are probed because they fail for different reasons and the
+    // distinction decides whether biometric unlock is even possible here:
+    //
+    //   KeyCredentialManager  false           -> no TPM-backed key credential.
+    //                                            Also false for a *local*
+    //                                            Windows account even with
+    //                                            Hello configured.
+    //   UserConsentVerifier   DeviceNotPresent -> no fingerprint reader or IR
+    //                                            camera at all.
+    //                         NotConfiguredForUser -> hardware present,
+    //                                            nothing enrolled.
+    let key_credential = KeyCredentialManager::IsSupportedAsync()
+        .and_then(|op| block_on(&op))
+        .unwrap_or(false);
+    println!("windows-hello-available={key_credential}");
+    println!("key-credential-manager-supported={key_credential}");
 
-    // The call must not panic or hang regardless, which is the property that
-    // actually matters for a headless runner.
+    let availability = UserConsentVerifier::CheckAvailabilityAsync().and_then(|op| block_on(&op));
+    let described = match availability {
+        Ok(UserConsentVerifierAvailability::Available) => "Available",
+        Ok(UserConsentVerifierAvailability::DeviceNotPresent) => "DeviceNotPresent",
+        Ok(UserConsentVerifierAvailability::NotConfiguredForUser) => "NotConfiguredForUser",
+        Ok(UserConsentVerifierAvailability::DisabledByPolicy) => "DisabledByPolicy",
+        Ok(UserConsentVerifierAvailability::DeviceBusy) => "DeviceBusy",
+        Ok(_) => "Unknown",
+        Err(_) => "QueryFailed",
+    };
+    println!("user-consent-verifier={described}");
+
+    assert_eq!(
+        hello.is_available(),
+        key_credential,
+        "is_available must report what KeyCredentialManager actually says"
+    );
 }
 
 #[test]

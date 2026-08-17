@@ -14,6 +14,7 @@
 
 pub mod autolock;
 pub mod error;
+pub mod index;
 #[allow(unsafe_code)]
 pub mod platform;
 pub mod session;

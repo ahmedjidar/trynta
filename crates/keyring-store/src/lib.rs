@@ -39,7 +39,7 @@ pub use app_state::AppStateKey;
 pub use error::{StoreError, TamperKind, UnlockError};
 pub use keyring_crypto::KdfParams;
 pub use model::{
-    CustomField, CustomFieldKind, ItemBody, ItemBodyMeta, ItemDraft, ItemKind, ItemMeta,
+    CustomField, CustomFieldKind, IndexRow, ItemBody, ItemBodyMeta, ItemDraft, ItemKind, ItemMeta,
     ItemMetaPayload, ItemSecretPayload, ItemSummary, PasswordHistoryEntry, SecretField,
     TotpAlgorithm, TotpConfig, VaultKind, VaultMetaPayload, VaultSummary, PASSWORD_HISTORY_LIMIT,
 };

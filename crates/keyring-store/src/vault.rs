@@ -31,7 +31,9 @@ use crate::backoff;
 use crate::error::{StoreError, TamperKind, UnlockError};
 use crate::header::Header;
 use crate::manifest;
-use crate::model::{ItemDraft, ItemMeta, ItemSummary, SecretField, VaultKind, VaultSummary};
+use crate::model::{
+    IndexRow, ItemDraft, ItemMeta, ItemSummary, SecretField, VaultKind, VaultSummary,
+};
 use crate::repository;
 use crate::schema::{
     self, MigrationSet, PayloadCtx, Phase, CURRENT_PAYLOAD_VERSION, CURRENT_SCHEMA_VERSION,
@@ -690,6 +692,24 @@ impl Session<'_> {
     pub fn items_list(&self) -> Result<Vec<ItemSummary>, StoreError> {
         let conn = self.file.conn.lock().expect("connection lock");
         repository::items_list(&conn, &self.keys.muk)
+    }
+
+    /// Build the in-memory search index (SPEC-V1 §4.7).
+    ///
+    /// Called once at unlock. Decrypts every live item's `meta_ct` and no
+    /// `secret_ct` at all.
+    ///
+    /// # Errors
+    ///
+    /// [`StoreError::Database`] or [`StoreError::Crypto`].
+    ///
+    /// # Panics
+    ///
+    /// If an internal lock is poisoned, which can only happen if another thread
+    /// panicked while holding it.
+    pub fn index_rows(&self) -> Result<Vec<IndexRow>, StoreError> {
+        let conn = self.file.conn.lock().expect("connection lock");
+        repository::index_rows(&conn, &self.keys.muk)
     }
 
     /// Read one item's decrypted metadata.

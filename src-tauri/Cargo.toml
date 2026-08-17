@@ -23,6 +23,7 @@ tauri-plugin-dialog = "2.7.2"            # backup export/restore, theme import (
 tauri-plugin-opener = "2.5.4"            # open URLs in the default browser (§7.2, §7.4)
 tauri-plugin-single-instance = "2.4.3"   # two processes on one SQLite file is a corruption path
 
+nucleo-matcher = "0.3.1"
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
@@ -40,6 +41,7 @@ windows = { version = "0.62.2", features = [
   "Win32_System_Ole",
   "Win32_Security_Cryptography",   # DPAPI
   "Security_Credentials",          # Windows Hello / KeyCredentialManager
+  "Security_Credentials_UI",       # UserConsentVerifier availability probe
   "Foundation",
   "Storage_Streams",
 ] }

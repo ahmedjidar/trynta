@@ -455,3 +455,62 @@ pub struct ItemMeta {
     /// Type-specific non-secret fields.
     pub body: ItemBodyMeta,
 }
+
+/// One row of the in-memory search index (SPEC-V1 §4.7).
+///
+/// Contains **only** non-secret fields. That is the whole contract: the index is
+/// built by decrypting every item's `meta_ct` once at unlock, and if a secret
+/// were ever added here it would be decrypted for every item and held for the
+/// life of the session.
+///
+/// The strings are wiped on drop. They are not secrets, but a list of every
+/// site a user has an account with is exactly the inventory the vault exists to
+/// protect, and leaving it in freed memory after lock would undo §4.7.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IndexRow {
+    /// Item id.
+    pub id: Uuid,
+    /// Owning vault.
+    pub vault_id: Uuid,
+    /// Item type.
+    pub kind: ItemKind,
+    /// Title.
+    pub title: String,
+    /// Username, for a login.
+    pub username: Option<String>,
+    /// Associated URLs.
+    pub urls: Vec<String>,
+    /// Tags.
+    pub tags: Vec<String>,
+    /// Favourite flag.
+    pub favorite: bool,
+    /// Whether a TOTP config exists.
+    pub has_totp: bool,
+    /// Current revision.
+    pub revision: u64,
+    /// Creation time, Unix milliseconds.
+    pub created_at: i64,
+    /// Last modification, Unix milliseconds.
+    pub updated_at: i64,
+    /// Type-appropriate subtitle for rendering a row.
+    pub subtitle: Option<String>,
+}
+
+impl Drop for IndexRow {
+    fn drop(&mut self) {
+        use zeroize::Zeroize as _;
+        self.title.zeroize();
+        if let Some(username) = self.username.as_mut() {
+            username.zeroize();
+        }
+        for url in &mut self.urls {
+            url.zeroize();
+        }
+        for tag in &mut self.tags {
+            tag.zeroize();
+        }
+        if let Some(subtitle) = self.subtitle.as_mut() {
+            subtitle.zeroize();
+        }
+    }
+}
