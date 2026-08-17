@@ -19,6 +19,7 @@ pub mod index;
 #[allow(unsafe_code)]
 pub mod platform;
 pub mod reveal;
+pub mod services;
 pub mod session;
 
 use std::sync::Arc;

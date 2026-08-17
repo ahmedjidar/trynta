@@ -24,6 +24,15 @@ tauri-plugin-opener = "2.5.4"            # open URLs in the default browser (§7
 tauri-plugin-single-instance = "2.4.3"   # two processes on one SQLite file is a corruption path
 
 nucleo-matcher = "0.3.1"
+
+# TOTP (SPEC-V1 §4.1, §7.2). Same pinned RustCrypto generation the crypto crate
+# uses, so there is still exactly one `digest`, `sha2` and `hmac` in the tree.
+# `sha1` is here for RFC 6238's default algorithm as well as HIBP's k-anonymity
+# hash; both are legacy interop, and neither is a security choice of ours.
+hmac = { workspace = true }
+sha1 = { workspace = true }
+sha2 = { workspace = true }
+
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
@@ -101,4 +110,5 @@ security-framework = "3.7.0"
 # The `devtools` feature is absent so DevTools compile out of release builds.
 
 [dev-dependencies]
+proptest = { workspace = true }
 tempfile = { workspace = true }
