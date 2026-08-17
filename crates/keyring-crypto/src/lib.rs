@@ -49,13 +49,14 @@ mod unreachable;
 
 pub use aad::{Aad, Purpose, AAD_LEN, NO_SUBJECT};
 pub use backup::{
-    backup_manifest_root, derive_backup_muk, verify_backup_header_mac, BackupHeader, BackupSubkey,
-    BACKUP_VERSION,
+    backup_leaf_hash, backup_manifest_root, backup_verifier_from, derive_backup_muk,
+    derive_backup_subkey, verify_backup_header_mac, verify_backup_passphrase, BackupHeader,
+    BackupSubkey, BACKUP_VERSION, HEADER_LEN as BACKUP_HEADER_LEN,
 };
 pub use envelope::{open, seal, Envelope, ENVELOPE_VERSION, NONCE_LEN};
 pub use error::CryptoError;
 pub use kdf::{calibrate, calibrate_with, derive_muk, KdfParams};
-pub use keys::{AccountKeys, AccountPublicKeys, Key32, Muk, ACCOUNT_KEYS_LEN};
+pub use keys::{verify_ed25519, AccountKeys, AccountPublicKeys, Key32, Muk, ACCOUNT_KEYS_LEN};
 pub use manifest::{
     header_mac, leaf_hash, manifest_root, sign_manifest, verify_header_mac, verify_manifest,
     HeaderFields, ManifestEntry,
@@ -76,4 +77,12 @@ pub mod reserved_key_id {
     pub const MUK_APPCACHE: [u8; 16] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2];
     /// `muk.header`, which keys the header MAC.
     pub const MUK_HEADER: [u8; 16] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3];
+    /// `backup.wrap`, which seals a `.keyringbackup` body (SPEC-V1 §7.8).
+    ///
+    /// A derived key rather than a generated one, so it needs a reserved id the
+    /// same way the three above do. Allocated here rather than left to a caller
+    /// because an envelope's `key_id` is part of the on-disk format: it is
+    /// computed identically when writing and reading, so any documented value is
+    /// stable forever — but two different values for the same key never are.
+    pub const BACKUP_WRAP: [u8; 16] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4];
 }

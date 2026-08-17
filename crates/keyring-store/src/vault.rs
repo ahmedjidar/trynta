@@ -211,6 +211,16 @@ impl VaultFile {
         self.header.lock().expect("header lock").schema_version
     }
 
+    /// A copy of the parsed header, for the backup module's account comparison.
+    pub(crate) fn header_snapshot(&self) -> Header {
+        self.header.lock().expect("header lock").clone()
+    }
+
+    /// The connection, for the backup module's revision comparison.
+    pub(crate) fn conn_handle(&self) -> std::sync::MutexGuard<'_, Connection> {
+        self.conn.lock().expect("connection lock")
+    }
+
     /// Snapshot files retained beside `path`, oldest first.
     ///
     /// # Errors
@@ -1064,6 +1074,35 @@ impl Session<'_> {
     pub fn item_restore(&self, id: Uuid) -> Result<(), StoreError> {
         let conn = self.file.conn.lock().expect("connection lock");
         repository::item_restore(&conn, id, now_ms())?;
+        self.reseal(&conn)
+    }
+
+    // ── Access for the backup module (SPEC-V1 §7.8) ─────────────────────────
+    //
+    // Backup export reads raw rows and signs the container's manifest with the
+    // account key, neither of which any other caller needs. These are
+    // `pub(crate)` rather than public so the capability stays inside the crate.
+
+    /// The connection, for a caller that reads rows directly.
+    pub(crate) fn file_conn(&self) -> std::sync::MutexGuard<'_, Connection> {
+        self.file.conn.lock().expect("connection lock")
+    }
+
+    /// A copy of the parsed header.
+    pub(crate) fn file_header(&self) -> Header {
+        self.file.header.lock().expect("header lock").clone()
+    }
+
+    /// Sign a backup manifest root with the account key.
+    ///
+    /// The account key stays inside the session; only the signature leaves.
+    pub(crate) fn sign_backup_root(&self, root: &[u8; 32]) -> [u8; 64] {
+        self.keys.account_keys.sign(root)
+    }
+
+    /// Re-sign the vault manifest after a merge changed the live item set.
+    pub(crate) fn reseal_after_merge(&self) -> Result<(), StoreError> {
+        let conn = self.file.conn.lock().expect("connection lock");
         self.reseal(&conn)
     }
 

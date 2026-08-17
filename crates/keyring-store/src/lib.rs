@@ -29,6 +29,7 @@ pub mod activity;
 pub mod app_cache;
 pub mod app_state;
 pub mod backoff;
+pub mod backup;
 pub mod error;
 pub mod header;
 pub mod manifest;
@@ -40,6 +41,7 @@ pub mod vault;
 pub use activity::{ActivityEvent, ActivityKind, ACTIVITY_LIMIT};
 pub use app_cache::AppCacheKey;
 pub use app_state::AppStateKey;
+pub use backup::{open_container, BackupContents, BackupSummary, RestoreMode, RestorePreview};
 pub use error::{StoreError, TamperKind, UnlockError};
 pub use keyring_crypto::KdfParams;
 pub use model::{
