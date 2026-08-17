@@ -40,7 +40,7 @@ const BIOMETRY_CURRENT_SET: usize = 1 << 3;
 pub struct TouchId;
 
 impl TouchId {
-    /// A handle to the platform's LocalAuthentication service.
+    /// A handle to the platform's `LocalAuthentication` service.
     #[must_use]
     pub const fn new() -> Self {
         Self
@@ -107,10 +107,10 @@ impl Biometrics for TouchId {
     }
 
     fn revoke(&self, label: &str) -> Result<(), BiometricError> {
-        match delete_generic_password(SERVICE, label) {
-            Ok(()) => Ok(()),
-            // Deleting an item that is not there is success, not failure.
-            Err(_) => Ok(()),
-        }
+        // Deleting an item that is not there is success, not failure: revoke is
+        // called defensively before every enrol, and on a path where the item
+        // has already been invalidated by an enrolment change.
+        let _ = delete_generic_password(SERVICE, label);
+        Ok(())
     }
 }

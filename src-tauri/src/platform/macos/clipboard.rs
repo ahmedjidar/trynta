@@ -22,14 +22,14 @@ use objc2_foundation::NSString;
 
 use crate::platform::clipboard::{Clipboard, ClipboardError};
 
-/// The AppKit constant for plain-text pasteboard content.
+/// The `AppKit` constant for plain-text pasteboard content.
 ///
 /// Reading it is `unsafe` only because it is an `extern "C"` static; the value
 /// is a framework-owned immutable `NSString` that exists for the lifetime of the
 /// process. Wrapped here so the single access has one place to justify it,
 /// rather than an `unsafe` block inline in the copy path.
 fn pasteboard_type_string() -> &'static NSPasteboardType {
-    // SAFETY: `NSPasteboardTypeString` is a constant exported by AppKit and
+    // SAFETY: `NSPasteboardTypeString` is a constant exported by `AppKit` and
     // initialised before any Objective-C code can run. It is never written to,
     // so there is no data race, and its lifetime is the process's.
     unsafe { NSPasteboardTypeString }
