@@ -20,6 +20,8 @@
     "test:watch": "vitest",
     "e2e": "wdio run e2e/wdio.conf.ts",
     "check:tokens": "node scripts/check-tokens.mjs",
+    "check:freeze": "node scripts/check-freeze.mjs",
+    "check:crypto-generation": "node scripts/check-crypto-generation.mjs",
     "check:bundle-size": "node scripts/check-bundle-size.mjs",
     "icons:placeholder": "node scripts/make-placeholder-icon.mjs",
     "verify:v1": "node scripts/verify-v1.mjs"

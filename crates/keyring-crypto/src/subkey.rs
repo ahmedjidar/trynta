@@ -68,18 +68,24 @@ pub const INFO_VAULT_ACTIVITY: &[u8] = b"keyring/v1/vault/activity";
 /// HKDF-Extract runs with no salt: the input keying material is already a
 /// uniformly random 32-byte key, so the extract step has nothing to do and the
 /// separation comes entirely from `info`.
+/// HKDF-SHA256 expansion to a 32-byte subkey, shared by the vault and backup
+/// hierarchies so there is exactly one derivation implementation to audit.
+#[must_use]
+pub fn expand_for(ikm: &[u8; 32], info: &[u8]) -> Key32 {
+    expand(ikm, info)
+}
+
 fn expand(ikm: &[u8; 32], info: &[u8]) -> Key32 {
     let hk = Hkdf::<Sha256>::new(None, ikm);
     let mut okm = Zeroizing::new([0u8; 32]);
     match hk.expand(info, okm.as_mut()) {
         Ok(()) => Key32::from_bytes(*okm),
-        // Statically unreachable: HKDF-Expand rejects only output lengths above
-        // 255 × 32 bytes, and this one is 32. There is no safe value to return
-        // here — a fixed fallback would be a predictable key — so we stop the
-        // process rather than continue with key material we did not derive.
-        // `abort` and not `panic!`: no unwinding, no message, nothing to catch
-        // (CLAUDE.md §4.10, fail closed).
-        Err(_) => std::process::abort(),
+        // Unreachable: HKDF-Expand rejects only output lengths above 255 × 32
+        // bytes, and this one is 32. A fixed fallback here would be a predictable
+        // key, so the process stops instead. See `crate::unreachable`.
+        Err(_) => crate::unreachable::invariant_violated(
+            "HKDF-SHA256 expand of exactly 32 bytes cannot fail",
+        ),
     }
 }
 

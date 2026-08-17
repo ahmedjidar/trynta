@@ -36,6 +36,7 @@
 #![allow(clippy::module_name_repetitions)]
 
 pub mod aad;
+pub mod backup;
 pub mod envelope;
 pub mod error;
 pub mod kdf;
@@ -44,8 +45,13 @@ pub mod manifest;
 pub mod padding;
 pub mod rng;
 pub mod subkey;
+mod unreachable;
 
 pub use aad::{Aad, Purpose, AAD_LEN, NO_SUBJECT};
+pub use backup::{
+    backup_manifest_root, derive_backup_muk, verify_backup_header_mac, BackupHeader, BackupSubkey,
+    BACKUP_VERSION,
+};
 pub use envelope::{open, seal, Envelope, ENVELOPE_VERSION, NONCE_LEN};
 pub use error::CryptoError;
 pub use kdf::{calibrate, calibrate_with, derive_muk, KdfParams};

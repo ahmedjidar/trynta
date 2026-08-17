@@ -76,6 +76,30 @@ function readIfPresent(relPath) {
   return existsSync(p) ? readFileSync(p, 'utf8') : null;
 }
 
+/**
+ * `tauri-build` reads `frontendDist`, so every cargo command that touches
+ * src-tauri fails on a fresh clone until the frontend has been built once. That
+ * failure is opaque, so build it here rather than let nine checks fail for one
+ * missing directory.
+ */
+function ensureFrontendBuilt() {
+  if (existsSync(join(ROOT, 'dist', 'index.html'))) return true;
+
+  console.log('dist/ is missing — building the frontend first (tauri-build reads frontendDist)');
+  const built = exec('pnpm build', { timeoutMs: 10 * 60_000 });
+  if (built.ok && existsSync(join(ROOT, 'dist', 'index.html'))) {
+    console.log('dist/ built.\n');
+    return true;
+  }
+
+  console.error('\nCould not build the frontend, and no cargo check touching src-tauri can run.');
+  console.error('Run these, then try again:\n');
+  console.error('    pnpm install --frozen-lockfile');
+  console.error('    pnpm build\n');
+  if (built.detail) console.error(tail(built.detail, 12));
+  return false;
+}
+
 // A Rust acceptance test lives in tests/acceptance and is addressed by target
 // name, so it stays stable regardless of which crate ends up owning the code.
 const acceptance = (target) => `cargo test -p keyring-acceptance --test ${target} -- --nocapture`;
@@ -243,8 +267,27 @@ const CRITERIA = [
     id: 'AC22',
     title: 'Toolchain clean: cargo test (debug and release), clippy pedantic, rustfmt, tsc, eslint, prettier, cargo-deny, cargo-audit, ts-rs no-diff',
     checks: [
+      // Checked first: if the frozen suite has been altered, nothing below it is
+      // evidence of anything.
+      { name: 'frozen acceptance suite unchanged', run: 1, exec: 'node scripts/check-freeze.mjs' },
+      { name: 'crypto path is one stable generation', run: 1, exec: 'node scripts/check-crypto-generation.mjs' },
       { name: 'cargo fmt', run: 1, exec: 'cargo fmt --all --check' },
-      { name: 'cargo clippy pedantic', run: 1, exec: 'cargo clippy --workspace --all-targets --all-features -- -D warnings -W clippy::pedantic' },
+      // Pedantic everywhere except the frozen acceptance crate. Frozen code can
+      // never be updated to satisfy a lint added by a future clippy release, so
+      // holding it to a lint set that grows over time guarantees an eventual
+      // unfixable failure — and the only ways out would be editing a frozen test
+      // or disabling the lint for real code. It still gets `-D warnings` below,
+      // so correctness lints apply; only the evolving style tier is dropped.
+      {
+        name: 'cargo clippy pedantic (production code)',
+        run: 1,
+        exec: 'cargo clippy --workspace --exclude keyring-acceptance --all-targets --all-features -- -D warnings -W clippy::pedantic',
+      },
+      {
+        name: 'cargo clippy (frozen acceptance suite)',
+        run: 1,
+        exec: 'cargo clippy -p keyring-acceptance --all-targets -- -D warnings',
+      },
       { name: 'cargo test (debug)', run: 1, exec: 'cargo test --workspace --all-features' },
       { name: 'redaction test in release', run: 1, exec: 'cargo test -p keyring-crypto --release --test redaction' },
       { name: 'lock/zeroize test in release', run: 2, skip: 'requires the session and lock state machine' },
@@ -286,6 +329,8 @@ function main() {
     }
     return 0;
   }
+
+  if (!ensureFrontendBuilt()) return 1;
 
   const started = Date.now();
   const results = [];

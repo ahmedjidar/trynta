@@ -1,0 +1,22 @@
+# FREEZE.lock — SHA-256 of every frozen file.
+#
+# Frozen means: never edited, deleted, #[ignore]d or weakened to make a run
+# pass. If a criterion is wrong or unimplementable as written, that is a spec
+# conversation, not a test edit.
+#
+# Hashes are over content with CRLF normalised to LF, so a line-ending change
+# alone does not fail the build and a real change cannot hide in one.
+#
+# Regenerated only when the spec owner deliberately changes what the
+# acceptance suite asserts, and reviewed as part of that change:
+#     node scripts/check-freeze.mjs --write
+c1871b88c3a6d8a8794446ba357dfc7e118adbf3b2b5837f509045151b3edc34  scripts/verify-v1.mjs
+79111e0cb8e25d792f33512e77b487090d4cab463cbbd1542cb050fda14d0c9f  tests/acceptance/API.md
+9e68288d0dd860f07a74cd14d47a9a10cb23baa20afa214bddd23b4205882edf  tests/acceptance/Cargo.toml
+e982a36f2221e9f546c4b46325b61793c5698e699dccdae4f76262bb4e5d3e81  tests/acceptance/src/lib.rs
+06984d5ac4b8607e4e3010e5d0c58066040b114023aba1653f78bb8305e0b367  tests/acceptance/tests/ac01_lifecycle.rs
+6beb96db087c8ac639b98d475bcce01a1b0237482bb74b3d921f3b810314aada  tests/acceptance/tests/ac02_no_plaintext_on_disk.rs
+19953fed45626192d605394c460d0382da7b34a337d4f98a59f54c5cb5d770b5  tests/acceptance/tests/ac03_constant_time_and_backoff.rs
+faecd511cf11e6216066335a00fa10c7fb2fa02b042805a12968cf9cff0271eb  tests/acceptance/tests/ac04_rollback.rs
+307602069faebc1e7b4fc0a7580ef4e2973b719e3cec9566794b931e70823ec7  tests/acceptance/tests/ac05_header_tamper.rs
+5db1e6e61ded1f2b0884ec85e62aea7985bbee20b3c6832f769bddcca643fd54  tests/acceptance/tests/ac16_migrations.rs

@@ -126,13 +126,19 @@ Violating any of these is a build-breaking bug, not a code review nit.
 
 ## 5. Architecture
 
-Rust is a **Cargo workspace**, not one crate. `keyring-crypto` is a separate member with no
-dependency on Tauri, SQLite, or anything else in the tree — so its isolation is compiler-enforced
-rather than a convention, and its tests compile in seconds.
+Rust is a **Cargo workspace**, not one crate. `keyring-crypto` and `keyring-store` are separate
+members — so their isolation is compiler-enforced rather than a convention, and their tests
+compile in seconds. Tests that are slow to run are tests that get run less, which makes this a
+security property rather than a convenience (ADD-003 §①).
 
 ```
 crates/
-  keyring-crypto/             kdf, aead, envelope, keys, hierarchy, manifest — zero app deps
+  keyring-crypto/             kdf, aead, envelope, keys, hierarchy, manifest, backup format
+                              — depends on NOTHING else in the workspace
+  keyring-store/              sqlite schema, two-phase migrations, header, manifest maintenance,
+                              item repository, app_state, backoff — depends only on keyring-crypto
+tests/acceptance/  (FROZEN)   SPEC-V1 §11 acceptance suite. Never edited after commit; the hashes
+                              in FREEZE.lock are checked by CI.
 src/                          React + TypeScript
   app/                        shell, routing, providers
   features/<domain>/          vertical slices: items, generator, security, sharing, settings
@@ -143,21 +149,27 @@ src/                          React + TypeScript
 src-tauri/
   src/
     commands/                 #[tauri::command] surface only — thin, no logic
-    crypto/                   kdf, aead, keys, envelope, sharing primitives
-    vault/                    domain model, item types, repository
-    store/                    sqlite schema, migrations, queries
     platform/                 macos/ windows/ — biometrics, clipboard, secure storage
-    services/                 generator, strength, totp, breach, import
+    services/                 generator, strength, totp, breach, icons, report
     error.rs                  redacting error types
+scripts/                      verify-v1.mjs (FROZEN), check-freeze, check-tokens,
+                              check-crypto-generation, check-bundle-size
 specs/         (gitignored)   what to build — read these
 addendums/     (gitignored)   amendments to specs — read these, they override
 handoffs/                     design source of truth — read these before styling anything
 ```
 
 **Layering rule:** `commands/` orchestrates and never contains business logic. `keyring-crypto`
-depends on nothing else in the workspace. Frontend `features/` never call `invoke()` directly —
-always through `src/ipc/`, so the whole IPC surface is typed in one place and mockable in tests.
-An eslint rule enforces that `invoke` appears in exactly one file.
+depends on nothing else in the workspace; `keyring-store` depends only on `keyring-crypto`. Both
+are asserted by `pnpm check:crypto-generation`, not merely intended. Frontend `features/` never
+call `invoke()` directly — always through `src/ipc/`, so the whole IPC surface is typed in one
+place and mockable in tests. An eslint rule enforces that `invoke` appears in exactly one file.
+
+**The acceptance suite is frozen.** `tests/acceptance/` and `scripts/verify-v1.mjs` are never
+edited, deleted, `#[ignore]`d or weakened after commit. `FREEZE.lock` records their hashes and CI
+fails on any change. If a criterion is wrong or unimplementable as written, that is a spec
+conversation — stop and raise it. Weakening an acceptance test to make a run pass is the worst
+possible failure in this project, so the rule does not rely on anyone remembering it.
 
 **Rust types are the source of truth across IPC.** TS types are generated with `ts-rs`
 (dev-dependency, emits during `cargo test`) and committed. CI regenerates and fails on any diff.

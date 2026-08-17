@@ -18,5 +18,6 @@ uuid = { workspace = true }
 zeroize = { workspace = true }
 
 [dev-dependencies]
+postcard = { workspace = true }
 proptest = { workspace = true }
 tempfile = { workspace = true }

@@ -75,10 +75,20 @@ pub fn leaf_hash(ciphertext: &[u8]) -> [u8; 32] {
 /// `deleted_at` detectable.
 #[must_use]
 pub fn manifest_root(entries: &mut [ManifestEntry]) -> [u8; 32] {
+    root_with_domain(DOMAIN_ROOT, entries)
+}
+
+/// [`manifest_root`] under an explicit domain prefix.
+///
+/// Exists so the `.keyringbackup` container can commit to the same entry shape
+/// under its own domain, which stops a vault's `manifest_sig` being replayed
+/// into a backup to vouch for a different set of items.
+#[must_use]
+pub fn root_with_domain(domain: &[u8], entries: &mut [ManifestEntry]) -> [u8; 32] {
     entries.sort_unstable_by(|a, b| a.item_id.cmp(&b.item_id));
 
     let mut h = Blake2b256::new();
-    h.update(DOMAIN_ROOT);
+    h.update(domain);
     h.update((entries.len() as u64).to_be_bytes());
     for e in entries.iter() {
         h.update(e.item_id);
@@ -87,6 +97,22 @@ pub fn manifest_root(entries: &mut [ManifestEntry]) -> [u8; 32] {
         h.update(e.secret_hash);
     }
     h.finalize().into()
+}
+
+/// HMAC-SHA256 over `message` under a 32-byte key.
+///
+/// One place, so both header formats compute their MAC identically and there is
+/// a single site to audit.
+#[must_use]
+pub fn hmac_sha256(key: &Key32, message: &[u8]) -> [u8; 32] {
+    // Unreachable: HMAC accepts a key of any length, and this one is 32 bytes.
+    // Returning a MAC we did not compute would be worse than stopping. See
+    // `crate::unreachable`.
+    let Ok(mut mac) = HmacSha256::new_from_slice(key.expose()) else {
+        crate::unreachable::invariant_violated("HMAC-SHA256 accepts a key of any length")
+    };
+    mac.update(message);
+    mac.finalize().into_bytes().into()
 }
 
 /// Sign a manifest root with the account Ed25519 key.
@@ -177,14 +203,7 @@ impl HeaderFields<'_> {
 /// Compute the header MAC under the `muk.header` subkey.
 #[must_use]
 pub fn header_mac(key: &Key32, header: &HeaderFields<'_>) -> [u8; 32] {
-    // Statically unreachable: HMAC accepts a key of any length, and this one is
-    // 32 bytes. There is no safe fallback MAC to return, so stop the process
-    // rather than return one we did not compute (CLAUDE.md §4.10, fail closed).
-    let Ok(mut mac) = HmacSha256::new_from_slice(key.expose()) else {
-        std::process::abort()
-    };
-    mac.update(&header.canonical_bytes());
-    mac.finalize().into_bytes().into()
+    hmac_sha256(key, &header.canonical_bytes())
 }
 
 /// Verify the header MAC in constant time.
