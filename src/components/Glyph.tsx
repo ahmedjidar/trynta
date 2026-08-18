@@ -82,8 +82,8 @@ export interface GlyphProps {
   /** Which glyph. */
   name: GlyphName;
   /**
-   * Edge in px. HO-002 sizes icons per use — 12 beside chip text, 14 in a segment or a
-   * "Fix" affordance, 16 everywhere else — so the default is the token and the two
+   * Edge in px. The design sizes icons per use — 12 beside chip text, 14 in a segment or
+   * a "Fix" affordance, 16 everywhere else — so the default is the token and the two
    * smaller steps are the design's own.
    */
   size?: 12 | 14 | 16;
@@ -101,7 +101,7 @@ export function Glyph({ name, size = 16, label }: GlyphProps) {
   return (
     <Component
       // `lucide` so base.css's `svg.lucide` rule applies the token size and stroke, which
-      // is HO-002's own mechanism. The attributes below carry the same values for the
+      // is the design's own mechanism. The attributes below carry the same values for the
       // case where a rule has not matched yet.
       className="lucide"
       // Passed as attributes because SVG presentation attributes are not the CSS `style`

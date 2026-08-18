@@ -1,7 +1,7 @@
 /**
  * Updater surface — SPEC-V1 §7.5, §9.
  *
- * The design has no update screen: HO-001 covers the vault, and updates are one of the
+ * The design has no update screen: it covers the vault, and updates are one of the
  * settings rows §7.5 asks for without drawing. So this reuses §13's grouped-row structure
  * rather than inventing a layout, and every value comes from `update_check`.
  *
@@ -25,8 +25,23 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { Button } from '../../components/Button';
 import { GroupedList, GroupedRow, SectionLabel } from '../../components/GroupedList';
-import { updateCheck, updateInstall } from '../../ipc';
+import { IpcError, updateCheck, updateInstall } from '../../ipc';
 import type { UpdateCheckDto } from '../../ipc';
+
+/**
+ * Why the check could not answer.
+ *
+ * `unconfigured` is not a fault: this build ships no release endpoint and no signing
+ * public key (ADD-004 ⑥), so there is nothing to ask. Saying "could not be read" for that
+ * describes a broken app rather than an unfinished channel.
+ */
+type Unavailable = 'unconfigured' | 'failed';
+
+function classify(cause: unknown): Unavailable {
+  return cause instanceof IpcError && cause.error.kind === 'featureUnavailable'
+    ? 'unconfigured'
+    : 'failed';
+}
 
 export interface UpdatesProps {
   /** Back to the settings list. */
@@ -37,19 +52,19 @@ export interface UpdatesProps {
 export function Updates({ onBack, onFailed }: UpdatesProps) {
   const [check, setCheck] = useState<UpdateCheckDto | null>(null);
   const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<Unavailable | null>(null);
 
   const run = useCallback(() => {
     setBusy(true);
     updateCheck().then(
       (result) => {
         setBusy(false);
-        setFailed(false);
+        setFailed(null);
         setCheck(result);
       },
-      () => {
+      (cause: unknown) => {
         setBusy(false);
-        setFailed(true);
+        setFailed(classify(cause));
       },
     );
   }, []);
@@ -68,8 +83,8 @@ export function Updates({ onBack, onFailed }: UpdatesProps) {
       (result) => {
         if (live) setCheck(result);
       },
-      () => {
-        if (live) setFailed(true);
+      (cause: unknown) => {
+        if (live) setFailed(classify(cause));
       },
     );
     return () => {
@@ -83,18 +98,20 @@ export function Updates({ onBack, onFailed }: UpdatesProps) {
         <button
           type="button"
           data-focus-ring
-          className="text-chip text-accent-text duration-quick hover:bg-surface-hover flex h-6 items-center gap-1 rounded-full px-2 font-semibold transition-colors"
+          className="text-chip text-accent duration-quick hover:bg-surface-hover flex h-6 items-center gap-1 rounded-full px-2 font-semibold transition-colors"
           onClick={onBack}
         >
           Settings
         </button>
         <h1 className="text-display tracking-display mt-2 font-bold">Updates</h1>
 
-        {failed || check === null ? (
-          <p className="text-body text-text-caption-aa mt-2">
-            {failed
-              ? 'The update state could not be read. Nothing was downloaded and nothing was installed.'
-              : ''}
+        {failed !== null || check === null ? (
+          <p className="text-body text-text-muted mt-2 max-w-[62ch] leading-5 text-pretty">
+            {failed === 'unconfigured'
+              ? 'This build has no update channel: no release endpoint and no signing key are configured, so there is nothing to check against. Updates arrive with the first signed release.'
+              : failed === 'failed'
+                ? 'The update state could not be read. Nothing was downloaded and nothing was installed.'
+                : ''}
           </p>
         ) : (
           <>
@@ -104,7 +121,7 @@ export function Updates({ onBack, onFailed }: UpdatesProps) {
                 <GroupedRow className="min-h-[60px] py-2.5">
                   <div className="min-w-0 flex-1">
                     <div className="text-body font-semibold">Version</div>
-                    <div className="text-chip text-text-caption-aa mt-0.5 text-pretty">
+                    <div className="text-chip text-text-muted mt-0.5 text-pretty">
                       {describe(check)}
                     </div>
                   </div>
@@ -114,13 +131,13 @@ export function Updates({ onBack, onFailed }: UpdatesProps) {
                 <GroupedRow className="min-h-[60px] py-2.5">
                   <div className="min-w-0 flex-1">
                     <div className="text-body font-semibold">Automatic checks</div>
-                    <div className="text-chip text-text-caption-aa mt-0.5 text-pretty">
+                    <div className="text-chip text-text-muted mt-0.5 text-pretty">
                       {check.checksEnabled
                         ? 'On: at most once every 24 hours, on launch.'
                         : 'Off. This screen still checks when you ask it to.'}
                     </div>
                   </div>
-                  <span className="text-control text-text-caption-aa shrink-0">
+                  <span className="text-control text-text-muted shrink-0">
                     {check.checksEnabled ? 'On' : 'Off'}
                   </span>
                 </GroupedRow>
@@ -134,7 +151,7 @@ export function Updates({ onBack, onFailed }: UpdatesProps) {
                   <GroupedRow className="min-h-[60px] py-2.5">
                     <div className="min-w-0 flex-1">
                       <div className="text-body font-semibold">{check.available.version}</div>
-                      <div className="text-chip text-text-caption-aa mt-0.5 text-pretty">
+                      <div className="text-chip text-text-muted mt-0.5 text-pretty">
                         {check.available.notes ??
                           'No release notes were included in the signed manifest.'}
                       </div>
@@ -178,7 +195,7 @@ export function Updates({ onBack, onFailed }: UpdatesProps) {
           aria-labelledby="update-privacy"
         >
           <h2
-            className="text-micro tracking-label text-text-caption-aa flex h-6 items-end font-bold uppercase"
+            className="text-micro tracking-label text-text-muted flex h-6 items-end font-bold uppercase"
             id="update-privacy"
           >
             What an update check sends

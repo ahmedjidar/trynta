@@ -3,35 +3,35 @@
  *
  * ## Why this file exists at all
  *
- * HO-002 sets every varying value with the React `style` prop: the segmented indicator's
- * `left`, the strength meter's `transform` and colour, the identity tile's size and
- * background, the stat figure's colour, the TOTP countdown's width. That works in its
- * dev server and **silently stops working in our release build**: the production CSP in
- * `tauri.conf.json` is `style-src 'self'` with no `unsafe-inline`, so a markup `style`
- * attribute is dropped — while `devCsp` allows `unsafe-inline`, which is why the port
- * looks correct when you run it. An eslint rule bans the prop for exactly this reason
- * (SPEC-V1 §7.6); this file is the replacement.
+ * The design sets every varying value with the React `style` prop: the segmented
+ * indicator's `left`, the strength meter's `transform` and colour, the identity tile's
+ * size and background, the stat figure's colour, the TOTP countdown's width. That works
+ * in a dev server and **silently stops working in a release build**: the production CSP
+ * in `tauri.conf.json` is `style-src 'self'` with no `unsafe-inline`, so a markup `style`
+ * attribute is dropped — while `devCsp` allows `unsafe-inline`, which is why an inline
+ * style looks correct right up until it ships. An eslint rule bans the prop for exactly
+ * this reason (SPEC-V1 §7.6); this file is the replacement.
  *
  * The rule for what belongs here: a value that varies over a **small, closed set** becomes
  * a data attribute and a rule below. A value that is genuinely continuous — the TOTP
  * countdown — is written through the CSSOM instead, which the CSP permits because it is a
  * script API rather than markup.
  *
- * Appearance is identical to HO-002 in every case. Nothing here introduces a value: every
- * colour is a token and every geometry figure is the design's own.
+ * Appearance is identical to the handoff in every case. Nothing here introduces a value:
+ * every colour is a token and every geometry figure is the design's own.
  */
 
 :root {
-  /* HO-002's segmented track has a 3px inset and the token layer has no 1.5-step.
-     Declared once here, in the theme layer, rather than repeated as a literal in
-     each of the eight indicator rules below. Recorded in MANIFEST.md. */
+  /* The segmented track has a 3px inset and the token layer has no 1.5-step. Declared
+     once here, in the theme layer, rather than repeated as a literal in each of the
+     eight indicator rules below. Recorded in MANIFEST.md. */
   --space-075: 3px;
 }
 
-/* ── Segmented control indicator — HO-002 SegmentedControl ─────────────────── */
+/* ── Segmented control indicator ───────────────────────────────────────────── */
 
 /*
- * HO-002 computes `left: calc(index * 100/count% + 3px)` and
+ * The design computes `left: calc(index * 100/count% + 3px)` and
  * `width: calc(100/count% - 6px)`. Only two segment counts exist in the product — three
  * (generator types) and four (item kinds) — so those are the rules written, plus two for
  * completeness. A count with no rule leaves the indicator at its first position rather
@@ -76,12 +76,23 @@
   left: var(--space-075);
 }
 
-/* ── Strength meter — HO-002 StrengthMeter ─────────────────────────────────── */
+/*
+ * Forced-colours mode. Selection is carried by the indicator's fill and by a font-weight
+ * change, which is enough under WCAG — but a fill is exactly what a high-contrast theme
+ * discards, so the indicator gets a real border there.
+ */
+@media (forced-colors: active) {
+  .segmented__indicator {
+    border: 1px solid ButtonText;
+  }
+}
+
+/* ── Strength meter ────────────────────────────────────────────────────────── */
 
 /*
  * A `scaleX` transform on an inner element, not a width change, so it is composited and
- * the collapse mirrors the fill exactly. The 60ms stagger is HO-002's; `--stagger-meter`
- * carries it and drops to 0 under `prefers-reduced-motion`.
+ * the collapse mirrors the fill exactly. `--stagger-meter` carries the 60ms per-segment
+ * delay and drops to 0 under `prefers-reduced-motion`.
  */
 .meter__fill {
   transform: scaleX(0);
@@ -129,34 +140,31 @@
   transition-delay: calc(var(--stagger-meter) * 3);
 }
 
-/* ── Tone ramps ───────────────────────────────────────────────────────────── */
+/* ── Tone ramps ────────────────────────────────────────────────────────────── */
 
 /*
  * One set of rules for every place the design colours a value by status: the strength
- * label, the four stat figures, the risk dot. HO-002 passes these as inline colours from
- * three separate lookup tables; here the tone name is the attribute and the token is the
- * value, so a tone cannot be spelled differently in two components.
- *
- * The `-text` variants are the a11y.css aliases: the raw status colours fail AA for text
- * on light surfaces (contrast-report findings 6 and 7).
+ * label, the four stat figures, the risk dot. The design passes these as inline colours
+ * from three separate lookup tables; here the tone name is the attribute and the token is
+ * the value, so a tone cannot be spelled differently in two components.
  */
 [data-tone='danger'] {
-  color: var(--status-danger-text);
+  color: var(--status-danger);
 }
 [data-tone='warning'] {
-  color: var(--status-warning-text);
+  color: var(--status-warning);
 }
 [data-tone='accent'] {
-  color: var(--accent-text);
+  color: var(--accent);
 }
 [data-tone='info'] {
-  color: var(--status-info-text);
+  color: var(--status-info);
 }
 [data-tone='neutral'] {
   color: var(--text-secondary);
 }
 [data-tone='empty'] {
-  color: var(--text-caption-aa);
+  color: var(--text-muted);
 }
 
 .dot[data-tone='danger'] {
@@ -166,13 +174,20 @@
   background: var(--status-warning);
 }
 
-/* ── Identity tile — HO-002 IdentityTile ──────────────────────────────────── */
+/* ── Identity tile ─────────────────────────────────────────────────────────── */
 
 /*
- * HO-002 sets `width`/`height` inline from a numeric prop and picks the background from
- * `identityColor()`. Both become attributes: six sizes and seven tones, which is the
- * whole closed set. ADD-001 removes the favicon layer entirely — the monogram is not a
- * fallback here, it is the tile — so the inlay rules HO-002 needs are gone with it.
+ * The design sets `width`/`height` inline from a numeric prop and picks the background
+ * from `identityColor()`. Both become attributes: six sizes and seven tones, which is the
+ * whole closed set.
+ *
+ * ADD-001 removes the favicon layer: a runtime icon fetch announces every service the
+ * user holds an account with. Rust resolves an icon to a bundled key or a monogram, so
+ * the monogram is not a fallback here — it is the tile — and the inlay rules the design
+ * needs for a crossfading favicon go with it.
+ *
+ * The shadow is the design's own `boxShadow.tile`: an inset half-pixel ring that keeps a
+ * tile's edge legible against a surface of similar value.
  */
 .tile {
   display: grid;
@@ -183,7 +198,9 @@
   font-weight: var(--weight-bold);
   letter-spacing: var(--tracking-tight);
   line-height: var(--leading-none);
-  box-shadow: var(--shadow-hairline), var(--shadow-lift);
+  box-shadow:
+    inset 0 0 0 0.5px var(--border-strong),
+    var(--shadow-lift);
 }
 
 .tile[data-size='24'] {
@@ -239,21 +256,35 @@
   background: var(--identity-7);
 }
 
-/* A bundled brand icon fills the tile; the monogram underneath is then redundant. */
+/* A bundled brand icon sits on the panel surface, the way a favicon inlay does in the
+   design: the tile reads as a chip rather than a cut-out. */
+.tile[data-tone='0'] {
+  background: var(--surface-raised);
+}
+
 .tile__icon {
-  width: 100%;
-  height: 100%;
+  width: var(--favicon-inlay);
+  height: var(--favicon-inlay);
   object-fit: contain;
 }
 
-/* ── Vault swatch ─────────────────────────────────────────────────────────── */
+.tile[data-size='56'] .tile__icon,
+.tile[data-size='64'] .tile__icon {
+  width: 60%;
+  height: 60%;
+}
+
+/* ── Vault swatch ──────────────────────────────────────────────────────────── */
 
 /*
  * Vaults carry a `colorToken` such as `vault.accent.3` and the token layer defines no
- * `--vault-accent-*` ramp (MANIFEST HO-002 item 2, still open). Until it does, the swatch
+ * `--vault-accent-*` ramp (MANIFEST item 2, still open). Until it does, the swatch
  * borrows the identity ramp, which at least distinguishes vaults from each other instead
  * of rendering them all in `--accent`.
  */
+.swatch {
+  background: var(--accent);
+}
 .swatch[data-accent='vault.accent.1'] {
   background: var(--identity-1);
 }
@@ -275,11 +306,8 @@
 .swatch[data-accent='vault.accent.7'] {
   background: var(--identity-7);
 }
-.swatch {
-  background: var(--accent);
-}
 
-/* ── TOTP countdown ───────────────────────────────────────────────────────── */
+/* ── TOTP countdown ────────────────────────────────────────────────────────── */
 
 /*
  * The one genuinely continuous value in the product: 0–100% once a second. Written
@@ -290,4 +318,14 @@
   width: 100%;
   background: var(--accent);
   transition: width var(--duration-countdown) linear;
+}
+
+/* ── Generator length slider ───────────────────────────────────────────────── */
+
+/*
+ * The design writes `accent-[var(--accent)]`, which Tailwind compiles to an arbitrary
+ * value rather than a token utility. Same declaration, named once.
+ */
+.slider {
+  accent-color: var(--accent);
 }

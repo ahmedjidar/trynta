@@ -1,5 +1,5 @@
 /**
- * The core surface pattern — HO-002 `ui/GroupedList.tsx`.
+ * The core surface pattern.
  *
  * Used by detail fields, generator options, the risk list, settings, generator history and
  * the sheets. Hairlines come from `gap: 1px` over a hairline-coloured background, **not**
@@ -48,7 +48,7 @@ export function SectionLabel({ className, children }: { className?: string; chil
   return (
     <div
       className={cn(
-        'text-micro tracking-label text-text-caption-aa flex h-6 items-end font-bold uppercase',
+        'text-micro tracking-label text-text-muted flex h-6 items-end font-bold uppercase',
         className,
       )}
     >
@@ -57,17 +57,9 @@ export function SectionLabel({ className, children }: { className?: string; chil
   );
 }
 
-/**
- * Fixed-width label column inside a grouped row.
- *
- * `text-text-caption-aa` rather than HO-002's `text-text-muted`: these are field labels,
- * which are body text, and `--text-muted` fails AA on every surface in both themes
- * (contrast-report finding 2). The alias resolves to `--text-secondary`.
- */
+/** Fixed-width label column inside a grouped row. */
 export function FieldLabel({ children }: { children: ReactNode }) {
-  return (
-    <div className="text-caption text-text-caption-aa w-24 shrink-0 font-medium">{children}</div>
-  );
+  return <div className="text-caption text-text-muted w-24 shrink-0 font-medium">{children}</div>;
 }
 
 /** Rounded card used for Activity, Notes and the settings statements. */

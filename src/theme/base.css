@@ -1,18 +1,6 @@
 /*
  * Element base. Structure and reset only — every value reaches through a token.
  *
- * This file used to declare a Tailwind `@theme` block mapping a set of invented
- * `--kr-*` names. Those were a placeholder from before any handoff existed, and
- * none of them matched the names HO-001 actually delivers, so the mapping pointed
- * at nothing. It is gone rather than renamed: the handoff's token names are the
- * contract, and a second set of aliases over the top is one more place for the two
- * to drift.
- *
- * Components are now styled with Tailwind utilities, because HO-002 delivers the design
- * as React + Tailwind and its class list *is* the specification. `theme/tailwind.css`
- * maps every utility name onto a token, so "handoffs drop in with minimal translation"
- * (CLAUDE.md §2) is literal: a class in the handoff is the same class here.
- *
  * ## Everything below is inside `@layer base`, and that is load-bearing
  *
  * Tailwind v4 emits its utilities inside `@layer utilities`, and in the CSS cascade
@@ -20,14 +8,7 @@
  * `h1 { font-size: inherit }` silently overrides `.text-title`, and `button { font:
  * inherit }` overrides every `text-*` utility on a button. Found by rendering: the lock
  * screen's 20px title came out at body size while the class was right there in the
- * markup, and no type-check or lint could have said so. HO-002 wraps its resets in
- * `@layer base` for this reason.
- *
- * FONT: the design specifies Manrope. It is not bundled — `font-src 'self'` means
- * a webfont has to ship in the binary, and fetching one from a CDN is the same leak
- * ADD-001 exists to prevent. `--font-sans` already carries a system fallback chain,
- * so the app renders correctly and looks slightly different. Tracked as a missing
- * asset, like the EFF wordlist.
+ * markup, and no type-check or lint could have said so.
  */
 
 @layer base {
@@ -92,27 +73,24 @@
     color: inherit;
   }
 
-  /* Never suppressed, and never the browser default either: the handoff's
-   * accessibility gap list opens with "interactive rows, chips, copy actions,
-   * switches and segments are `div`s with `onClick`". They are real controls here,
-   * and this is the ring they get (see a11y.css, finding 1). */
+  /*
+   * The focus contract, as the design states it: *"Focus is always an accent border
+   * **plus** the halo. The halo alone is below the 3:1 non-text threshold."*
+   *
+   * Bordered controls — inputs and textareas — take the accent on their own border.
+   * Everything else is a borderless capsule, so the border arrives as the inner ring
+   * of a two-part shadow. Same two elements the design names, drawn the only way a
+   * control with no border can draw them.
+   */
   :focus {
     outline: none;
   }
 
-  :focus-visible {
-    outline: none;
-    box-shadow: var(--focus-ring);
-  }
-
-  /*
-   * HO-002's focus contract, verbatim: "Focus is always an accent border **plus** the halo.
-   * The halo alone is below the 3:1 non-text threshold — see the contrast report." The
-   * marker attribute is on every ported control.
-   */
   [data-focus-ring]:focus-visible {
     outline: none;
-    box-shadow: var(--focus-ring);
+    box-shadow:
+      0 0 0 var(--space-025) var(--accent),
+      var(--shadow-focus-ring);
   }
 
   input:focus-visible,
@@ -124,8 +102,6 @@
 
   input::placeholder,
   textarea::placeholder {
-    /* Placeholders are the one text role `--text-muted` is designed for: they are not
-       content, and a placeholder that reads as filled-in text is worse than a faint one. */
     color: var(--text-muted);
   }
 
@@ -133,7 +109,7 @@
     background: var(--surface-selected);
   }
 
-  /* Lucide default sizing, matching HO-002's base layer. */
+  /* Lucide default sizing. */
   svg.lucide {
     width: var(--icon-size);
     height: var(--icon-size);
@@ -159,8 +135,9 @@
   }
 
   a {
-    color: var(--accent-text);
+    color: var(--accent);
     text-decoration: none;
+    transition: color var(--duration-quick) var(--ease-standard);
   }
 
   a:hover {

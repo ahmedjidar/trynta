@@ -24,7 +24,7 @@
  * in Rust without any of them crossing the boundary.
  *
  * So the rows show what was generated and when, and Copy still works. The invariant wins
- * over the appearance (handoffs/README.md), and it is recorded for HO-002.
+ * over the appearance (handoffs/README.md), and it is recorded in handoffs/MANIFEST.md.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -163,9 +163,10 @@ export function Generator({ onCopied, onFailed }: GeneratorProps) {
     <section className="bg-surface-panel min-w-0 flex-1 overflow-y-auto" aria-label="Generator">
       <div className="max-w-[704px] px-10 pt-8 pb-12">
         <h1 className="text-display tracking-display font-bold">Generator</h1>
-        <p className="text-body text-text-caption-aa mt-1 max-w-[60ch] leading-5 text-pretty">
-          {/* HO-002 says "generated locally on this Mac". Platform-neutral, since Windows
-              is the verified platform (ADD-005) and the claim is about the device. */}
+        <p className="text-body text-text-muted mt-1 max-w-[60ch] leading-5 text-pretty">
+          {/* The design says "generated locally on this Mac". Platform-neutral here,
+              since Windows is the verified platform (ADD-005) and the claim is about the
+              device rather than the make of it. */}
           Every password is generated on this device. Nothing leaves it unencrypted.
         </p>
 
@@ -177,7 +178,7 @@ export function Generator({ onCopied, onFailed }: GeneratorProps) {
             {unavailable ?? generated?.value ?? ''}
           </output>
           {generated !== null && !generated.recorded ? (
-            <p className="text-chip text-text-caption-aa mt-2">
+            <p className="text-chip text-text-muted mt-2">
               Not saved to history — the vault is locked. Select the value above to copy it by hand.
             </p>
           ) : null}
@@ -187,7 +188,7 @@ export function Generator({ onCopied, onFailed }: GeneratorProps) {
               label={strength.label}
               className="w-40 flex-none"
             />
-            <span className="text-caption text-text-caption-aa tabular-nums">
+            <span className="text-caption text-text-muted tabular-nums">
               {generated === null
                 ? '—'
                 : `${String(Math.round(generated.entropyBits))} bits of entropy`}
@@ -235,7 +236,7 @@ export function Generator({ onCopied, onFailed }: GeneratorProps) {
           <GroupedRow className="h-[52px]">
             <FieldLabel>Length</FieldLabel>
             <input
-              className="min-w-0 flex-1 accent-[var(--accent)]"
+              className="slider min-w-0 flex-1"
               type="range"
               min={MIN_LENGTH}
               max={MAX_LENGTH}
@@ -270,21 +271,22 @@ export function Generator({ onCopied, onFailed }: GeneratorProps) {
         <GroupedList className="mt-2">
           {history.length === 0 ? (
             <GroupedRow className="h-11">
-              <span className="text-body text-text-caption-aa min-w-0 flex-1">
+              <span className="text-body text-text-muted min-w-0 flex-1">
                 Nothing generated yet.
               </span>
             </GroupedRow>
           ) : (
             history.map((entry) => (
               <GroupedRow key={entry.id} className="h-11">
-                {/* HO-002 prints the generated value in each history row. `HistoryEntryDto`
-                    deliberately does not carry one — SPEC-V1 §6 gives history a copy
-                    command and no reveal, so twenty old passwords are never rendered into
-                    the webview. Kind and strength are enough to pick the right entry. */}
+                {/* The design prints the generated value in each history row.
+                    `HistoryEntryDto` deliberately does not carry one — SPEC-V1 §6 gives
+                    history a copy command and no reveal, so twenty old passwords are never
+                    rendered into the webview. Kind and strength are enough to pick the
+                    right entry. */}
                 <span className="text-control text-text-secondary min-w-0 flex-1 truncate font-mono">
                   {KIND_LABELS[entry.kind] ?? 'Value'} · {Math.round(entry.entropyBits)} bits
                 </span>
-                <span className="text-chip text-text-caption-aa shrink-0">
+                <span className="text-chip text-text-muted shrink-0">
                   {new Date(entry.createdAt).toLocaleTimeString()}
                 </span>
                 <CopyAction
@@ -349,7 +351,7 @@ function OptionRow({ name, hint, checked, onChange }: OptionRowProps) {
   return (
     <GroupedRow interactive className="h-[52px]" onClick={toggle}>
       <span className="text-body min-w-0 flex-1 font-medium">{name}</span>
-      <span className="text-chip text-text-caption-aa font-mono">{hint}</span>
+      <span className="text-chip text-text-muted font-mono">{hint}</span>
       <Switch checked={checked} onChange={toggle} label={name} />
     </GroupedRow>
   );

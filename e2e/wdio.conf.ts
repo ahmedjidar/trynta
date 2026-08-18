@@ -119,7 +119,13 @@ export const config: WebdriverIO.Config = {
     } as WebdriverIO.Capabilities,
   ],
 
-  services: ['tauri'],
+  // `external` means tauri-driver, which is the prerequisite `pnpm e2e:setup` checks
+  // for. The service's default is an *embedded* WebDriver that requires
+  // `tauri-plugin-wdio-webdriver` registered inside the app — a test-only plugin
+  // compiled into the shipping binary, which is not a trade this product makes for two
+  // acceptance criteria. Without this line the run fails in `onPrepare` waiting for a
+  // port nothing is listening on.
+  services: [['tauri', { driverProvider: 'external' }]],
   framework: 'mocha',
   reporters: ['spec'],
 

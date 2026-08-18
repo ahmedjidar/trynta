@@ -1,7 +1,7 @@
 /**
  * Class-name joiner.
  *
- * HO-002 uses `clsx` + `tailwind-merge` for this. Two dependencies for string
+ * The design uses `clsx` + `tailwind-merge` for this. Two dependencies for string
  * concatenation is two more supply-chain surfaces than a password manager needs
  * (CLAUDE.md §2), and neither is doing anything subtle: `clsx` flattens and filters,
  * `tailwind-merge` de-duplicates conflicting utilities. This does the first part, and the
@@ -10,7 +10,7 @@
  * variant prop instead.
  *
  * @param parts - Class names, or falsy values to skip. Arrays are flattened one level,
- * which is the shape HO-002's variant blocks use.
+ * which is the shape the variant blocks use.
  *
  * @example
  * ```ts

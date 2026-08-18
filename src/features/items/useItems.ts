@@ -18,7 +18,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 
-import { useNavigation } from '../../app/navigation';
+import { NO_FILTERS, useNavigation } from '../../app/navigation';
 import { itemGet, itemsList, vaultsList } from '../../ipc';
 import type { ItemDetailDto, ItemSummaryDto, VaultSummaryDto } from '../../ipc';
 
@@ -53,6 +53,32 @@ export function useItems(unlocked = true) {
   return useQuery<ItemSummaryDto[]>({
     queryKey: keys.items(source, filters, sort, search),
     queryFn: () => itemsList({ source, filters, sort, search }),
+    enabled: unlocked,
+    ...LOCAL,
+  });
+}
+
+/**
+ * The whole vault, unfiltered, for the sidebar's counts.
+ *
+ * Separate from {@link useItems} deliberately: that one is keyed on the current source,
+ * filters and search, so counting from it makes "All items" report the size of whatever
+ * the user is currently looking at — "Cards 1, Logins 0" while a card is selected. The
+ * counts are a property of the vault, not of the view.
+ *
+ * It runs against the Rust-side index, so the extra call is a filter over memory rather
+ * than a decrypt.
+ */
+export function useAllItems(unlocked = true) {
+  return useQuery<ItemSummaryDto[]>({
+    queryKey: keys.items({ source: 'all' }, NO_FILTERS, 'alphabetical', ''),
+    queryFn: () =>
+      itemsList({
+        source: { source: 'all' },
+        filters: NO_FILTERS,
+        sort: 'alphabetical',
+        search: '',
+      }),
     enabled: unlocked,
     ...LOCAL,
   });

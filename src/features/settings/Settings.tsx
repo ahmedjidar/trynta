@@ -1,5 +1,5 @@
 /**
- * Settings — HO-002 `components/SettingsView.tsx`, SPEC-V1 §7.5.
+ * Settings — SPEC-V1 §7.5.
  *
  * ## Which document owns what
  *
@@ -20,7 +20,7 @@
  *   export and restore, the update-check toggle, and *"a plain statement of exactly what
  *   leaves the device"*.
  *
- * Both conflicts are HO-002 item 4 in `handoffs/MANIFEST.md`.
+ * Both conflicts are recorded in `handoffs/MANIFEST.md`.
  *
  * ## The statement at the bottom is not filler
  *
@@ -252,9 +252,7 @@ export function Settings({ settings, onSaved, onFailed, onBackup, onUpdates }: S
                 description="Not available yet. Autofill and import arrive in a later version, and matching is on the registrable domain — never a substring."
               />
               {/* §7.5: "Never a toggle that does nothing." A stated fact, not a switch. */}
-              <span className="text-control text-text-caption-aa shrink-0">
-                Not in this version
-              </span>
+              <span className="text-control text-text-muted shrink-0">Not in this version</span>
             </GroupedRow>
           </GroupedList>
         </section>
@@ -325,7 +323,7 @@ export function Settings({ settings, onSaved, onFailed, onBackup, onUpdates }: S
           aria-labelledby="leaves-device"
         >
           <h2
-            className="text-micro tracking-label text-text-caption-aa flex h-6 items-end font-bold uppercase"
+            className="text-micro tracking-label text-text-muted flex h-6 items-end font-bold uppercase"
             id="leaves-device"
           >
             What leaves this device
@@ -361,10 +359,7 @@ function RowText({ name, description }: RowTextProps) {
   return (
     <div className="min-w-0 flex-1">
       <div className="text-body font-semibold">{name}</div>
-      {/* HO-002 uses `--text-muted` here. An 11.5px description is body text and that
-          token fails AA on every surface (contrast-report finding 2), so it resolves
-          through the alias. */}
-      <div className="text-chip text-text-caption-aa mt-0.5 text-pretty">{description}</div>
+      <div className="text-chip text-text-muted mt-0.5 text-pretty">{description}</div>
     </div>
   );
 }

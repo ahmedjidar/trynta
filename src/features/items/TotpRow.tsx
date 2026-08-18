@@ -21,6 +21,18 @@ import { FieldLabel, GroupedRow } from '../../components/GroupedList';
 import { itemCopyField, totpCurrent } from '../../ipc';
 import type { TotpCodeDto } from '../../ipc';
 
+/**
+ * Split a code down the middle, the way the design prints it: `544 798`.
+ *
+ * Grouping is presentation and is applied here rather than in Rust, so the value that
+ * crosses IPC and the value that reaches the clipboard stay exactly what the algorithm
+ * produced. Handles 6 and 8 digits, which are the only lengths §4.1 permits.
+ */
+function grouped(code: string): string {
+  const half = Math.ceil(code.length / 2);
+  return `${code.slice(0, half)} ${code.slice(half)}`;
+}
+
 export interface TotpRowProps {
   itemId: string;
   title: string;
@@ -75,7 +87,7 @@ export function TotpRow({ itemId, title, onCopied, onFailed }: TotpRowProps) {
     return (
       <GroupedRow className="h-12">
         <FieldLabel>One-time code</FieldLabel>
-        <span className="text-body text-text-caption-aa min-w-0 flex-1 truncate">
+        <span className="text-body text-text-muted min-w-0 flex-1 truncate">
           Unavailable — the stored configuration is incomplete.
         </span>
       </GroupedRow>
@@ -89,13 +101,13 @@ export function TotpRow({ itemId, title, onCopied, onFailed }: TotpRowProps) {
         className="text-secret-lg tracking-otp text-accent shrink-0 font-mono font-semibold whitespace-nowrap"
         data-selectable
       >
-        {code.code}
+        {grouped(code.code)}
       </span>
-      {/* HO-002 sets the trough's width inline from `remaining / 30`. That is the one
+      {/* The design sets the trough's width inline from `remaining / 30`. That is the one
           genuinely continuous value in the product, and an inline style is dropped under
           the production CSP, so `Countdown` writes it through the CSSOM instead. */}
       <Countdown remaining={remaining} period={code.period} />
-      <span className="text-chip text-text-caption-aa w-6 shrink-0 tabular-nums">{remaining}s</span>
+      <span className="text-chip text-text-muted w-6 shrink-0 tabular-nums">{remaining}s</span>
       <div className="flex-1" />
       <CopyAction
         onClick={() => {

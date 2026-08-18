@@ -1,19 +1,18 @@
 /**
- * Title bar — HO-002 `components/Toolbar.tsx`.
+ * Title bar: identity, the search trigger, appearance and lock.
  *
- * ## Three departures from HO-002, each forced
+ * ## Three departures from the design, each forced
  *
- * **No traffic lights.** HO-002's `trafficLights` prop defaults to true for its browser
- * mockup, and its own README says to pass `false` in a real Tauri build and let the OS draw
- * the buttons. That also settles the open HO-002 manifest item: rendering them on Windows
- * gave the window two sets of chrome. They are gone rather than conditional, because there
- * is no platform in this product that wants them — macOS gets its native ones too.
+ * **No traffic lights.** They belong to the presentation wrapper the design is drawn
+ * inside, not to the app; on a real window the OS draws them, and rendering a second set
+ * gives the window two lots of chrome. Gone rather than conditional, because no platform
+ * in this product wants them.
  *
- * **The modifier is resolved, not typed.** HO-002 prints `⌘K`. SPEC-V1 §8 forbids
+ * **The modifier is resolved, not typed.** The design prints `⌘K`. SPEC-V1 §8 forbids
  * hardcoding a modifier; it comes from `app_platform_info`, so this reads `CtrlK` on
  * Windows.
  *
- * **The theme control is tri-state.** HO-002 toggles dark/light. CLAUDE.md §3 requires
+ * **The theme control is tri-state.** The design toggles dark/light. CLAUDE.md §3 requires
  * `system` following the OS, so the button cycles three ways and names the *stored* mode —
  * a control labelled "Dark" while following a dark OS would be lying about what is stored.
  */
@@ -91,7 +90,7 @@ export function TitleBar({ onOpenPalette, onLock, modifierKey }: TitleBarProps) 
           onClick={onOpenPalette}
           className={cn(
             'border-hairline bg-surface-panel flex h-8 w-[380px] cursor-text items-center gap-2 rounded-full border px-3',
-            'text-caption text-text-caption-aa shadow-inner-top',
+            'text-caption text-text-muted shadow-inner-top',
             'duration-moderate transition-[box-shadow,border-color]',
             'hover:border-strong hover:shadow-search-hover',
           )}

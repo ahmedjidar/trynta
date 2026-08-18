@@ -1,9 +1,8 @@
 /**
- * Small controls — HO-002 `ui/Bits.tsx`.
+ * Small controls: `CopyAction`, `Chip`, `Badge` and `Input`.
  *
- * `CopyAction`, `Chip`, `Badge` and `Input`. Each is a real `<button>` or `<input>` with a
- * focus ring, which closes the "div, needs button + ring" gap components.md records against
- * the HTML original.
+ * Each is a real `<button>` or `<input>` with a focus ring rather than a `div` with an
+ * `onClick`, which is the accessibility gap the design's own notes open with.
  */
 
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react';
@@ -29,6 +28,7 @@ export function CopyAction({ className, ...props }: ButtonHTMLAttributes<HTMLBut
 }
 
 export interface ChipProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  /** Selected chips take the accent fill and accent text. */
   selected?: boolean;
 }
 
@@ -52,21 +52,23 @@ export function Chip({ selected, className, ...props }: ChipProps) {
   );
 }
 
-export type Tone = 'accent' | 'warning' | 'danger' | 'info' | 'neutral';
+/** Which semantic ramp a badge or figure reads from. */
+export type Tone = 'accent' | 'warning' | 'danger' | 'info' | 'neutral' | 'empty';
 
 /**
- * Status pill: 2FA, risk tags.
+ * Status pill: the 2FA marker, risk tags.
  *
- * The foreground comes from `dynamic.css`'s `[data-tone]` rules, which use the a11y.css
- * `-text` aliases. HO-002 pairs the raw status colour with its subtle fill; that pair is
- * below AA on light surfaces (contrast-report findings 6 and 7).
+ * The foreground comes from the `[data-tone]` rules in `theme/dynamic.css`, so a tone
+ * cannot be spelled one way here and another way in the stat cards.
  */
 export function Badge({
   tone = 'neutral',
   size = 'md',
   children,
 }: {
+  /** Semantic ramp. */
   tone?: Tone;
+  /** `sm` is the inline 2FA marker; `md` the risk tag; `lg` the roster pill. */
   size?: 'sm' | 'md' | 'lg';
   children: ReactNode;
 }) {
@@ -81,8 +83,7 @@ export function Badge({
         tone === 'accent' && 'bg-accent-subtle',
         tone === 'warning' && 'bg-status-warning-subtle',
         tone === 'danger' && 'bg-status-danger-subtle',
-        tone === 'info' && 'bg-surface-hover',
-        tone === 'neutral' && 'bg-surface-hover',
+        (tone === 'info' || tone === 'neutral' || tone === 'empty') && 'bg-surface-hover',
       )}
     >
       {children}

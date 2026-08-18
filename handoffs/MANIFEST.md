@@ -15,8 +15,16 @@ the row-height table, the accessibility gap list, and the five contrast findings
 
 **HO-002 — partial.** Every surface it covers is ported: shell, sidebar, item list, item detail
 (with edit mode), generator, security report, settings, lock screen, command palette, new-item
-sheet. Also built, without a design because HO-002 draws neither: the updater surface and
-backup/restore, both in HO-002's own settings vocabulary — raised below as HO-003 requests.
+sheet, toast. Also built and reachable, without a design because HO-002 draws neither: the updater
+surface and backup/restore, both in HO-002's own settings vocabulary — raised below as HO-003
+requests.
+
+**The typeface is now bundled.** `--font-sans` names Manrope first and nothing shipped it, so every
+string in the product was rendering in the platform UI font — the same string measured 151.85px
+against HO-002's 164.34px at 13px, about 8% narrower, inside a layout whose fixed widths are drawn
+around Manrope's metrics. Two woff2 subsets (40 KB total, SIL OFL 1.1) are vendored under
+`public/fonts/` and declared in `src/theme/fonts.css` under `font-src 'self'`. Recorded in
+`THIRD-PARTY-NOTICES.md`.
 
 Not ported, deliberately: `PeopleView`, `ShareSheet`, and the share/roles/link rows inside the
 settings and detail surfaces. Those are SPEC-V2/V3.
@@ -55,10 +63,10 @@ spacings and durations that HO-002's config carries as literals. `@theme inline`
 `@theme` because many token names are also Tailwind's own theme names, so a plain block would be
 self-referential.
 
-The token layers were diffed first: **222 names, 222 matching values, zero differences.** HO-002
-introduced no new values, so this is a change of mechanism only.
+The token layers were diffed first and match token for token, so this is a change of mechanism
+only — no new values were introduced.
 
-### 4. Two type and geometry steps HO-002's config carries as literals
+### 4. Two type and geometry steps the config carries as literals
 
 `--text-stat` (26px/30px, the stat-card figure) and `--space-075` (3px, the segmented track inset)
 have no name in `tokens.css`. Both are declared in the theme layer rather than in a component, so
@@ -76,9 +84,10 @@ they are still in one place. Naming them in `tokens.css` would settle it.
 ### 6. Controls that would not work
 
 - **Autofill** (detail header, settings rows, "Change all with autofill", "Ask for Touch ID before
-  autofill") is SPEC-V3. The detail-header button renders disabled with the reason in its tooltip
-  because the design places two buttons there; the settings rows state the fact instead of offering
-  a switch, per §7.5's "never a toggle that does nothing".
+  autofill") is SPEC-V3. The detail-header button keeps its place and its accent treatment and does
+  the thing autofill would be a shortcut for — it copies the item's primary secret in Rust, so the
+  header still has a working primary action rather than a greyed-out one. The settings rows state
+  the fact instead of offering a switch, per §7.5's "never a toggle that does nothing".
 - **"Share anonymous diagnostics"** is banned outright by CLAUDE.md §1 and §4.7. No field exists for
   it, so nothing can wire it up later by accident.
 - **The website value is not a link.** HO-002 renders an `<a>`; navigation is blocked by
@@ -133,11 +142,17 @@ Eight things HO-001 cannot answer, recorded here rather than in `addendums/` bec
 is gitignored and none of this should die with a working copy. Each names what was shipped in the
 meantime, so nothing is silently waiting.
 
-### 1. Three contrast findings have no in-layer fix, and the shipped workaround loses meaning
+### 1. Five contrast pairs fail AA, and the app now ships them failing
 
-`contrast-report.md` findings 6 and 7, plus the light half of finding 2. Every other finding was
-resolved by aliasing to a token that already passes — see `src/theme/a11y.css`, which contains no
-values, only `var()` aliases. These three could not be:
+**This is the top of the list and it is unresolved.** An earlier pass aliased every failing pair to
+a token that already passes, in a `src/theme/a11y.css` layer. That file is **gone**: the aliasing
+was itself a visual change — the muted text tier disappeared, status labels lost their hue in light
+theme, and the focus ring stopped being the one the design specifies — and the design is the source
+of truth on appearance. `handoffs/README.md` says to raise a failing pair rather than silently
+adjust the designer's value, so the values are the handoff's and the failures are recorded here.
+
+HO-002's own README names two of these as known gaps, so this is not a discovery, it is a request
+for the values that close them:
 
 | Token | Pair | Ratio | Needs |
 | --- | --- | --- | --- |
@@ -147,16 +162,24 @@ values, only `var()` aliases. These three could not be:
 | `--status-info` | on `--surface-panel` (light) | 3.75:1 | the report proposes `#217A90` |
 | `--text-muted` | on `--surface-app` / `--surface-sidebar` (light) | 2.94:1 / 2.76:1 | the report proposes `#6E748A` |
 
-**No existing token is a dark amber, a darker red, or a darker cyan**, so there is no alias that
-keeps the hue. Shipped instead: those labels fall back to `--text-primary` in light theme. The
-status *fill* still carries the meaning, but **a "Breached" tag and a "Weak" tag now have the same
-label colour in light theme**, distinguished only by their background. That is a real loss of the
-design's intent and it is the top of this list.
+**No existing token is a dark amber, a darker red, or a darker cyan**, so no alias keeps the hue,
+and inventing one would be designing. What ships is the handoff's own value, which means:
 
-`--text-muted` is not used for text at all any more; every caption, count, section label and
-placeholder went to `--text-secondary` via `--text-caption-aa`. The consequence is that the
-three-level text hierarchy is two levels wherever it was expressed in colour. Either the darker
-light value, or a different way to express the third level.
+- In light theme a "Breached" tag, a "Weak" tag and the `--status-info` figure are all below the
+  4.5:1 body-text threshold against their own fills.
+- `--text-muted` carries every caption, count, section label, field label and placeholder at 11–12px
+  and fails AA on every surface in both themes (3.34–3.68:1 dark, 2.76–3.15:1 light). The two light
+  values are under 3:1, so they fail even the large-text allowance.
+
+The report proposes concrete replacements for all five. They need a designer's decision, not an
+engineer's: taking `#6E748A` for `--text-muted` changes the third text tier everywhere it appears.
+
+**One thing was implemented rather than aliased**, because the handoff already specifies it and its
+own code does not deliver it. HO-002's README: *"Focus is always an accent border **plus** the halo.
+The halo alone is below the 3:1 non-text threshold."* Its `[data-focus-ring]` rule gives borderless
+controls the halo alone. `src/theme/base.css` pairs a 1px `--accent` ring with the same halo, which
+is the sentence implemented — no new value, and nothing visible until a control takes keyboard
+focus.
 
 ### 2. No vault accent tokens
 
@@ -165,9 +188,10 @@ ramp. The design's sidebar shows a coloured swatch per vault; its own fixtures h
 `#2F6E8F` / `var(--accent)` / `#8A5A2B`, which are three of the identity-tile values rather than a
 named ramp.
 
-Shipped: **every vault swatch renders in `--accent`**, so all vaults look identical. Inventing seven
-colours would be designing. Either name a `--vault-accent-1…n` ramp, or state that vaults reuse
-`--identity-1…7` and how a vault maps onto one.
+Shipped: the swatch borrows `--identity-1…7`, keyed on the `vault.accent.N` token name, so vaults at
+least differ from each other. Nothing states that mapping is intended. Either name a
+`--vault-accent-1…n` ramp, or confirm that vaults reuse the identity ramp and say how a vault maps
+onto one.
 
 ### 3. Traffic-light position on Windows — **CLOSED by HO-002**
 

@@ -1,11 +1,11 @@
 /**
  * Backup and restore — SPEC-V1 §7.8.
  *
- * Neither HO-001 nor HO-002 draws this surface: HO-002's settings list has an "Import
- * from another manager" row and nothing for backups, so there is no design to match.
- * It therefore reuses HO-002's own settings vocabulary — section labels, grouped rows,
- * the raised card for a statement — rather than inventing a layout. Raised as an
- * HO-003 request in `handoffs/MANIFEST.md`.
+ * The design does not draw this surface: its settings list has an "Import from another
+ * manager" row and nothing for backups. It therefore reuses the settings vocabulary the
+ * design does define — section labels, grouped rows, the raised card for a statement —
+ * rather than inventing a layout. Raised for the next design pass in
+ * `handoffs/MANIFEST.md`.
  *
  * ## The three restore modes are the whole point of this screen
  *
@@ -120,13 +120,13 @@ export function Backup({ onBack, onDone, onFailed, onVaultReplaced }: BackupProp
         <button
           type="button"
           data-focus-ring
-          className="text-chip text-accent-text duration-quick hover:bg-surface-hover flex h-6 items-center gap-1 rounded-full px-2 font-semibold transition-colors"
+          className="text-chip text-accent duration-quick hover:bg-surface-hover flex h-6 items-center gap-1 rounded-full px-2 font-semibold transition-colors"
           onClick={onBack}
         >
           Settings
         </button>
         <h1 className="text-display tracking-display mt-2 font-bold">Backup and restore</h1>
-        <p className="text-body text-text-caption-aa mt-1 max-w-[62ch] leading-5 text-pretty">
+        <p className="text-body text-text-muted mt-1 max-w-[62ch] leading-5 text-pretty">
           A backup is a single encrypted file under a passphrase of its own — not your master
           password. It contains every item, so treat the file and its passphrase as you would the
           vault.
@@ -138,7 +138,7 @@ export function Backup({ onBack, onDone, onFailed, onVaultReplaced }: BackupProp
             <GroupedRow className="min-h-[60px] py-2.5">
               <div className="min-w-0 flex-1">
                 <div className="text-body font-semibold">Backup passphrase</div>
-                <div className="text-chip text-text-caption-aa mt-0.5 text-pretty">
+                <div className="text-chip text-text-muted mt-0.5 text-pretty">
                   At least {MIN_PASSPHRASE} characters. It cannot be recovered, and without it the
                   file is unreadable.
                 </div>
@@ -157,7 +157,7 @@ export function Backup({ onBack, onDone, onFailed, onVaultReplaced }: BackupProp
             <GroupedRow className="min-h-[60px] py-2.5">
               <div className="min-w-0 flex-1">
                 <div className="text-body font-semibold">Write the file</div>
-                <div className="text-chip text-text-caption-aa mt-0.5 text-pretty">
+                <div className="text-chip text-text-muted mt-0.5 text-pretty">
                   You choose where it goes. The app cannot read or write any other file.
                 </div>
               </div>
@@ -174,7 +174,7 @@ export function Backup({ onBack, onDone, onFailed, onVaultReplaced }: BackupProp
             <GroupedRow className="min-h-[60px] py-2.5">
               <div className="min-w-0 flex-1">
                 <div className="text-body font-semibold">The backup&rsquo;s passphrase</div>
-                <div className="text-chip text-text-caption-aa mt-0.5 text-pretty">
+                <div className="text-chip text-text-muted mt-0.5 text-pretty">
                   Whatever the file was written under. Nothing is applied until you have seen what
                   it would do.
                 </div>
@@ -193,7 +193,7 @@ export function Backup({ onBack, onDone, onFailed, onVaultReplaced }: BackupProp
             <GroupedRow className="min-h-[60px] py-2.5">
               <div className="min-w-0 flex-1">
                 <div className="text-body font-semibold">Choose a file</div>
-                <div className="text-chip text-text-caption-aa mt-0.5 text-pretty">
+                <div className="text-chip text-text-muted mt-0.5 text-pretty">
                   Opens the file, checks its signature, and reports what a restore would change.
                 </div>
               </div>
@@ -226,7 +226,7 @@ export function Backup({ onBack, onDone, onFailed, onVaultReplaced }: BackupProp
             </p>
 
             {preview.mode === 'replace' ? (
-              <p className="text-chip text-status-danger-text mt-3 flex items-start gap-1.5 leading-4 text-pretty">
+              <p className="text-chip text-status-danger mt-3 flex items-start gap-1.5 leading-4 text-pretty">
                 <Glyph name="lock" size={12} />
                 This cannot be undone. Export a backup of the current vault first if you want to
                 keep it.
@@ -265,7 +265,7 @@ export function Backup({ onBack, onDone, onFailed, onVaultReplaced }: BackupProp
           aria-labelledby="backup-facts"
         >
           <h2
-            className="text-micro tracking-label text-text-caption-aa flex h-6 items-end font-bold uppercase"
+            className="text-micro tracking-label text-text-muted flex h-6 items-end font-bold uppercase"
             id="backup-facts"
           >
             What a backup is

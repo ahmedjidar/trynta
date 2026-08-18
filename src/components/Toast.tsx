@@ -1,17 +1,16 @@
 /**
- * Toast — HO-002 `overlays/Toast.tsx`, components.md §15.
+ * Confirmation toast — components.md §15.
  *
  * `role="status"` with `aria-live="polite"`, so a copy is announced without stealing
  * focus. That matters more here than in most apps: the whole point of copying a password
  * in Rust is that the user never sees it, so the confirmation is the only feedback there
- * is. HO-002 upgraded this from the HTML original's silent div; the live region is kept
- * mounted when empty, because an `aria-live` region has to exist before the text arrives
- * or the first announcement is missed.
+ * is. The live region stays mounted when empty, because an `aria-live` region has to
+ * exist before the text arrives or the first announcement is missed.
  *
  * Auto-dismisses after 2.2s, and a new message resets the timer rather than stacking.
  *
- * The suffix is not decoration. HO-002 hardcodes "· clipboard clears in 30s"; that is a
- * security-relevant promise, so it renders the *configured* interval and is omitted
+ * The suffix is not decoration. The design hardcodes "· clipboard clears in 30s"; that is
+ * a security-relevant promise, so it renders the *configured* interval and is omitted
  * entirely when clipboard clearing is off — claiming a clear that will not happen is worse
  * than saying nothing.
  */
@@ -28,7 +27,7 @@ export interface ToastProps {
   clipboardSeconds: number | null;
 }
 
-/** HO-002 and components.md §15 agree: 2.2 seconds. */
+/** components.md §15. */
 const DISMISS_MS = 2200;
 
 export function Toast({ message, onDismiss, clipboardSeconds }: ToastProps) {

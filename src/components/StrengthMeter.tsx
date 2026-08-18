@@ -1,14 +1,13 @@
 /**
- * Strength meter — HO-002 `ui/StrengthMeter.tsx`.
+ * Four segments that fill **and collapse** left-to-right with a 60ms stagger.
  *
- * Four segments that fill **and collapse** left-to-right with a 60ms stagger. The fill is
- * a `scaleX` transform on an inner element rather than a width change, so it is composited
- * and the collapse mirrors the fill exactly.
+ * The fill is a `scaleX` transform on an inner element rather than a width change, so it
+ * is composited and the collapse mirrors the fill exactly.
  *
- * HO-002 sets the transform, colour and per-segment delay inline. Under the production CSP
- * (`style-src 'self'`) those attributes are dropped and the meter would render permanently
- * empty in a packaged build, so the score is a data attribute and `theme/dynamic.css`
- * carries the rules.
+ * The design sets the transform, colour and per-segment delay inline. Under the production
+ * CSP (`style-src 'self'`) those attributes are dropped and the meter would render
+ * permanently empty in a packaged build, so the score is a data attribute and
+ * `theme/dynamic.css` carries the rules.
  */
 
 import { cn } from '../lib/cn';
@@ -18,6 +17,7 @@ export interface StrengthMeterProps {
   score: number;
   /** Accessible summary, e.g. "Strong". Empty when there is nothing to describe. */
   label: string;
+  /** Extra classes, for the generator's fixed-width variant. */
   className?: string;
 }
 

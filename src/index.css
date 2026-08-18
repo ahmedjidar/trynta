@@ -2,22 +2,21 @@
  * Entry stylesheet. Order matters:
  *   1. Tailwind, which brings preflight and the utility engine
  *   2. the token layer — the ONLY place raw values may appear
- *   3. contrast aliases, which need the tokens to alias
+ *   3. the bundled typeface the token layer names
  *   4. the Tailwind theme layer, which maps utility names onto those tokens
  *   5. element base, then the few rules a utility cannot express
  *
- * There are no per-surface stylesheets any more. HO-002 is a React + Tailwind
- * implementation and supersedes HO-001 for visual fidelity, so each surface carries its
- * own utilities. What is left in CSS is only what utilities cannot express: keyframes,
- * the focus-ring contract, scrollbars, and the data-attribute rules that replace
- * HO-002's inline styles — see `src/theme/dynamic.css` for why those cannot be inline.
+ * There are no per-surface stylesheets. Each surface carries its own utilities, and
+ * what is left in CSS is only what a utility cannot say: keyframes, the focus-ring
+ * contract, scrollbars, and the data-attribute rules that stand in for inline styles —
+ * see `theme/dynamic.css` for why those cannot be inline.
  *
  * Zero hardcoded colour anywhere below the token layer. `pnpm check:tokens` enforces it
  * and exempts `src/theme/tokens.css` alone.
  */
 @import 'tailwindcss';
 @import './theme/tokens.css';
-@import './theme/a11y.css';
+@import './theme/fonts.css';
 @import './theme/tailwind.css';
 @import './theme/base.css';
 @import './theme/dynamic.css';

@@ -1,5 +1,5 @@
 /**
- * Item list behaviour — SPEC-V1 §7.1, and the accessibility gaps HO-001 lists.
+ * Item list behaviour — SPEC-V1 §7.1, and the accessibility gaps the design lists.
  *
  * These test the things the handoff called out as *not* implemented in the prototype,
  * because those are the ones a visual review will not catch:
@@ -205,7 +205,7 @@ describe('item list', () => {
 
   it('marks the identity tile decorative when the title is already visible', () => {
     setup();
-    // The tile sits next to the item name in every HO-001 composition, so announcing
+    // The tile sits next to the item name in every composition, so announcing
     // it would read the name twice.
     expect(screen.queryByRole('img', { name: 'Acme' })).toBeNull();
     expect(screen.getByText('Acme')).toBeInTheDocument();

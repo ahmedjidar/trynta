@@ -1,35 +1,36 @@
 /**
- * Item detail — HO-002 `components/ItemDetail.tsx`, SPEC-V1 §7.1, §7.2.
+ * Item detail — SPEC-V1 §7.1, §7.2.
+ *
+ * Header, field group, meta cards, notes. The field order is the design's: the identifier
+ * first, then the password with its strength directly under it, then the one-time code,
+ * and the website last.
  *
  * ## Edit mode
  *
- * HO-002's Edit button swaps the Username row for an input and the button's label for
- * "Done". The password row is untouched in edit mode, which is the right shape and not an
- * omission: a form pre-filled with the stored password would be a second plaintext path out
- * of Rust, and §4.4 allows exactly one. So edit mode changes **metadata only** — title,
- * username, website, notes — and `item_edit_meta` carries the sealed secret across inside
- * Rust. Setting a new password is a separate, explicit action.
+ * The Edit button swaps the editable rows for inputs and its own label for "Done". The
+ * password row is untouched, which is the design's shape and not an omission: a form
+ * pre-filled with the stored password would be a second plaintext path out of Rust, and
+ * §4.4 allows exactly one. So edit mode changes **metadata only** — title, username,
+ * website, notes — and `item_edit_meta` carries the sealed secret across inside Rust.
+ * Setting a new password is a separate, explicit action.
  *
- * ## Autofill
+ * ## The header's primary action
  *
- * HO-002's second header button fires `flash('Autofilled in Safari — …')`. Autofill is
- * SPEC-V3 and there is nothing behind it, so it renders **disabled** with the reason in its
- * tooltip rather than being dropped: the design puts two buttons here, and §7.5's rule is
- * against a control that *appears* to work.
- *
- * ## What is not here
- *
- * HO-002's meta grid pairs "Shared with" — person chips and an "+ Invite" affordance — with
- * "Activity". Sharing is SPEC-V2, so Activity spans the grid alone.
+ * The design's second header button is Autofill. Autofill is SPEC-V3 and there is nothing
+ * behind it, and §7.5 is explicit that a control which appears to work and does not is
+ * worse than none. The button keeps its place and its treatment and does the thing
+ * autofill would be a shortcut for: it copies the item's primary secret, in Rust, without
+ * the value entering the webview.
  *
  * ## Reveal
  *
- * The revealed value is derived from held state tagged with the item id rather than reset in
- * an effect, which makes §4.4's "clear on navigation" structural: there is no frame in which
- * the previous item's password is on screen beside the new item's title.
+ * The revealed value is derived from held state tagged with the item id rather than reset
+ * in an effect, which makes §4.4's "clear on navigation" structural: there is no frame in
+ * which the previous item's password is on screen beside the new item's title.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 
 import { Button } from '../../components/Button';
 import { CopyAction, Input } from '../../components/Bits';
@@ -46,9 +47,16 @@ import { TotpRow } from './TotpRow';
 import { useNavigation } from '../../app/navigation';
 import { cn } from '../../lib/cn';
 import { itemCopyField, itemEditMeta, itemRevealField } from '../../ipc';
-import type { ItemDetailDto, ItemSummaryDto, MetaEditsInput, SecretFieldDto } from '../../ipc';
+import type {
+  ItemDetailDto,
+  ItemSummaryDto,
+  LabelledValue,
+  MetaEditsInput,
+  SecretFieldDto,
+  SecretPresence,
+} from '../../ipc';
 
-/** HO-002 masks with `'•'.repeat(max(10, length))`; the length is not a hint worth giving. */
+/** Masked to a fixed width: the stored length is not a hint worth giving away. */
 const MASK = '•'.repeat(16);
 
 /** Human label per secret field, in the order components.md lists them. */
@@ -62,6 +70,16 @@ const SECRET_LABELS: Record<string, string> = {
   custom: 'Hidden field',
 };
 
+/**
+ * The primary secret per item kind (§7.1): what ⌘C copies without opening the item, and
+ * what the header's copy action reaches for.
+ */
+const PRIMARY_SECRET: Record<string, { field: SecretFieldDto; label: string }> = {
+  login: { field: { field: 'password' }, label: 'Copy password' },
+  card: { field: { field: 'cardNumber' }, label: 'Copy number' },
+  identity: { field: { field: 'documentNumber' }, label: 'Copy number' },
+};
+
 /** A stable key for a secret field, including the custom index. */
 function fieldKey(field: SecretFieldDto): string {
   return field.field === 'custom' ? `custom:${String(field.index)}` : field.field;
@@ -70,7 +88,7 @@ function fieldKey(field: SecretFieldDto): string {
 /** Which of the item's own labelled fields edit mode can write. */
 const EDITABLE = new Set(['Username', 'Website']);
 
-/** Tone for the strength label, matching HO-002's `strengthColor()` thresholds. */
+/** Tone for the strength label, on the design's own thresholds. */
 function strengthTone(band: number): string {
   if (band === 0) return 'empty';
   if (band <= 1) return 'danger';
@@ -124,9 +142,8 @@ export function ItemDetail({
     };
   }, []);
 
-  // Escape leaves edit mode, then closes the pane. HO-002 binds one global handler that
-  // closes the palette, leaves edit mode and closes the sheet together; scoping it here
-  // means it cannot dismiss an overlay that happens to be open over this pane.
+  // Escape leaves edit mode, then closes the pane. Scoped here rather than global, so it
+  // cannot dismiss an overlay that happens to be open over this pane.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
@@ -214,7 +231,36 @@ export function ItemDetail({
     );
   }
 
-  const present = detail.secrets.filter((s) => s.present);
+  /**
+   * The design's row order: identifier, password, strength, one-time code, website.
+   *
+   * Rust emits the item's own fields in its own order and the secrets separately, so the
+   * two are interleaved here rather than rendered one list after the other — a password
+   * three rows below the strength that describes it is a different composition.
+   */
+  const rows = useMemo(() => {
+    const present = detail.secrets.filter((s) => s.present);
+    const secretLabels = new Set(present.map((s) => SECRET_LABELS[s.field.field]));
+
+    const leading: LabelledValue[] = [];
+    const trailing: LabelledValue[] = [];
+    for (const field of detail.fields) {
+      // A card's last four digits arrive as a non-secret field *and* as the masked
+      // secret, so rendering both puts two "Card number" rows in the group. The secret
+      // row carries Reveal and Copy, so it is the one that survives.
+      if (secretLabels.has(field.label)) continue;
+      (field.label === 'Website' ? trailing : leading).push(field);
+    }
+
+    const password = present.find((s) => s.field.field === 'password');
+    const totp = present.find((s) => s.field.field === 'totpSecret');
+    const others = present.filter((s) => s !== password && s !== totp);
+    return { leading, trailing, password, totp, others, present };
+  }, [detail.fields, detail.secrets]);
+
+  const primary = PRIMARY_SECRET[detail.kind];
+  const canCopyPrimary =
+    primary !== undefined && rows.present.some((s) => s.field.field === primary.field.field);
   const subtitle = [summary.subtitle, vaultName].filter((part) => part).join(' · ');
 
   return (
@@ -235,7 +281,7 @@ export function ItemDetail({
             ) : (
               <h1 className="text-display tracking-display truncate font-bold">{detail.title}</h1>
             )}
-            <p className="text-body text-text-caption-aa mt-0.5 truncate">{subtitle}</p>
+            <p className="text-body text-text-muted mt-0.5 truncate">{subtitle}</p>
           </div>
           <div className="flex shrink-0 gap-2">
             <Button
@@ -248,123 +294,89 @@ export function ItemDetail({
             >
               {editing ? (saving ? 'Saving…' : 'Done') : 'Edit'}
             </Button>
-            <Button disabled title="Autofill arrives in a later version">
-              Autofill
-            </Button>
+            {primary && canCopyPrimary ? (
+              <Button
+                onClick={() => {
+                  copy(primary.field, SECRET_LABELS[primary.field.field] ?? 'Value');
+                }}
+              >
+                {primary.label}
+              </Button>
+            ) : null}
           </div>
         </header>
 
         <GroupedList className="mt-6">
-          {/* The item's own non-secret fields — username, cardholder, expiry, whichever
-              the kind has. These arrive with the list index, never a secret among them. */}
-          {detail.fields.map((field) => (
-            <GroupedRow key={field.label} className="h-12">
-              <FieldLabel>{field.label}</FieldLabel>
-              {editing && EDITABLE.has(field.label) ? (
-                <Input
-                  aria-label={field.label}
-                  className="h-7 flex-1"
-                  value={draft[field.label] ?? field.value}
-                  onChange={(event) => {
-                    setDraft((prev) => ({ ...prev, [field.label]: event.target.value }));
-                  }}
-                />
-              ) : (
-                <div
-                  className={cn(
-                    'text-body min-w-0 flex-1 truncate',
-                    field.label === 'Website' ? 'text-accent-text' : 'font-mono',
-                  )}
-                  data-selectable
-                >
-                  {/* HO-002 renders the website as an `<a>`. `default-src 'self'` means
-                      an external href cannot navigate, and opening the OS browser needs
-                      `shell:allow-open`, which this app does not grant — so it would be a
-                      link that does nothing. Selectable text instead. */}
-                  {field.value}
-                </div>
-              )}
-              <CopyAction
-                onClick={() => {
-                  navigator.clipboard.writeText(field.value).then(
-                    () => {
-                      onCopied(`${field.label} copied`);
-                    },
-                    () => {
-                      onFailed('Could not copy');
-                    },
-                  );
-                }}
-              >
-                Copy
-              </CopyAction>
-            </GroupedRow>
+          {rows.leading.map((field) => (
+            <FieldRow
+              key={field.label}
+              field={field}
+              editing={editing}
+              draft={draft}
+              setDraft={setDraft}
+              onCopied={onCopied}
+              onFailed={onFailed}
+            />
           ))}
 
-          {present.map((secret) => {
-            const key = fieldKey(secret.field);
-            const label = SECRET_LABELS[secret.field.field] ?? 'Hidden field';
-            const shown = revealed?.key === key;
+          {rows.password ? (
+            <SecretRow
+              secret={rows.password}
+              revealedKey={revealed?.key ?? null}
+              revealedValue={revealed?.value ?? ''}
+              onToggle={toggleReveal}
+              onCopy={copy}
+            />
+          ) : null}
 
-            if (secret.field.field === 'totpSecret') {
-              return (
-                <TotpRow
-                  key={key}
-                  itemId={detail.id}
-                  title={detail.title}
-                  onCopied={onCopied}
-                  onFailed={onFailed}
-                />
-              );
-            }
-
-            return (
-              <GroupedRow key={key} className="h-12">
-                <FieldLabel>{label}</FieldLabel>
-                <div
-                  className={cn(
-                    'text-body min-w-0 flex-1 overflow-hidden font-mono whitespace-nowrap',
-                    shown ? 'tracking-shown' : 'tracking-masked',
-                  )}
-                  data-selectable={shown ? '' : undefined}
-                >
-                  {shown ? revealed.value : MASK}
-                </div>
-                <CopyAction
-                  onClick={() => {
-                    toggleReveal(secret.field);
-                  }}
-                >
-                  {shown ? 'Hide' : 'Reveal'}
-                </CopyAction>
-                <CopyAction
-                  onClick={() => {
-                    copy(secret.field, label);
-                  }}
-                >
-                  Copy
-                </CopyAction>
-              </GroupedRow>
-            );
-          })}
-
-          {/* Strength, for a login only: a card PIN has no crack-time band. */}
-          {present.some((s) => s.field.field === 'password') ? (
+          {rows.password ? (
             <GroupedRow className="h-12">
               <FieldLabel>Strength</FieldLabel>
               <StrengthMeter score={strength.band} label={strength.label} />
               <div
-                className="text-chip w-[68px] shrink-0 text-right font-bold"
+                className="text-chip min-w-[68px] shrink-0 text-right font-bold whitespace-nowrap"
                 data-tone={strengthTone(strength.band)}
               >
                 {strength.label}
               </div>
             </GroupedRow>
           ) : null}
+
+          {rows.totp ? (
+            <TotpRow
+              itemId={detail.id}
+              title={detail.title}
+              onCopied={onCopied}
+              onFailed={onFailed}
+            />
+          ) : null}
+
+          {rows.others.map((secret) => (
+            <SecretRow
+              key={fieldKey(secret.field)}
+              secret={secret}
+              revealedKey={revealed?.key ?? null}
+              revealedValue={revealed?.value ?? ''}
+              onToggle={toggleReveal}
+              onCopy={copy}
+            />
+          ))}
+
+          {rows.trailing.map((field) => (
+            <FieldRow
+              key={field.label}
+              field={field}
+              editing={editing}
+              draft={draft}
+              setDraft={setDraft}
+              onCopied={onCopied}
+              onFailed={onFailed}
+            />
+          ))}
         </GroupedList>
 
         <div className="mt-4 grid grid-cols-2 gap-4">
-          {/* HO-002 pairs Activity with "Shared with". Sharing is SPEC-V2, so Activity
+          {/* The design pairs Activity with "Shared with". Sharing is SPEC-V2, so Activity
               spans the grid rather than leaving an empty cell or an invented neighbour. */}
           <Card className="col-span-2 min-h-24">
             <SectionLabel className="h-auto">Activity</SectionLabel>
@@ -398,5 +410,105 @@ export function ItemDetail({
         </Card>
       </div>
     </section>
+  );
+}
+
+interface FieldRowProps {
+  field: LabelledValue;
+  editing: boolean;
+  draft: Record<string, string>;
+  setDraft: Dispatch<SetStateAction<Record<string, string>>>;
+  onCopied: (what: string) => void;
+  onFailed: (message: string) => void;
+}
+
+/** One of the item's own non-secret fields. Never a secret among them. */
+function FieldRow({ field, editing, draft, setDraft, onCopied, onFailed }: FieldRowProps) {
+  return (
+    <GroupedRow className="h-12">
+      <FieldLabel>{field.label}</FieldLabel>
+      {editing && EDITABLE.has(field.label) ? (
+        <Input
+          aria-label={field.label}
+          className="h-7 flex-1"
+          value={draft[field.label] ?? field.value}
+          onChange={(event) => {
+            setDraft((prev) => ({ ...prev, [field.label]: event.target.value }));
+          }}
+        />
+      ) : (
+        <div
+          className={cn(
+            'text-body min-w-0 flex-1 truncate',
+            field.label === 'Website' ? 'text-accent' : 'font-mono',
+          )}
+          data-selectable
+        >
+          {/* The design renders the website as an `<a>`. `default-src 'self'` means an
+              external href cannot navigate, and opening the OS browser needs
+              `shell:allow-open`, which this app does not grant — so it would be a link
+              that does nothing. Selectable text in the accent instead. */}
+          {field.value}
+        </div>
+      )}
+      <CopyAction
+        onClick={() => {
+          navigator.clipboard.writeText(field.value).then(
+            () => {
+              onCopied(`${field.label} copied`);
+            },
+            () => {
+              onFailed('Could not copy');
+            },
+          );
+        }}
+      >
+        Copy
+      </CopyAction>
+    </GroupedRow>
+  );
+}
+
+interface SecretRowProps {
+  secret: SecretPresence;
+  revealedKey: string | null;
+  revealedValue: string;
+  onToggle: (field: SecretFieldDto) => void;
+  onCopy: (field: SecretFieldDto, what: string) => void;
+}
+
+/** A masked secret with Reveal and Copy. The value is only ever held by the caller. */
+function SecretRow({ secret, revealedKey, revealedValue, onToggle, onCopy }: SecretRowProps) {
+  const key = fieldKey(secret.field);
+  const label = SECRET_LABELS[secret.field.field] ?? 'Hidden field';
+  const shown = revealedKey === key;
+
+  return (
+    <GroupedRow className="h-12">
+      <FieldLabel>{label}</FieldLabel>
+      <div
+        className={cn(
+          'text-body min-w-0 flex-1 overflow-hidden font-mono whitespace-nowrap',
+          shown ? 'tracking-shown' : 'tracking-masked',
+        )}
+        data-selectable={shown ? '' : undefined}
+      >
+        {shown ? revealedValue : MASK}
+      </div>
+      <CopyAction
+        onClick={() => {
+          onToggle(secret.field);
+        }}
+      >
+        {shown ? 'Hide' : 'Reveal'}
+      </CopyAction>
+      <CopyAction
+        onClick={() => {
+          onCopy(secret.field, label);
+        }}
+      >
+        Copy
+      </CopyAction>
+    </GroupedRow>
   );
 }

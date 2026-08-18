@@ -3,7 +3,7 @@
  *
  * Deliberately not a router. There are no URLs in a desktop app, nothing is
  * linkable, and back/forward would be inventing an interaction the design does not
- * have (HO-001 has a sidebar, not history). A store is the honest model: a small
+ * have — the design has a sidebar, not history. A store is the honest model: a small
  * closed set of surfaces plus the list query, colocated because the sidebar changes
  * both at once.
  */
@@ -13,7 +13,7 @@ import { create } from 'zustand';
 import type { GlyphName } from '../components/Glyph';
 import type { ItemKindDto, ItemSourceDto, QuickFiltersDto, SortOrderDto } from '../ipc';
 
-/** The surfaces HO-001 covers. */
+/** The surfaces the design covers. */
 export type Surface = 'vault' | 'generator' | 'security' | 'settings';
 
 /** No quick filter applied. */

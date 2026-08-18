@@ -7,11 +7,12 @@ directory, which carry their own terms.
 Software dependencies are covered separately by `cargo deny check licenses` and the allow-list in
 `deny.toml`; this file is for **data and assets** shipped inside the binary.
 
-> Status: **one section is live** — the Mozilla CA root store, compiled in since run 2. Everything
-> else is a placeholder for an asset that has not been vendored, and **an asset may not ship before
-> its licence line is filled in.** ADD-001 and SPEC-V1 §7.4 both make that a precondition, not a
-> follow-up. A section headed "run 3" with a blank licence field is not bundled; check the
-> dependency or the assets directory rather than trusting the heading.
+> Status: **two sections are live** — the Mozilla CA root store, compiled in since run 2, and the
+> Manrope typeface, vendored in run 3. Everything else is a placeholder for an asset that has not
+> been vendored, and **an asset may not ship before its licence line is filled in.** ADD-001 and
+> SPEC-V1 §7.4 both make that a precondition, not a follow-up. A section headed "run 3" with a
+> blank licence field is not bundled; check the dependency or the assets directory rather than
+> trusting the heading.
 
 ---
 
@@ -70,6 +71,31 @@ credited or penalised for a second factor we have no basis to claim exists. Gues
 the domain was considered and rejected: it would flag real items on no evidence.
 `src-tauri/tests/report_two_factor.rs` pins that path with the arithmetic written out, so shipping a
 directory later cannot silently change every score without a failing test.
+
+## Manrope — run 3, live
+
+The interface typeface. The design's token layer names it first in `--font-sans`, and the layout's
+fixed widths — the 96px field-label column, the 380px search pill, the 320px list column — are drawn
+around its metrics. Without the file the stack falls through to the platform UI font, which renders
+the same string about 8% narrower.
+
+| Field   | Value                                                                                       |
+| ------- | ------------------------------------------------------------------------------------------- |
+| Source  | Manrope by Mikhail Sharanda — https://github.com/sharanda/manrope                           |
+| Licence | SIL Open Font License 1.1 (redistribution permitted, including embedded in software)        |
+| Path    | `public/fonts/manrope-latin.woff2`, `public/fonts/manrope-latin-ext.woff2` → `dist/fonts/`  |
+| Faces   | One variable file per subset, weight axis 200–800, covering the whole 500/600/700/800 scale |
+
+**Bundled, never fetched.** The `@font-face` rules in `src/theme/fonts.css` point at
+`/fonts/…`, which is what the production CSP's `font-src 'self'` permits. A webfont pulled from a
+CDN would be an outbound request on every launch — a fourth permitted request, which CLAUDE.md §4.7
+does not allow, and the same class of leak ADD-001 exists to prevent, arriving through the typeface
+instead of the icons.
+
+Under the OFL the font may be embedded and redistributed; the Reserved Font Name clause means a
+_modified_ copy may not keep the name Manrope. These files are unmodified subsets as published, so
+the name stands. If they are ever re-subset or hinted differently, rename the family here and in the
+token layer.
 
 ## Mozilla CA root store — run 2 onward
 

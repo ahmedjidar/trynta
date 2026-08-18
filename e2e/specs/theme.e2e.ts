@@ -48,9 +48,26 @@ describe('AC17 — dark and light both render', () => {
   it('renders the window shell', async () => {
     // The window is created hidden and revealed after the theme resolves. If this
     // fails, nothing called `show()` — which is exactly the bug that shipped once.
-    await expect($('.window')).toBeExisting();
-    await expect($('.titlebar')).toBeExisting();
-    await expect($('.sidebar')).toBeExisting();
+    //
+    // Asserted on the mount point and on whichever surface the app decided to draw,
+    // rather than on a class name. The app is locked at launch, so the sidebar is
+    // deliberately *not* mounted (§4.9: lock is real, there is nothing behind it) —
+    // and a selector that can never match is a test that can never fail for the right
+    // reason.
+    await expect($('#root')).toBeExisting();
+
+    const mounted = await browser.execute(() => {
+      const root = document.getElementById('root');
+      const locked = document.querySelector('[role="dialog"][aria-modal="true"]') !== null;
+      const unlocked = document.querySelector('nav[aria-label="Sources"]') !== null;
+      return { children: root?.childElementCount ?? 0, locked, unlocked };
+    });
+
+    // React mounted something.
+    expect(mounted.children).toBeGreaterThan(0);
+    // And it is one of the two real surfaces, not a blank div. A packaged build that
+    // pointed at `devUrl` with no dev server running would fail here.
+    expect(mounted.locked || mounted.unlocked).toBe(true);
   });
 
   it('resolves the dark palette to a real colour', async () => {

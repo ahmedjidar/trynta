@@ -1,20 +1,20 @@
 /**
- * New-item sheet — HO-002 `overlays/NewItemSheet.tsx`, SPEC-V1 §7.1.
+ * New-item sheet — SPEC-V1 §7.1.
  *
  * Header, 4-up kind segments that swap the field set, a 64px live preview tile, the name
  * input, grouped field rows, vault chips, notes, and a footer whose copy states where the
  * item will be saved with Save gated until it has a name.
  *
- * ## Four departures from HO-002
+ * ## Four departures from the design
  *
- * - **The subtitle.** HO-002 reads "Encrypted on this Mac before it syncs." ADD-005 makes
+ * - **The subtitle.** The design reads "Encrypted on this Mac before it syncs." ADD-005 makes
  *   Windows the platform, and sync is SPEC-V3 — there is nothing to sync to, so the
  *   sentence promises a feature that does not exist. Rewritten to what actually happens.
- * - **The preview tile has no favicon.** HO-002 crossfades a Google favicon over the
+ * - **The preview tile has no favicon.** The design crossfades a favicon-service icon over the
  *   monogram once the domain parses. ADD-001 forbids the request; the monogram is the tile.
  * - **"Ask for Touch ID before autofill" is not built.** Autofill is V3 (§7.5), there is no
  *   field to store it against, and §7.5 forbids a toggle that does nothing.
- * - **Generate calls Rust.** HO-002 generates with `Math.random()` in `lib/utils.ts`. A
+ * - **Generate calls Rust.** The design generates with `Math.random()`. A
  *   password manager's generator is a CSPRNG in Rust (§7.3); the button calls
  *   `generator_password`.
  *
@@ -36,7 +36,7 @@ import { StrengthMeter } from '../../components/StrengthMeter';
 import { generatorPassword, itemUpsert, passwordStrength } from '../../ipc';
 import type { ItemBodyInput, ItemKindDto, StrengthDto, VaultSummaryDto } from '../../ipc';
 
-/** The four kinds HO-002's segmented control offers, in its order and with its glyphs. */
+/** The four kinds the segmented control offers, in the design's order and glyphs. */
 const KINDS: readonly Segment<ItemKindDto>[] = [
   { id: 'login', name: 'Login', icon: <Glyph name="login" size={14} /> },
   { id: 'secureNote', name: 'Note', icon: <Glyph name="note" size={14} /> },
@@ -44,7 +44,7 @@ const KINDS: readonly Segment<ItemKindDto>[] = [
   { id: 'identity', name: 'Identity', icon: <Glyph name="identity" size={14} /> },
 ];
 
-/** Placeholder per kind for the name field, as HO-002's `PLACEHOLDER` map does. */
+/** Placeholder per kind for the name field, as the design's own map does. */
 const NAME_PLACEHOLDER: Record<ItemKindDto, string> = {
   login: 'Northwind Mail',
   secureNote: 'Office Wi-Fi',
@@ -81,7 +81,7 @@ interface FieldSpec {
   mono?: boolean;
 }
 
-/** The field set per kind — HO-002's "swaps the field set below". */
+/** The field set per kind — the design's "swaps the field set below". */
 const FIELDS: Record<ItemKindDto, readonly FieldSpec[]> = {
   login: [
     { key: 'username', label: 'Username', placeholder: 'name@company.com' },
@@ -242,7 +242,7 @@ export function NewItemSheet({
               icon={{ kind: 'monogram', initials: initials === '' ? '+' : initials, tone: 1 }}
             />
             <label className="min-w-0 flex-1">
-              <span className="text-micro tracking-label text-text-caption-aa font-bold uppercase">
+              <span className="text-micro tracking-label text-text-muted font-bold uppercase">
                 Item name
               </span>
               <input
@@ -269,7 +269,7 @@ export function NewItemSheet({
                 <FieldLabel>{spec.label}</FieldLabel>
                 <Input
                   aria-label={spec.label}
-                  // Not `type="password"`: HO-002 draws these in the clear. The user typed
+                  // Not `type="password"`: the design draws these in the clear. The user typed
                   // it and is checking it; masking hides a typo in the one field where a
                   // typo is unrecoverable.
                   className={spec.mono ? 'flex-1 font-mono' : 'flex-1'}
@@ -326,7 +326,7 @@ export function NewItemSheet({
             </GroupedRow>
 
             <GroupedRow className="min-h-[52px] items-start py-3.5">
-              <span className="text-caption text-text-caption-aa w-24 shrink-0 leading-6 font-medium">
+              <span className="text-caption text-text-muted w-24 shrink-0 leading-6 font-medium">
                 Notes
               </span>
               <textarea
@@ -363,7 +363,7 @@ export function NewItemSheet({
   );
 }
 
-/** Tone for the strength label, matching HO-002's `strengthColor()` thresholds. */
+/** Tone for the strength label, on the design's own thresholds. */
 function strengthTone(band: number): string {
   if (band === 0) return 'empty';
   if (band <= 1) return 'danger';

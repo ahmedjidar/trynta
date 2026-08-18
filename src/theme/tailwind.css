@@ -1,14 +1,13 @@
 /*
  * Tailwind theme layer — the utility vocabulary, resolved through the token layer.
  *
- * HO-002 ships a Tailwind **v3** `tailwind.config.ts`. This repo is on Tailwind **v4**
+ * The design ships a Tailwind **v3** `tailwind.config.ts`. This repo is on Tailwind **v4**
  * (`@tailwindcss/vite`), where the theme is declared in CSS. This is that config,
  * translated: same utility names, same values, but every one points at a custom property
  * in `tokens.css` rather than carrying a literal.
  *
- * The values are identical. `tokens.css` and HO-002's `tokens.css` were diffed token by
- * token — 222 names, 222 matching values, zero differences — so this is a change of
- * mechanism, not of appearance.
+ * The values are identical to the handoff's, token for token, so this is a change of
+ * mechanism rather than of appearance.
  *
  * ## Why `@theme inline` and not `@theme`
  *
@@ -23,9 +22,9 @@
  *
  * Two things deliberately absent:
  *
- * - **No `--color-white`/`--color-black`.** HO-002 uses `text-white` for identity-tile
- *   monograms; the token for that is `--identity-text`. `check:tokens` treats a bare
- *   colour keyword as the hardcoded value it is.
+ * - **No `--color-white`/`--color-black`.** Identity-tile monograms are white in the
+ *   design; the token for that is `--identity-text`. `check:tokens` treats a bare colour
+ *   keyword as the hardcoded value it is.
  * - **No spacing overrides.** Tailwind's default scale is 4px-based and `--space-1…6` are
  *   4/8/12/16/20/24 — the same numbers, so `p-5` and `var(--space-5)` are the same 20px
  *   without a second name for one scale.
@@ -49,9 +48,6 @@
   --color-text-muted: var(--text-muted);
   --color-text-on-accent: var(--text-on-accent);
   --color-text-inverse: var(--text-inverse);
-  /* The AA-safe alias, for anything that is body text rather than decoration:
-     a11y.css finding 2 — `--text-muted` fails AA on every surface, both themes. */
-  --color-text-caption-aa: var(--text-caption-aa);
   --color-identity-text: var(--identity-text);
 
   --color-hairline: var(--border-hairline);
@@ -60,16 +56,12 @@
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-accent-subtle: var(--accent-subtle);
-  --color-accent-text: var(--accent-text);
 
   --color-status-warning: var(--status-warning);
   --color-status-warning-subtle: var(--status-warning-subtle);
-  --color-status-warning-text: var(--status-warning-text);
   --color-status-danger: var(--status-danger);
   --color-status-danger-subtle: var(--status-danger-subtle);
-  --color-status-danger-text: var(--status-danger-text);
   --color-status-info: var(--status-info);
-  --color-status-info-text: var(--status-info-text);
 
   --color-window-close: var(--window-close);
   --color-window-minimise: var(--window-minimise);
@@ -118,9 +110,9 @@
   --text-metric: var(--text-metric);
   --text-metric--line-height: var(--leading-metric);
 
-  /* HO-002's config declares the stat-card figure as a literal 26px/30px and the
-     token layer has no name for that step. Kept here in the theme layer rather
-     than in a component, so it is still one place — recorded in MANIFEST.md. */
+  /* The stat-card figure is a literal 26px/30px in the design and the token layer
+     has no name for that step. Kept here in the theme layer rather than in a
+     component, so it is still one place — recorded in MANIFEST.md. */
   --text-stat: 26px;
   --text-stat--line-height: 30px;
 
@@ -166,10 +158,10 @@
   --shadow-accent-glow-lg: var(--shadow-accent-glow-lg);
   --shadow-focus-ring: var(--shadow-focus-ring);
   --shadow-card: var(--shadow-card-outline), var(--shadow-lift);
-  /* HO-002's `boxShadow.tile`, verbatim apart from reading our token name. */
+  /* The design's `boxShadow.tile`, verbatim apart from reading our token name. */
   --shadow-tile: inset 0 0 0 0.5px var(--border-strong), var(--shadow-lift);
-  /* Inline in HO-002's ItemList (`shadow-[0_2px_8px_var(--accent-subtle)]`) and
-     its Toolbar hover (`0 0 0 4px`). Named here so no component carries geometry. */
+  /* Inline in the design's item-list add button (`0 2px 8px`) and its toolbar search
+     hover (`0 0 0 4px`). Named here so no component carries geometry. */
   --shadow-add: 0 2px 8px var(--accent-subtle);
   --shadow-search-hover: 0 0 0 4px var(--accent-subtle);
 
@@ -184,7 +176,7 @@
 }
 
 /*
- * HO-002 declares these three in its Tailwind config's `keyframes`. In v4 they are
+ * The design declares these three in its Tailwind config's `keyframes`. In v4 they are
  * ordinary CSS, which is where they belong — the `prefers-reduced-motion` block in
  * base.css can then reach them without knowing they came from a config file.
  */
@@ -258,7 +250,7 @@
 /*
  * Vibrancy and veil. The tokens hold complete filter lists (`saturate(180%) blur(28px)`),
  * not lengths, so they cannot feed Tailwind's `--blur-*` namespace — which is also why
- * HO-002 needed two config entries plus a `backdrop-saturate` scale for one effect.
+ * the v3 config needed two entries plus a `backdrop-saturate` scale for one effect.
  */
 @utility vibrancy {
   backdrop-filter: var(--blur-vibrancy);

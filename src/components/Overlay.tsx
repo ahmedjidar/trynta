@@ -1,18 +1,16 @@
 /**
- * Shared overlay chrome — HO-002 `overlays/Overlay.tsx`.
+ * Shared overlay chrome: blurred scrim, click-outside to dismiss, spring entry.
  *
- * Blurred scrim, click-outside to dismiss, spring entry. This is a scrim and a card: it is
- * **not** a window, and it must never grow traffic lights or a desk background. HO-002's
- * README calls nesting a second window inside the first "the most common error when
- * rebuilding this design, and it is always wrong."
+ * This is a scrim and a card. It is **not** a window, and it must never grow traffic
+ * lights, a desk background or a second border radius around the app — nesting a window
+ * inside the window is the one mistake this design invites and it is always wrong.
  *
  * ## Escape, and where focus goes
  *
- * HO-002 handles Escape in a single global key handler in `useKeyring`. Here each overlay
- * owns its own, because they are separate components mounted independently and a global
- * handler would close whichever one it thought was open. The scrim is `role="presentation"`
- * with the dialog inside it carrying `aria-modal`, which is what makes the click-outside
- * target invisible to assistive technology.
+ * Each overlay owns its own Escape handler rather than sharing a global one: they mount
+ * independently, and a single global handler closes whichever one it believes is open.
+ * The scrim is `role="presentation"` with the dialog inside it carrying `aria-modal`,
+ * which is what keeps the click-outside target invisible to assistive technology.
  */
 
 import { useEffect, useRef } from 'react';
@@ -21,6 +19,7 @@ import type { KeyboardEvent, ReactNode } from 'react';
 import { cn } from '../lib/cn';
 
 export interface OverlayProps {
+  /** Called on Escape or a click on the scrim. */
   onDismiss: () => void;
   /** Accessible name for the dialog. */
   label: string;
@@ -81,8 +80,11 @@ export function SheetHeader({
   title,
   sub,
 }: {
+  /** Glyph for the accent chip. */
   icon: ReactNode;
+  /** Sheet title. */
   title: ReactNode;
+  /** One line saying what the sheet will do. */
   sub: string;
 }) {
   return (
@@ -92,7 +94,7 @@ export function SheetHeader({
       </span>
       <div className="min-w-0 flex-1">
         <div className="text-heading tracking-title truncate font-bold">{title}</div>
-        <div className="text-chip text-text-caption-aa truncate leading-[15px]">{sub}</div>
+        <div className="text-chip text-text-muted truncate leading-[15px]">{sub}</div>
       </div>
     </header>
   );
@@ -102,7 +104,7 @@ export function SheetHeader({
 export function SheetFooter({ hint, children }: { hint: ReactNode; children: ReactNode }) {
   return (
     <footer className="border-hairline bg-surface-raised flex h-[60px] shrink-0 items-center gap-2.5 border-t px-5">
-      <span className="text-chip text-text-caption-aa flex items-center gap-1.5">{hint}</span>
+      <span className="text-chip text-text-muted flex items-center gap-1.5">{hint}</span>
       <div className="flex-1" />
       {children}
     </footer>

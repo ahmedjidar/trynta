@@ -1,5 +1,5 @@
 /**
- * Command palette — HO-002 `overlays/CommandPalette.tsx`, SPEC-V1 §7.1.
+ * Command palette — SPEC-V1 §7.9.
  *
  * ## What it searches
  *
@@ -10,16 +10,16 @@
  *
  * ## What it does not do
  *
- * No row copies a password. HO-002 gives every result the same shape and its actions are
+ * No row copies a password. The design gives every result the same shape and its actions are
  * navigations; a palette row that copied on Enter would put a secret one fuzzy match away
  * from the wrong side of §4.3's deliberate friction. Choosing an item opens it.
  *
  * ## Keyboard
  *
- * HO-002 pre-highlights the first result, which implies Enter runs it. Up/Down move,
+ * The design pre-highlights the first result, which implies Enter runs it. Up/Down move,
  * Escape and a click on the veil dismiss. The list is a `listbox` with
  * `aria-activedescendant` rather than moving DOM focus, so the query keeps focus and typing
- * continues to filter — the behaviour HO-002's autofocused input implies but does not wire.
+ * continues to filter — the behaviour the design's autofocused input implies but does not wire.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -76,7 +76,7 @@ export function Palette({ onClose, onLock, modifierKey }: PaletteProps) {
       .map((item) => ({
         id: item.id,
         name: item.title,
-        // HO-002's trailing label is the owning vault's name, not the subtitle.
+        // The trailing label is the owning vault's name, not the subtitle.
         kind: vaults.data?.find((v) => v.id === item.vaultId)?.name ?? 'Item',
         icon: item.icon,
         run: () => {
@@ -180,7 +180,7 @@ export function Palette({ onClose, onLock, modifierKey }: PaletteProps) {
           aria-label="Results"
         >
           {rows.length === 0 ? (
-            <p className="text-caption text-text-caption-aa px-3 py-10 text-center">No matches.</p>
+            <p className="text-caption text-text-muted px-3 py-10 text-center">No matches.</p>
           ) : (
             rows.map((row, position) => (
               <div
@@ -207,7 +207,7 @@ export function Palette({ onClose, onLock, modifierKey }: PaletteProps) {
                   <IdentityTile icon={row.icon} size={24} title={row.name} />
                 )}
                 <span className="text-body min-w-0 flex-1 truncate font-medium">{row.name}</span>
-                <span className="text-micro text-text-caption-aa shrink-0">{row.kind}</span>
+                <span className="text-micro text-text-muted shrink-0">{row.kind}</span>
               </div>
             ))
           )}

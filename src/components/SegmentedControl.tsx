@@ -1,13 +1,13 @@
 /**
- * Segmented control — HO-002 `ui/SegmentedControl.tsx`.
+ * Segmented control: one track, one sliding indicator.
  *
  * One track, one sliding indicator. Selection is conveyed by **both** the indicator and a
  * weight change, because the indicator alone is ~1.1:1 against the track
  * (contrast-report finding 4).
  *
- * ## The one structural change from HO-002
+ * ## Why the indicator is positioned in CSS
  *
- * HO-002 positions the indicator with an inline `style` computed from the segment count.
+ * The design positions the indicator with an inline `style` computed from the segment count.
  * The production CSP is `style-src 'self'`, so that attribute is dropped in release builds
  * and the indicator would sit at the left edge forever — visible only in a packaged build.
  * The count and index are data attributes instead, and `theme/dynamic.css` carries one

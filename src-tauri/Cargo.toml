@@ -22,6 +22,25 @@ name = "keyring_lib"
 # stale artifacts; CI's fresh build did not.
 crate-type = ["lib"]
 
+[features]
+# `custom-protocol` is what makes the binary serve the frontend from the bundle
+# embedded by `tauri-build` instead of from `build.devUrl`. Without it every
+# build — including `tauri build` — ships an application that loads
+# `http://localhost:1420`: a blank window on any machine that is not running a
+# Vite dev server, and a window rendering whatever *is* on that port where one is.
+#
+# It is `default` because a shipping build is the normal case. `tauri dev` passes
+# `--no-default-features`, which is how the dev server takes over — that flag was
+# already in the dev command and had nothing to switch off until now.
+#
+# The second consequence is the one that hid this: the dev server is served under
+# `app.security.devCsp`, which allows `unsafe-inline`. So every check that
+# depends on the production CSP — AC18's "an injected <style> is blocked", the
+# whole reason §7.6 uses `adoptedStyleSheets` — was running against the relaxed
+# policy and could not fail.
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
 [build-dependencies]
 tauri-build = { version = "2.6.3", features = [] }
 

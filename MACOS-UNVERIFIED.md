@@ -159,6 +159,22 @@ supported way to corrupt one item.
 | E5  | Auto-lock on sleep    | locks when the lid closes                                                   | manual: unlock, close the lid, reopen                                                          |
 | E6  | LaunchAgent autostart | survives a reboot                                                           | manual, once the setting exists (run 3)                                                        |
 
+## G — Frontend delivery and the bundled typeface
+
+`custom-protocol` was missing from `src-tauri/Cargo.toml`, so every build served the
+frontend from `build.devUrl` (`http://localhost:1420`) instead of the embedded bundle.
+It is now `default`, which changes what a **macOS** bundle loads as much as a Windows
+one, and it has only been observed on Windows. The typeface is a new bundled asset on
+the same path.
+
+| #   | Check                              | Expected                                                                | How                                                                                                                                                          |
+| --- | ---------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| G1  | Bundle serves the frontend         | The window loads `tauri://localhost`, **not** `http://localhost:1420`   | `pnpm tauri build`, launch the `.app` with no dev server running. A blank window means `custom-protocol` did not reach the macOS build                       |
+| G2  | Manrope loads under WKWebView      | Text renders in Manrope, not the system font                            | in the app, `document.fonts` reports `Manrope … loaded`. Failure is silent — the fallback renders and the layout is ~8% narrow                               |
+| G3  | `font-src 'self'` allows the woff2 | No CSP violation for `/fonts/manrope-*.woff2`                           | Safari Web Inspector attached to the WKWebView; a violation shows in the console. WKWebView and WebView2 differ on how `'self'` resolves for a custom scheme |
+| G4  | woff2 in the `.app`                | `Contents/Resources/…/fonts/manrope-latin.woff2` exists in the bundle   | `find <Keyring.app> -name 'manrope-*.woff2'` after `pnpm tauri build`                                                                                        |
+| G5  | AC18 under WKWebView               | an injected `<style>` is blocked and `adoptedStyleSheets` still applies | this is verified on WebView2 by `e2e/specs/theme.e2e.ts`; the WKWebView half has no harness — run the two probes by hand in the Web Inspector console        |
+
 ## F — Things that only exist on Windows so far
 
 Not gaps in macOS code — gaps in the platform layer that will need a macOS half
