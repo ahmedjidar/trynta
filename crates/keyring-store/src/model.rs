@@ -409,6 +409,45 @@ impl ItemDraft {
 
 // ── What actually goes into each envelope ───────────────────────────────────
 
+/// The encoding of a user-supplied icon, as stored.
+///
+/// A closed enum rather than a MIME string: the frontend builds a `data:` URI from it
+/// and a free-form string there would be a way to inject a content type.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum IconFormat {
+    /// Sanitised SVG, UTF-8.
+    Svg,
+    /// Lossless WebP.
+    Webp,
+    /// PNG, the fallback when WebP encoding is unavailable.
+    Png,
+}
+
+impl IconFormat {
+    /// The media type for a `data:` URI.
+    #[must_use]
+    pub const fn media_type(self) -> &'static str {
+        match self {
+            Self::Svg => "image/svg+xml",
+            Self::Webp => "image/webp",
+            Self::Png => "image/png",
+        }
+    }
+}
+
+/// A user-supplied icon, processed and ready to render.
+///
+/// Stored inside `meta_ct` like any other non-secret field, so it is encrypted at rest
+/// and travels with a backup. It is **not** in the search index: see
+/// [`ItemMeta::has_custom_icon`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StoredIcon {
+    /// How `bytes` is encoded.
+    pub format: IconFormat,
+    /// The processed image. Never the file the user picked — see `services::custom_icon`.
+    pub bytes: Vec<u8>,
+}
+
 /// The non-secret half of an item: everything decrypted at unlock.
 ///
 /// Adding a secret-bearing field to this struct would decrypt it for every item
@@ -432,6 +471,61 @@ pub struct ItemMetaPayload {
     pub custom_fields: Vec<CustomField>,
     /// Type-specific non-secret fields.
     pub body: ItemBodyMeta,
+    /// The user's own icon, if they attached one (ADD-001 tier 2).
+    ///
+    /// **Appended last, and that is load-bearing.** `postcard` is not self-describing,
+    /// so field order is the format: a field added anywhere else would shift every byte
+    /// after it and no existing payload would decode.
+    pub custom_icon: Option<StoredIcon>,
+}
+
+/// [`ItemMetaPayload`] as it stood before ADD-001 added the tier-2 icon field.
+///
+/// `postcard` is not self-describing, so a payload written before `custom_icon` existed
+/// simply *ends* where the current struct expects to read the `Option` discriminant, and
+/// `deserialize_option` reports `DeserializeUnexpectedEnd` rather than `None`. Appending
+/// the field last was the least disruptive position available; it was never a compatible
+/// one. This is where the compatibility actually lives.
+///
+/// Reads are tolerant and writes never are: `repository::read_meta_payload` tries the
+/// current shape first and falls back to this one, while every write emits the current
+/// shape. A vault therefore upgrades itself item by item as items are edited, and nothing
+/// is rewritten eagerly — the fallback costs one failed parse on a pre-icon row and
+/// nothing at all on a current one.
+///
+/// The discrimination is unambiguous in both directions. A current payload carries the
+/// trailing discriminant and decodes as itself. A pre-icon payload cannot decode as the
+/// current shape, because the buffer is exhausted at exactly that byte. No input silently
+/// selects the wrong one.
+///
+/// **This struct never gains a field.** It is a record of a format that already shipped;
+/// the next format change appends to [`ItemMetaPayload`] and adds a sibling of this.
+#[derive(Deserialize)]
+pub(crate) struct ItemMetaPayloadPreIcon {
+    kind: ItemKind,
+    title: String,
+    notes: String,
+    tags: Vec<String>,
+    favorite: bool,
+    created_at: i64,
+    custom_fields: Vec<CustomField>,
+    body: ItemBodyMeta,
+}
+
+impl From<ItemMetaPayloadPreIcon> for ItemMetaPayload {
+    fn from(old: ItemMetaPayloadPreIcon) -> Self {
+        Self {
+            kind: old.kind,
+            title: old.title,
+            notes: old.notes,
+            tags: old.tags,
+            favorite: old.favorite,
+            created_at: old.created_at,
+            custom_fields: old.custom_fields,
+            body: old.body,
+            custom_icon: None,
+        }
+    }
 }
 
 /// The non-secret projection of an [`ItemBody`].
@@ -667,6 +761,13 @@ pub struct ItemMeta {
     pub custom_fields: Vec<CustomField>,
     /// Type-specific non-secret fields.
     pub body: ItemBodyMeta,
+    /// Whether the user attached an icon.
+    ///
+    /// A flag, not the bytes. The index is built by decrypting every item's `meta_ct`
+    /// at unlock and is held for the life of the session — carrying up to 64 KB per
+    /// item here would put a 10,000-item vault hundreds of megabytes over §9's memory
+    /// budget for a decoration. The bytes are read on demand by id.
+    pub has_custom_icon: bool,
 }
 
 /// One row of the in-memory search index (SPEC-V1 §4.7).
@@ -707,6 +808,8 @@ pub struct IndexRow {
     pub updated_at: i64,
     /// Type-appropriate subtitle for rendering a row.
     pub subtitle: Option<String>,
+    /// Whether the user attached an icon (ADD-001). A flag, never the bytes.
+    pub has_custom_icon: bool,
 }
 
 impl Drop for IndexRow {
