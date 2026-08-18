@@ -260,19 +260,19 @@ const CRITERIA = [
   {
     id: 'AC11',
     title: 'TOTP matches a reference implementation for SHA1/256/512 and 6/8 digits',
-    checks: [{ name: 'TOTP known-answer vectors', run: 3, skip: 'requires services/totp' }],
+    checks: [{ name: 'TOTP known-answer vectors', run: 3, exec: 'cargo test -p keyring --test totp' }],
   },
   {
     id: 'AC12',
     title: 'Generator entropy matches an independent inclusion–exclusion implementation exactly',
-    checks: [{ name: 'entropy cross-check', run: 3, skip: 'requires services/generator' }],
+    checks: [{ name: 'entropy cross-check', run: 3, exec: 'cargo test -p keyring --test generator' }],
   },
   {
     id: 'AC13',
     title: 'Security report flags seeded breached, weak and reused; breakdown adds up; N == 0 returns null',
     checks: [
-      { name: 'report flags all three classes', run: 3, skip: 'requires services/breach, strength and report' },
-      { name: 'health score breakdown and the N == 0 case', run: 3, skip: 'requires services/report' },
+      { name: 'report flags all three classes', run: 3, exec: 'cargo test -p keyring --test report_two_factor' },
+      { name: 'health score breakdown and the N == 0 case', run: 3, exec: 'cargo test -p keyring --test report_score' },
     ],
   },
   {
@@ -280,7 +280,7 @@ const CRITERIA = [
     title: 'Packet capture: only HIBP range requests with Add-Padding, and at most one update check',
     checks: [
       { name: 'no request to any user site, favicon host or CDN', run: 3, skip: 'requires services/breach and the updater' },
-      { name: 'security_report_run makes zero site requests', run: 3, skip: 'requires services/report' },
+      { name: 'security_report_run makes zero site requests', run: 3, exec: 'cargo test -p keyring --test breach' },
     ],
   },
   {
@@ -300,13 +300,13 @@ const CRITERIA = [
     title: 'Dark and light both render; pnpm check:tokens finds zero hardcoded colours',
     checks: [
       { name: 'no hardcoded colour values in the codebase', run: 1, exec: 'pnpm run --silent check:tokens' },
-      { name: 'dark and light both render', run: 3, skip: 'requires the theme layer and a rendered shell' },
+      { name: 'dark and light both render', run: 3, exec: 'pnpm e2e --spec e2e/specs/theme.e2e.ts' },
     ],
   },
   {
     id: 'AC18',
     title: 'Runtime theme swap works under production CSP on both WKWebView and WebView2',
-    checks: [{ name: 'adoptedStyleSheets swap under production CSP', run: 3, skip: 'requires the theme loader and an E2E harness' }],
+    checks: [{ name: 'adoptedStyleSheets swap under production CSP', run: 3, exec: 'pnpm e2e --spec e2e/specs/theme.e2e.ts' }],
   },
   {
     id: 'AC19',

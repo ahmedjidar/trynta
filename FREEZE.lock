@@ -10,7 +10,7 @@
 # Regenerated only when the spec owner deliberately changes what the
 # acceptance suite asserts, and reviewed as part of that change:
 #     node scripts/check-freeze.mjs --write
-3f08e12ae796c3cfc1f32ede9fec04929d122d794d60babc0308d256540996d4  scripts/verify-v1.mjs
+3ad6799e85a7c77e50e8a75a4a5b0dd15d59b4f230b587bffa2634a65332b403  scripts/verify-v1.mjs
 79111e0cb8e25d792f33512e77b487090d4cab463cbbd1542cb050fda14d0c9f  tests/acceptance/API.md
 9e68288d0dd860f07a74cd14d47a9a10cb23baa20afa214bddd23b4205882edf  tests/acceptance/Cargo.toml
 e982a36f2221e9f546c4b46325b61793c5698e699dccdae4f76262bb4e5d3e81  tests/acceptance/src/lib.rs
