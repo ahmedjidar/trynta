@@ -82,6 +82,12 @@ export interface GlyphProps {
   /** Which glyph. */
   name: GlyphName;
   /**
+   * Edge in px. HO-002 sizes icons per use — 12 beside chip text, 14 in a segment or a
+   * "Fix" affordance, 16 everywhere else — so the default is the token and the two
+   * smaller steps are the design's own.
+   */
+  size?: 12 | 14 | 16;
+  /**
    * Accessible name.
    *
    * Omit for a glyph that sits beside its own visible label, which is most of them —
@@ -90,15 +96,18 @@ export interface GlyphProps {
   label?: string;
 }
 
-export function Glyph({ name, label }: GlyphProps) {
+export function Glyph({ name, size = 16, label }: GlyphProps) {
   const Component = GLYPHS[name];
   return (
     <Component
-      className="glyph"
-      // The token values, passed as attributes because SVG presentation attributes
-      // are not the CSS `style` prop and are not affected by `style-src`. Size and
-      // stroke still come from the design: `--icon-size` 16px, `--icon-stroke` 1.75.
-      size={16}
+      // `lucide` so base.css's `svg.lucide` rule applies the token size and stroke, which
+      // is HO-002's own mechanism. The attributes below carry the same values for the
+      // case where a rule has not matched yet.
+      className="lucide"
+      // Passed as attributes because SVG presentation attributes are not the CSS `style`
+      // prop and so are not affected by `style-src`. Size and stroke come from the
+      // design: `--icon-size` 16px, `--icon-stroke` 1.75.
+      size={size}
       strokeWidth={1.75}
       aria-hidden={label === undefined ? true : undefined}
       aria-label={label}

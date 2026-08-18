@@ -20,6 +20,8 @@
 
 import { call, callVoid } from './client';
 import type { AccountStatus } from './generated/AccountStatus';
+import type { BackupPreviewDto } from './generated/BackupPreviewDto';
+import type { BackupSummaryDto } from './generated/BackupSummaryDto';
 import type { BreachCheckDto } from './generated/BreachCheckDto';
 import type { GeneratedDto } from './generated/GeneratedDto';
 import type { StrengthDto } from './generated/StrengthDto';
@@ -34,6 +36,7 @@ import type { UpdateCheckDto } from './generated/UpdateCheckDto';
 import type { ActivityEventDto } from './generated/ActivityEventDto';
 import type { ItemDetailDto } from './generated/ItemDetailDto';
 import type { ItemDraftInput } from './generated/ItemDraftInput';
+import type { MetaEditsInput } from './generated/MetaEditsInput';
 import type { ItemSummaryDto } from './generated/ItemSummaryDto';
 import type { ListQueryDto } from './generated/ListQueryDto';
 import type { PlatformInfo } from './generated/PlatformInfo';
@@ -134,6 +137,60 @@ export function accountUnlock(masterPassword: string): Promise<AccountStatus> {
  */
 export function accountReauth(masterPassword: string): Promise<void> {
   return callVoid('account_reauth', { masterPassword });
+}
+
+/**
+ * Export an encrypted backup under its own passphrase (SPEC-V1 §7.8).
+ *
+ * Opens a save dialog; Rust writes the file. Resolves to `null` when the user
+ * cancels, which is not an error.
+ *
+ * @param passphrase - The backup's own passphrase, not the master password. At
+ * least 12 characters.
+ * @returns What was written, or `null` on cancel.
+ * @throws {IpcError} `locked`, `invalid` for a short passphrase, `storage`.
+ *
+ * @beta
+ */
+export function backupExport(passphrase: string): Promise<BackupSummaryDto | null> {
+  return call<BackupSummaryDto | null>('backup_export', { passphrase });
+}
+
+/**
+ * Open a backup and report what restoring it would do, without doing it.
+ *
+ * Opening authenticates the passphrase, the header MAC and the manifest signature,
+ * so a preview that resolves describes something trustworthy. Nothing is written.
+ *
+ * @param passphrase - The backup's passphrase.
+ * @returns The preview and the container's path, or `null` on cancel.
+ * @throws {IpcError} `wrongPassword`, `tamperDetected`, `storage`.
+ *
+ * @beta
+ */
+export function backupPreview(passphrase: string): Promise<BackupPreviewDto | null> {
+  return call<BackupPreviewDto | null>('backup_preview', { passphrase });
+}
+
+/**
+ * Apply a restore (SPEC-V1 §7.8). Never partially applies.
+ *
+ * @param path - From a previous {@link backupPreview}. Re-opened and re-verified
+ * rather than trusted.
+ * @param passphrase - The backup's passphrase.
+ * @param allowReplace - Required when the mode is `replace`, which destroys a vault
+ * belonging to a different account.
+ * @throws {IpcError} `wrongPassword`, `tamperDetected`, `invalid` when a replace was
+ * not authorised, `storage`.
+ *
+ * @beta
+ */
+export function backupRestore(
+  path: string,
+  passphrase: string,
+  allowReplace: boolean,
+): Promise<BackupPreviewDto> {
+  return call<BackupPreviewDto>('backup_restore', { path, passphrase, allowReplace });
 }
 
 /**
@@ -318,6 +375,30 @@ export function itemDelete(id: string): Promise<void> {
  */
 export function itemRestore(id: string): Promise<void> {
   return callVoid('item_restore', { id });
+}
+
+/**
+ * Apply non-secret edits to an item — the detail pane's edit mode.
+ *
+ * Distinct from {@link itemUpsert}: upsert rebuilds the secret envelope from the
+ * draft, so routing a title change through it would mean holding the password in
+ * the form and an empty field would wipe the stored one. This carries the sealed
+ * secret across in Rust, so the form never sees it.
+ *
+ * @param id - Item to edit.
+ * @param edits - Only the present fields are written.
+ * @returns Whether anything changed. A no-op edit does not burn a revision.
+ * @throws {IpcError} `invalid` for a blank title, `notFound`, `locked`.
+ *
+ * @example
+ * ```ts
+ * await itemEditMeta(id, { title: 'Renamed', username: 'ada@example.com' });
+ * ```
+ *
+ * @beta
+ */
+export function itemEditMeta(id: string, edits: MetaEditsInput): Promise<boolean> {
+  return call<boolean>('item_edit_meta', { id, edits });
 }
 
 /**

@@ -1674,3 +1674,107 @@ pub struct StrengthDto {
     #[ts(type = "number")]
     pub crack_seconds: u64,
 }
+
+// ── Metadata edits (SPEC-V1 §7.1, the detail pane's edit mode) ──────────────
+
+/// Non-secret edits to an existing item.
+///
+/// Every field is optional and only the present ones are written. There is
+/// deliberately **no secret field here at all**: the detail pane's edit mode
+/// changes a title, a username, a website or a note, and routing that through
+/// `item_upsert` would mean the form had to carry the password — a second
+/// plaintext path out of Rust that §4.4 does not permit, and one where an empty
+/// field would silently wipe the stored value.
+///
+/// Setting a *new* password is a different operation with its own explicit
+/// action, and it goes through `item_upsert`.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub struct MetaEditsInput {
+    /// New title. Trimmed, and rejected if empty.
+    #[ts(optional)]
+    pub title: Option<String>,
+    /// New notes. For a secure note this is the body.
+    #[ts(optional)]
+    pub notes: Option<String>,
+    /// New tags, replacing the set.
+    #[ts(optional)]
+    pub tags: Option<Vec<String>>,
+    /// New username. Ignored for anything that is not a login.
+    #[ts(optional)]
+    pub username: Option<String>,
+    /// New website list. Ignored for anything that is not a login.
+    #[ts(optional)]
+    pub urls: Option<Vec<String>>,
+}
+
+impl From<MetaEditsInput> for keyring_store::MetaEdits {
+    fn from(input: MetaEditsInput) -> Self {
+        Self {
+            title: input.title,
+            notes: input.notes,
+            tags: input.tags,
+            username: input.username,
+            urls: input.urls,
+        }
+    }
+}
+
+// ── Backup (SPEC-V1 §7.8) ───────────────────────────────────────────────────
+
+/// What an export wrote.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub struct BackupSummaryDto {
+    /// Vault rows written, soft-deleted included.
+    pub vaults: u32,
+    /// Item rows written, soft-deleted included.
+    pub items: u32,
+    /// Bytes on disk.
+    #[ts(type = "number")]
+    pub bytes: u64,
+}
+
+/// Which restore a container can perform against this device's vault.
+///
+/// Three genuinely different operations, and the UI has to say which: `Replace`
+/// destroys a vault belonging to a different account, and a screen that called it
+/// "restore" without saying so would be the worst possible copy in this product.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub enum RestoreModeDto {
+    /// No vault here. Everything in the container is created.
+    Fresh,
+    /// Same account. Items compare by revision and merge one by one.
+    Merge,
+    /// A different account's vault is here. Nothing in the container decrypts
+    /// under its master password, so the only coherent restore destroys it.
+    Replace,
+}
+
+/// What a restore would do, or did.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub struct BackupPreviewDto {
+    /// Which restore is on offer.
+    pub mode: RestoreModeDto,
+    /// Items this device does not have.
+    pub created: u32,
+    /// Items this device has at a lower revision.
+    pub merged: u32,
+    /// Items already at the same or a higher revision.
+    pub skipped: u32,
+    /// When the container was written, Unix milliseconds.
+    #[ts(type = "number")]
+    pub created_at: i64,
+    /// The container's path, to hand back to `backup_restore`.
+    ///
+    /// Empty in a response from `backup_restore` itself: there is nothing left to
+    /// apply, and echoing a path the caller already has invites treating it as
+    /// state. Not a secret either way — no `fs:` permission is granted.
+    pub path: String,
+}

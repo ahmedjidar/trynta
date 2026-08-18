@@ -36,7 +36,7 @@ use crate::manifest;
 use crate::model::{
     IndexRow, ItemDraft, ItemMeta, ItemSummary, SecretField, TotpConfig, VaultKind, VaultSummary,
 };
-use crate::repository;
+use crate::repository::{self, MetaEdits};
 use crate::schema::{
     self, MigrationSet, PayloadCtx, Phase, CURRENT_PAYLOAD_VERSION, CURRENT_SCHEMA_VERSION,
     INITIAL_SCHEMA, SNAPSHOT_RETENTION,
@@ -209,6 +209,21 @@ impl VaultFile {
     #[must_use]
     pub fn schema_version(&self) -> u32 {
         self.header.lock().expect("header lock").schema_version
+    }
+
+    /// The KDF parameters this vault's header records.
+    ///
+    /// Needed by the backup export: a container derived with weaker parameters than
+    /// the vault it came from would be the weakest link, so §7.8's export reuses the
+    /// calibration rather than picking its own.
+    ///
+    /// # Panics
+    ///
+    /// If the internal lock is poisoned, which can only happen if another thread
+    /// panicked while holding it.
+    #[must_use]
+    pub fn kdf_params(&self) -> KdfParams {
+        self.header.lock().expect("header lock").kdf
     }
 
     /// Read one `app_state` value (SPEC-V1 §4.5).
@@ -846,20 +861,45 @@ impl Session<'_> {
         Ok(outcome.id)
     }
 
-    /// Set or clear an item's favourite flag.
+    /// Apply metadata-only edits, leaving every secret field untouched.
     ///
-    /// Returns whether anything changed; a no-op toggle does not burn a
-    /// revision.
+    /// `item_upsert` rebuilds the secret half from the draft it is given, so a detail-pane
+    /// edit of a title or username routed through it would need the password in hand — and
+    /// putting the password in the edit form is a second plaintext path out of Rust, which
+    /// §4.4 does not permit. This carries the sealed secret across instead, so the form
+    /// never sees it.
+    ///
+    /// Returns whether anything changed.
     ///
     /// # Errors
     ///
-    /// [`StoreError::ItemNotFound`], [`StoreError::Database`], or
-    /// [`StoreError::Crypto`].
+    /// [`StoreError::ItemNotFound`], [`StoreError::Database`], or [`StoreError::Crypto`].
     ///
     /// # Panics
     ///
-    /// If an internal lock is poisoned, which can only happen if another thread
-    /// panicked while holding it.
+    /// If an internal lock is poisoned, which can only happen if another thread panicked
+    /// while holding it.
+    pub fn item_edit_meta(&self, id: Uuid, edits: &MetaEdits) -> Result<bool, StoreError> {
+        let conn = self.file.conn.lock().expect("connection lock");
+        let changed = repository::item_edit_meta(&conn, &self.keys.muk, id, edits, now_ms())?;
+        if changed {
+            self.reseal(&conn)?;
+        }
+        Ok(changed)
+    }
+
+    /// Set or clear an item's favourite flag.
+    ///
+    /// Returns whether anything changed; a no-op toggle does not burn a revision.
+    ///
+    /// # Errors
+    ///
+    /// [`StoreError::ItemNotFound`], [`StoreError::Database`], or [`StoreError::Crypto`].
+    ///
+    /// # Panics
+    ///
+    /// If an internal lock is poisoned, which can only happen if another thread panicked
+    /// while holding it.
     pub fn item_set_favorite(&self, id: Uuid, favorite: bool) -> Result<bool, StoreError> {
         let conn = self.file.conn.lock().expect("connection lock");
         let changed = repository::item_set_favorite(&conn, &self.keys.muk, id, favorite, now_ms())?;

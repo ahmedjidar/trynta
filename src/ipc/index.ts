@@ -22,6 +22,9 @@ export {
   accountStatus,
   accountUnlock,
   appPlatformInfo,
+  backupExport,
+  backupPreview,
+  backupRestore,
   generatorHistoryClear,
   generatorHistoryCopy,
   generatorHistoryList,
@@ -31,6 +34,7 @@ export {
   itemActivity,
   itemCopyField,
   itemDelete,
+  itemEditMeta,
   itemGet,
   itemRestore,
   itemRevealField,
@@ -61,6 +65,9 @@ export type { AccountStatus } from './generated/AccountStatus';
 export type { ActivityEventDto } from './generated/ActivityEventDto';
 export type { ActivityKindDto } from './generated/ActivityKindDto';
 export type { AppError } from './generated/AppError';
+export type { BackupPreviewDto } from './generated/BackupPreviewDto';
+export type { BackupSummaryDto } from './generated/BackupSummaryDto';
+export type { RestoreModeDto } from './generated/RestoreModeDto';
 export type { BreachCheckDto } from './generated/BreachCheckDto';
 export type { CustomFieldDto } from './generated/CustomFieldDto';
 export type { GeneratedDto } from './generated/GeneratedDto';
@@ -75,6 +82,7 @@ export type { CustomFieldKindDto } from './generated/CustomFieldKindDto';
 export type { ItemBodyInput } from './generated/ItemBodyInput';
 export type { ItemDetailDto } from './generated/ItemDetailDto';
 export type { ItemDraftInput } from './generated/ItemDraftInput';
+export type { MetaEditsInput } from './generated/MetaEditsInput';
 export type { ItemKindDto } from './generated/ItemKindDto';
 export type { ItemSourceDto } from './generated/ItemSourceDto';
 export type { ItemSummaryDto } from './generated/ItemSummaryDto';

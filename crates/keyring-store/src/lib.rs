@@ -50,6 +50,7 @@ pub use model::{
     TotpAlgorithm, TotpConfig, TotpParams, VaultKind, VaultMetaPayload, VaultSummary,
     PASSWORD_HISTORY_LIMIT,
 };
+pub use repository::MetaEdits;
 pub use schema::{
     MigrationSet, PayloadCtx, PayloadMigration, Phase, SchemaMigration, CURRENT_PAYLOAD_VERSION,
     CURRENT_SCHEMA_VERSION, SNAPSHOT_RETENTION,

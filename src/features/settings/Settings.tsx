@@ -1,5 +1,5 @@
 /**
- * Settings — components.md §13, SPEC-V1 §7.5.
+ * Settings — HO-002 `components/SettingsView.tsx`, SPEC-V1 §7.5.
  *
  * ## Which document owns what
  *
@@ -32,7 +32,8 @@
 
 import { useCallback, useState } from 'react';
 
-import { Group, GroupRow, Switch } from '../../components/Controls';
+import { GroupedList, GroupedRow, SectionLabel } from '../../components/GroupedList';
+import { Switch } from '../../components/Switch';
 import { Glyph } from '../../components/Glyph';
 import { useThemeStore } from '../../theme/store';
 import type { ThemeMode } from '../../theme/mode';
@@ -87,208 +88,249 @@ export function Settings({ settings, onSaved, onFailed, onBackup, onUpdates }: S
   );
 
   return (
-    <section className="pane" aria-label="Settings">
-      <div className="pane__content">
-        <h1 className="pane__title">Settings</h1>
+    <section className="bg-surface-panel min-w-0 flex-1 overflow-y-auto" aria-label="Settings">
+      <div className="max-w-[704px] px-10 pt-8 pb-12">
+        <h1 className="text-display tracking-display font-bold">Settings</h1>
 
-        <Group label="Security">
-          <GroupRow height="setting">
-            <RowText
-              name="Unlock with biometrics"
-              description={
-                settings.biometricAvailable
-                  ? 'Your master password is still required after a restart.'
-                  : 'No biometric sensor is enrolled on this device.'
-              }
-            />
-            <Switch
-              checked={settings.biometricEnabled}
-              disabled={!settings.biometricAvailable || saving}
-              label="Unlock with biometrics"
-              onChange={(value) => {
-                patch({ biometricEnabled: value });
-              }}
-            />
-          </GroupRow>
+        <section className="mt-7">
+          <SectionLabel>Security</SectionLabel>
+          <GroupedList className="mt-2">
+            <GroupedRow className="min-h-[60px] py-2.5">
+              <RowText
+                name="Unlock with biometrics"
+                description={
+                  settings.biometricAvailable
+                    ? 'Your master password is still required after a restart.'
+                    : 'No biometric sensor is enrolled on this device.'
+                }
+              />
+              <Switch
+                checked={settings.biometricEnabled}
+                disabled={!settings.biometricAvailable || saving}
+                label="Unlock with biometrics"
+                onChange={() => {
+                  patch({ biometricEnabled: !settings.biometricEnabled });
+                }}
+              />
+            </GroupedRow>
 
-          <GroupRow height="setting">
-            <RowText
-              name="Clear clipboard after copying"
-              description={
-                settings.clearClipboard
-                  ? `Copied secrets are wiped after ${String(settings.clipboardSeconds)} seconds.`
-                  : 'Copied secrets stay on the clipboard until something replaces them.'
-              }
-            />
-            <Switch
-              checked={settings.clearClipboard}
-              disabled={saving}
-              label="Clear clipboard after copying"
-              onChange={(value) => {
-                patch({ clearClipboard: value });
-              }}
-            />
-          </GroupRow>
-
-          {settings.clearClipboard ? (
-            <GroupRow height="setting">
-              <RowText name="Clear after" description="How long a copied secret stays available." />
-              <select
-                className="setting-select"
-                aria-label="Clear clipboard after"
-                value={settings.clipboardSeconds}
+            <GroupedRow className="min-h-[60px] py-2.5">
+              <RowText
+                name="Clear clipboard after copying"
+                description={
+                  settings.clearClipboard
+                    ? `Copied secrets are wiped after ${String(settings.clipboardSeconds)} seconds.`
+                    : 'Copied secrets stay on the clipboard until something replaces them.'
+                }
+              />
+              <Switch
+                checked={settings.clearClipboard}
                 disabled={saving}
+                label="Clear clipboard after copying"
+                onChange={() => {
+                  patch({ clearClipboard: !settings.clearClipboard });
+                }}
+              />
+            </GroupedRow>
+
+            {settings.clearClipboard ? (
+              <GroupedRow className="min-h-[60px] py-2.5">
+                <RowText
+                  name="Clear after"
+                  description="How long a copied secret stays available."
+                />
+                <select
+                  className="border-strong bg-surface-panel text-control text-text-primary h-6 max-w-[180px] shrink-0 appearance-none rounded-sm border px-2"
+                  aria-label="Clear clipboard after"
+                  value={settings.clipboardSeconds}
+                  disabled={saving}
+                  onChange={(event) => {
+                    patch({ clipboardSeconds: Number(event.target.value) });
+                  }}
+                >
+                  {CLIPBOARD_CHOICES.map((seconds) => (
+                    <option key={seconds} value={seconds}>
+                      {seconds < 60
+                        ? `${String(seconds)} seconds`
+                        : `${String(seconds / 60)} minutes`}
+                    </option>
+                  ))}
+                </select>
+              </GroupedRow>
+            ) : null}
+
+            <GroupedRow className="min-h-[60px] py-2.5">
+              <RowText
+                name="Require the master password to reveal"
+                description="Off by default: the rolling 20-per-minute limit already asks for re-auth, and typing a master password constantly is its own risk."
+              />
+              <Switch
+                checked={settings.requireMasterOnReveal}
+                disabled={saving}
+                label="Require the master password to reveal"
+                onChange={() => {
+                  patch({ requireMasterOnReveal: !settings.requireMasterOnReveal });
+                }}
+              />
+            </GroupedRow>
+
+            <GroupedRow className="min-h-[60px] py-2.5">
+              <RowText
+                name="Watch for breaches"
+                description="Checks 5-character hash prefixes at most once a day. Passwords never leave this device."
+              />
+              <Switch
+                checked={settings.watchForBreaches}
+                disabled={saving}
+                label="Watch for breaches"
+                onChange={() => {
+                  patch({ watchForBreaches: !settings.watchForBreaches });
+                }}
+              />
+            </GroupedRow>
+
+            <GroupedRow className="min-h-[60px] py-2.5">
+              <RowText
+                name="Hide from screen capture"
+                description="Off by default: it matches the stated threat model, and turning it on breaks your own screenshots and screen sharing for support."
+              />
+              <Switch
+                checked={settings.contentProtection}
+                disabled={saving}
+                label="Hide from screen capture"
+                onChange={() => {
+                  patch({ contentProtection: !settings.contentProtection });
+                }}
+              />
+            </GroupedRow>
+          </GroupedList>
+        </section>
+
+        <section className="mt-7">
+          <SectionLabel>Appearance</SectionLabel>
+          <GroupedList className="mt-2">
+            <GroupedRow className="min-h-[60px] py-2.5">
+              <RowText name="Theme" description="Dark, light, or whatever the system is set to." />
+              <select
+                className="border-strong bg-surface-panel text-control text-text-primary h-6 max-w-[180px] shrink-0 appearance-none rounded-sm border px-2"
+                aria-label="Theme"
+                value={mode}
                 onChange={(event) => {
-                  patch({ clipboardSeconds: Number(event.target.value) });
+                  void setMode(event.target.value as ThemeMode);
                 }}
               >
-                {CLIPBOARD_CHOICES.map((seconds) => (
-                  <option key={seconds} value={seconds}>
-                    {seconds < 60
-                      ? `${String(seconds)} seconds`
-                      : `${String(seconds / 60)} minutes`}
+                {MODES.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
                   </option>
                 ))}
               </select>
-            </GroupRow>
-          ) : null}
+            </GroupedRow>
 
-          <GroupRow height="setting">
-            <RowText
-              name="Require the master password to reveal"
-              description="Off by default: the rolling 20-per-minute limit already asks for re-auth, and typing a master password constantly is its own risk."
-            />
-            <Switch
-              checked={settings.requireMasterOnReveal}
-              disabled={saving}
-              label="Require the master password to reveal"
-              onChange={(value) => {
-                patch({ requireMasterOnReveal: value });
-              }}
-            />
-          </GroupRow>
+            <GroupedRow className="min-h-[60px] py-2.5">
+              <RowText
+                name="Imported themes"
+                description={
+                  importedThemes.length === 0
+                    ? 'A theme is a set of colour values. Imported themes are validated in Rust before anything is applied.'
+                    : `${String(importedThemes.length)} imported.`
+                }
+              />
+              <span className="text-control shrink-0 tabular-nums">
+                {settings.importedThemeCount}
+              </span>
+            </GroupedRow>
+          </GroupedList>
+        </section>
 
-          <GroupRow height="setting">
-            <RowText
-              name="Watch for breaches"
-              description="Checks 5-character hash prefixes at most once a day. Passwords never leave this device."
-            />
-            <Switch
-              checked={settings.watchForBreaches}
-              disabled={saving}
-              label="Watch for breaches"
-              onChange={(value) => {
-                patch({ watchForBreaches: value });
-              }}
-            />
-          </GroupRow>
+        <section className="mt-7">
+          <SectionLabel>Autofill and import</SectionLabel>
+          <GroupedList className="mt-2">
+            <GroupedRow className="min-h-[60px] py-2.5">
+              <RowText
+                name="Autofill"
+                description="Not available yet. Autofill and import arrive in a later version, and matching is on the registrable domain — never a substring."
+              />
+              {/* §7.5: "Never a toggle that does nothing." A stated fact, not a switch. */}
+              <span className="text-control text-text-caption-aa shrink-0">
+                Not in this version
+              </span>
+            </GroupedRow>
+          </GroupedList>
+        </section>
 
-          <GroupRow height="setting">
-            <RowText
-              name="Hide from screen capture"
-              description="Off by default: it matches the stated threat model, and turning it on breaks your own screenshots and screen sharing for support."
-            />
-            <Switch
-              checked={settings.contentProtection}
-              disabled={saving}
-              label="Hide from screen capture"
-              onChange={(value) => {
-                patch({ contentProtection: value });
-              }}
-            />
-          </GroupRow>
-        </Group>
-
-        <Group label="Appearance">
-          <GroupRow height="setting">
-            <RowText name="Theme" description="Dark, light, or whatever the system is set to." />
-            <select
-              className="setting-select"
-              aria-label="Theme"
-              value={mode}
-              onChange={(event) => {
-                void setMode(event.target.value as ThemeMode);
-              }}
+        <section className="mt-7">
+          <SectionLabel>Privacy and data</SectionLabel>
+          <GroupedList className="mt-2">
+            <GroupedRow
+              interactive
+              className="min-h-[60px] py-2.5"
+              onClick={onBackup}
+              role="button"
+              tabIndex={0}
+              data-focus-ring
+              aria-label="Backup and restore"
             >
-              {MODES.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </GroupRow>
+              <RowText
+                name="Backup and restore"
+                description="Export an encrypted backup under its own passphrase, or restore from one."
+              />
+              <span className="text-control text-text-secondary flex shrink-0 items-center gap-0.5 font-medium">
+                <Glyph name="next" size={14} />
+              </span>
+            </GroupedRow>
 
-          <GroupRow height="setting">
-            <RowText
-              name="Imported themes"
-              description={
-                importedThemes.length === 0
-                  ? 'A theme is a set of colour values. Imported themes are validated in Rust before anything is applied.'
-                  : `${String(importedThemes.length)} imported.`
-              }
-            />
-            <span className="setting-value">{settings.importedThemeCount}</span>
-          </GroupRow>
-        </Group>
+            <GroupedRow
+              interactive
+              className="min-h-[60px] py-2.5"
+              onClick={onUpdates}
+              role="button"
+              tabIndex={0}
+              data-focus-ring
+              aria-label="Updates"
+            >
+              <RowText
+                name="Updates"
+                description={
+                  settings.updateChecksEnabled
+                    ? 'Checked at most once a day. The endpoint learns your IP, version and platform, and nothing else.'
+                    : 'Automatic checks are off. You can still check manually.'
+                }
+              />
+              <span className="text-control text-text-secondary flex shrink-0 items-center gap-0.5 font-medium">
+                <Glyph name="next" size={14} />
+              </span>
+            </GroupedRow>
 
-        <Group label="Autofill and import">
-          <GroupRow height="setting">
-            <RowText
-              name="Autofill"
-              description="Not available yet. Autofill and import arrive in a later version, and matching is on the registrable domain — never a substring."
-            />
-            {/* §7.5: "Never a toggle that does nothing." A stated fact, not a switch. */}
-            <span className="setting-value setting-value--muted">Not in this version</span>
-          </GroupRow>
-        </Group>
-
-        <Group label="Privacy and data">
-          <GroupRow height="setting" onClick={onBackup} label="Backup and restore">
-            <RowText
-              name="Backup and restore"
-              description="Export an encrypted backup under its own passphrase, or restore from one."
-            />
-            <span className="setting-chevron">
-              <Glyph name="next" />
-            </span>
-          </GroupRow>
-
-          <GroupRow height="setting" onClick={onUpdates} label="Updates">
-            <RowText
-              name="Updates"
-              description={
-                settings.updateChecksEnabled
-                  ? 'Checked at most once a day. The endpoint learns your IP, version and platform, and nothing else.'
-                  : 'Automatic checks are off. You can still check manually.'
-              }
-            />
-            <span className="setting-chevron">
-              <Glyph name="next" />
-            </span>
-          </GroupRow>
-
-          <GroupRow height="setting">
-            <RowText
-              name="Check for updates automatically"
-              description="At most once every 24 hours, on launch."
-            />
-            <Switch
-              checked={settings.updateChecksEnabled}
-              disabled={saving}
-              label="Check for updates automatically"
-              onChange={(value) => {
-                patch({ updateChecksEnabled: value });
-              }}
-            />
-          </GroupRow>
-        </Group>
+            <GroupedRow className="min-h-[60px] py-2.5">
+              <RowText
+                name="Check for updates automatically"
+                description="At most once every 24 hours, on launch."
+              />
+              <Switch
+                checked={settings.updateChecksEnabled}
+                disabled={saving}
+                label="Check for updates automatically"
+                onChange={() => {
+                  patch({ updateChecksEnabled: !settings.updateChecksEnabled });
+                }}
+              />
+            </GroupedRow>
+          </GroupedList>
+        </section>
 
         {/* §7.5: "a plain statement of exactly what leaves the device". */}
-        <section className="card card--notes" aria-labelledby="leaves-device">
-          <h2 className="card__label" id="leaves-device">
+        <section
+          className="bg-surface-raised shadow-card mt-7 rounded-lg p-4"
+          aria-labelledby="leaves-device"
+        >
+          <h2
+            className="text-micro tracking-label text-text-caption-aa flex h-6 items-end font-bold uppercase"
+            id="leaves-device"
+          >
             What leaves this device
           </h2>
-          <ul className="leaves-list">
+          <ul className="text-caption text-text-secondary mt-3 flex flex-col gap-2.5 leading-4 text-pretty">
             <li>
               <strong>Breach checks.</strong> The first 5 characters of a password&rsquo;s SHA-1
               hash, with padding requested so the response length reveals nothing. Never the
@@ -317,9 +359,12 @@ interface RowTextProps {
 
 function RowText({ name, description }: RowTextProps) {
   return (
-    <span className="setting-text">
-      <span className="setting-name">{name}</span>
-      <span className="setting-description">{description}</span>
-    </span>
+    <div className="min-w-0 flex-1">
+      <div className="text-body font-semibold">{name}</div>
+      {/* HO-002 uses `--text-muted` here. An 11.5px description is body text and that
+          token fails AA on every surface (contrast-report finding 2), so it resolves
+          through the alias. */}
+      <div className="text-chip text-text-caption-aa mt-0.5 text-pretty">{description}</div>
+    </div>
   );
 }

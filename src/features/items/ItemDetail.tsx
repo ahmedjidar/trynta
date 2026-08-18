@@ -1,45 +1,57 @@
 /**
- * Item detail — components.md §6, SPEC-V1 §7.2.
+ * Item detail — HO-002 `components/ItemDetail.tsx`, SPEC-V1 §7.1, §7.2.
  *
- * ## The security-critical part
+ * ## Edit mode
  *
- * Reveal is the only path a plaintext secret takes to the webview (CLAUDE.md §4.4), and
- * the obligations it puts on this component cannot be enforced by a type:
+ * HO-002's Edit button swaps the Username row for an input and the button's label for
+ * "Done". The password row is untouched in edit mode, which is the right shape and not an
+ * omission: a form pre-filled with the stored password would be a second plaintext path out
+ * of Rust, and §4.4 allows exactly one. So edit mode changes **metadata only** — title,
+ * username, website, notes — and `item_edit_meta` carries the sealed secret across inside
+ * Rust. Setting a new password is a separate, explicit action.
  *
- * - the revealed value lives in local state and **nowhere else** — no store, no query
- *   cache, no ref that outlives the component;
- * - it is cleared on navigation — **derived** from the item id rather than reset in an
- *   effect, so there is no frame where the previous item's password sits beside the new
- *   item's title — and on window blur, and on collapse;
- * - it is never interpolated into an error, a label, or a `title` attribute.
+ * ## Autofill
  *
- * **Copy never reveals.** `item_copy_field` decrypts in Rust and writes the OS
- * clipboard; the value does not cross IPC at all (§4.3). So Copy works on a still-masked
- * field, which is both the common case and the safe one.
+ * HO-002's second header button fires `flash('Autofilled in Safari — …')`. Autofill is
+ * SPEC-V3 and there is nothing behind it, so it renders **disabled** with the reason in its
+ * tooltip rather than being dropped: the design puts two buttons here, and §7.5's rule is
+ * against a control that *appears* to work.
  *
- * ## Why this is driven by `fields` and `secrets`
+ * ## What is not here
  *
- * `ItemDetailDto` carries `fields` (label/value metadata) and `secrets` (which secret
- * fields exist, never their values) rather than a login-shaped body. The design shows
- * the login field set only, but that generic shape is what makes a card or an identity
- * render at all — so the rows come from the data and the *presentation* comes from §6.
- * A hand-written login layout would look right and show nothing for the other three
- * types.
+ * HO-002's meta grid pairs "Shared with" — person chips and an "+ Invite" affordance — with
+ * "Activity". Sharing is SPEC-V2, so Activity spans the grid alone.
+ *
+ * ## Reveal
+ *
+ * The revealed value is derived from held state tagged with the item id rather than reset in
+ * an effect, which makes §4.4's "clear on navigation" structural: there is no frame in which
+ * the previous item's password is on screen beside the new item's title.
  */
 
 import { useCallback, useEffect, useState } from 'react';
 
-import { useNavigation } from '../../app/navigation';
-import { CopyAction, Group, GroupRow, StrengthMeter } from '../../components/Controls';
+import { Button } from '../../components/Button';
+import { CopyAction, Input } from '../../components/Bits';
+import {
+  Card,
+  FieldLabel,
+  GroupedList,
+  GroupedRow,
+  SectionLabel,
+} from '../../components/GroupedList';
 import { IdentityTile } from '../../components/IdentityTile';
-import { itemCopyField, itemRevealField } from '../../ipc';
-import type { ItemDetailDto, ItemSummaryDto, SecretFieldDto } from '../../ipc';
+import { StrengthMeter } from '../../components/StrengthMeter';
 import { TotpRow } from './TotpRow';
+import { useNavigation } from '../../app/navigation';
+import { cn } from '../../lib/cn';
+import { itemCopyField, itemEditMeta, itemRevealField } from '../../ipc';
+import type { ItemDetailDto, ItemSummaryDto, MetaEditsInput, SecretFieldDto } from '../../ipc';
 
-/** Masking glyph. §6 tracks the masked form wider than the revealed one. */
+/** HO-002 masks with `'•'.repeat(max(10, length))`; the length is not a hint worth giving. */
 const MASK = '•'.repeat(16);
 
-/** Human label per secret field, in the order §6 lists them. */
+/** Human label per secret field, in the order components.md lists them. */
 const SECRET_LABELS: Record<string, string> = {
   password: 'Password',
   totpSecret: 'One-time code',
@@ -55,9 +67,15 @@ function fieldKey(field: SecretFieldDto): string {
   return field.field === 'custom' ? `custom:${String(field.index)}` : field.field;
 }
 
-/** Whether a field's strength meter should show. Only a login password has a band. */
-function isPassword(field: SecretFieldDto): boolean {
-  return field.field === 'password';
+/** Which of the item's own labelled fields edit mode can write. */
+const EDITABLE = new Set(['Username', 'Website']);
+
+/** Tone for the strength label, matching HO-002's `strengthColor()` thresholds. */
+function strengthTone(band: number): string {
+  if (band === 0) return 'empty';
+  if (band <= 1) return 'danger';
+  if (band === 2) return 'warning';
+  return 'accent';
 }
 
 export interface ItemDetailProps {
@@ -67,12 +85,14 @@ export interface ItemDetailProps {
   detail: ItemDetailDto;
   /** Band 0–4 and its label, from the last security report. */
   strength: { band: number; label: string };
-  /** Owning vault's name, for §6's "{sub} · {vaultName}" subtitle. */
+  /** Owning vault's name, for the header subtitle. */
   vaultName: string;
   /** Report a copy to the toast. */
   onCopied: (what: string) => void;
   /** Report a failure to the toast. */
   onFailed: (message: string) => void;
+  /** Drop the cached list and detail after a successful edit. */
+  onEdited: () => void;
 }
 
 export function ItemDetail({
@@ -82,19 +102,15 @@ export function ItemDetail({
   vaultName,
   onCopied,
   onFailed,
+  onEdited,
 }: ItemDetailProps) {
-  /**
-   * Which secret is revealed, and its plaintext. At most one at a time.
-   *
-   * Tagged with the item id it belongs to, and read back only when the tag matches the
-   * item now on screen. That makes §4.4's "clear on navigation" **derived** rather than
-   * an effect that fires after the render — so there is no frame in which the previous
-   * item's password is on screen next to the new item's title. A `useEffect` reset
-   * would work almost always, and "almost always" is not a property to want here.
-   */
   const [held, setHeld] = useState<{ itemId: string; key: string; value: string } | null>(null);
   const revealed = held?.itemId === detail.id ? held : null;
   const select = useNavigation((s) => s.select);
+
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
 
   // §4.4: clear on blur. A revealed password left visible while the user alt-tabs is
   // exactly what shoulder-surfing and screen capture take.
@@ -108,24 +124,30 @@ export function ItemDetail({
     };
   }, []);
 
-  // Escape closes the pane. §6 draws no close control — its header actions are Edit and
-  // Autofill — so this is the whole affordance rather than a shortcut for a button, and
-  // without it a keyboard user has no way out. A behaviour, not a layout invention.
+  // Escape leaves edit mode, then closes the pane. HO-002 binds one global handler that
+  // closes the palette, leaves edit mode and closes the sheet together; scoping it here
+  // means it cannot dismiss an overlay that happens to be open over this pane.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setHeld(null);
-        select(null);
+      if (event.key !== 'Escape') return;
+      setHeld(null);
+      if (editing) {
+        setEditing(false);
+        setDraft({});
+        return;
       }
+      select(null);
     };
     globalThis.addEventListener('keydown', onKey);
     return () => {
       globalThis.removeEventListener('keydown', onKey);
     };
-  }, [select]);
+  }, [select, editing]);
 
   const copy = useCallback(
     (field: SecretFieldDto, what: string) => {
+      // Rust reads, decrypts and writes the OS clipboard. The plaintext never enters the
+      // webview (CLAUDE.md §4.3).
       itemCopyField(detail.id, field).then(
         () => {
           onCopied(`${what} copied`);
@@ -159,50 +181,135 @@ export function ItemDetail({
     [detail.id, revealed, onFailed],
   );
 
+  function save() {
+    const edits: MetaEditsInput = {};
+    const title = draft.Title;
+    if (title !== undefined && title.trim() !== detail.title) edits.title = title.trim();
+    const username = draft.Username;
+    if (username !== undefined) edits.username = username;
+    const website = draft.Website;
+    if (website !== undefined) edits.urls = website.trim() === '' ? [] : [website.trim()];
+    const notes = draft.Notes;
+    if (notes !== undefined && notes !== detail.notes) edits.notes = notes;
+
+    if (Object.keys(edits).length === 0) {
+      setEditing(false);
+      setDraft({});
+      return;
+    }
+
+    setSaving(true);
+    itemEditMeta(detail.id, edits).then(
+      () => {
+        setSaving(false);
+        setEditing(false);
+        setDraft({});
+        onEdited();
+        onCopied('Changes saved');
+      },
+      () => {
+        setSaving(false);
+        onFailed('Could not save the changes');
+      },
+    );
+  }
+
   const present = detail.secrets.filter((s) => s.present);
+  const subtitle = [summary.subtitle, vaultName].filter((part) => part).join(' · ');
 
   return (
-    <section className="pane" aria-label="Item detail">
-      <div className="pane__content">
-        <header className="detail-header">
-          <IdentityTile icon={summary.icon} size="lg" title={summary.title} />
-          <div className="detail-header__labels">
-            <h1 className="detail-header__name">{detail.title}</h1>
-            <p className="detail-header__sub">
-              {/* §6's header subtitle is "{sub} · {vaultName}" — which vault an item
-                  lives in is part of identifying it, not decoration. */}
-              {[summary.subtitle, vaultName].filter((part) => part).join(' · ')}
-            </p>
+    <section className="bg-surface-panel min-w-0 flex-1 overflow-y-auto" aria-label="Item detail">
+      <div className="max-w-[704px] px-8 pt-7 pb-12">
+        <header className="flex items-center gap-4">
+          <IdentityTile icon={summary.icon} size={56} title={summary.title} />
+          <div className="min-w-0 flex-1">
+            {editing ? (
+              <Input
+                aria-label="Title"
+                className="text-body-lg h-9 w-full font-semibold"
+                value={draft.Title ?? detail.title}
+                onChange={(event) => {
+                  setDraft((prev) => ({ ...prev, Title: event.target.value }));
+                }}
+              />
+            ) : (
+              <h1 className="text-display tracking-display truncate font-bold">{detail.title}</h1>
+            )}
+            <p className="text-body text-text-caption-aa mt-0.5 truncate">{subtitle}</p>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            <Button
+              variant="outline"
+              disabled={saving}
+              onClick={() => {
+                if (editing) save();
+                else setEditing(true);
+              }}
+            >
+              {editing ? (saving ? 'Saving…' : 'Done') : 'Edit'}
+            </Button>
+            <Button disabled title="Autofill arrives in a later version">
+              Autofill
+            </Button>
           </div>
         </header>
 
-        <Group>
-          {/* Metadata rows: username, cardholder, expiry, and so on, whichever the
-              item type has. Not secrets — these come back with the list index. */}
+        <GroupedList className="mt-6">
+          {/* The item's own non-secret fields — username, cardholder, expiry, whichever
+              the kind has. These arrive with the list index, never a secret among them. */}
           {detail.fields.map((field) => (
-            <GroupRow key={field.label}>
-              <span className="field-label">{field.label}</span>
-              <span className="field-value field-value--mono" data-selectable>
-                {field.value}
-              </span>
+            <GroupedRow key={field.label} className="h-12">
+              <FieldLabel>{field.label}</FieldLabel>
+              {editing && EDITABLE.has(field.label) ? (
+                <Input
+                  aria-label={field.label}
+                  className="h-7 flex-1"
+                  value={draft[field.label] ?? field.value}
+                  onChange={(event) => {
+                    setDraft((prev) => ({ ...prev, [field.label]: event.target.value }));
+                  }}
+                />
+              ) : (
+                <div
+                  className={cn(
+                    'text-body min-w-0 flex-1 truncate',
+                    field.label === 'Website' ? 'text-accent-text' : 'font-mono',
+                  )}
+                  data-selectable
+                >
+                  {/* HO-002 renders the website as an `<a>`. `default-src 'self'` means
+                      an external href cannot navigate, and opening the OS browser needs
+                      `shell:allow-open`, which this app does not grant — so it would be a
+                      link that does nothing. Selectable text instead. */}
+                  {field.value}
+                </div>
+              )}
               <CopyAction
                 onClick={() => {
-                  onCopied(`${field.label} copied`);
+                  navigator.clipboard.writeText(field.value).then(
+                    () => {
+                      onCopied(`${field.label} copied`);
+                    },
+                    () => {
+                      onFailed('Could not copy');
+                    },
+                  );
                 }}
-                label={`Copy ${field.label.toLowerCase()} for ${detail.title}`}
               >
                 Copy
               </CopyAction>
-            </GroupRow>
+            </GroupedRow>
           ))}
 
-          {present.map(({ field }) => {
-            // The one-time code has its own row: a live code, a draining trough and a
-            // countdown, none of which is a masked value with a Reveal button.
-            if (field.field === 'totpSecret') {
+          {present.map((secret) => {
+            const key = fieldKey(secret.field);
+            const label = SECRET_LABELS[secret.field.field] ?? 'Hidden field';
+            const shown = revealed?.key === key;
+
+            if (secret.field.field === 'totpSecret') {
               return (
                 <TotpRow
-                  key="totp"
+                  key={key}
                   itemId={detail.id}
                   title={detail.title}
                   onCopied={onCopied}
@@ -211,87 +318,84 @@ export function ItemDetail({
               );
             }
 
-            const key = fieldKey(field);
-            const label = SECRET_LABELS[field.field] ?? 'Secret';
-            const shown = revealed?.key === key ? revealed.value : null;
-
             return (
-              <GroupRow key={key}>
-                <span className="field-label">{label}</span>
-                <span
-                  className="field-value field-value--mono"
-                  data-masked={shown === null || undefined}
-                  data-selectable={shown === null ? undefined : true}
+              <GroupedRow key={key} className="h-12">
+                <FieldLabel>{label}</FieldLabel>
+                <div
+                  className={cn(
+                    'text-body min-w-0 flex-1 overflow-hidden font-mono whitespace-nowrap',
+                    shown ? 'tracking-shown' : 'tracking-masked',
+                  )}
+                  data-selectable={shown ? '' : undefined}
                 >
-                  {shown ?? MASK}
-                </span>
+                  {shown ? revealed.value : MASK}
+                </div>
                 <CopyAction
                   onClick={() => {
-                    toggleReveal(field);
+                    toggleReveal(secret.field);
                   }}
-                  label={
-                    shown === null
-                      ? `Reveal the ${label.toLowerCase()} for ${detail.title}`
-                      : `Hide the ${label.toLowerCase()} for ${detail.title}`
-                  }
                 >
-                  {shown === null ? 'Reveal' : 'Hide'}
+                  {shown ? 'Hide' : 'Reveal'}
                 </CopyAction>
                 <CopyAction
                   onClick={() => {
-                    copy(field, label);
+                    copy(secret.field, label);
                   }}
-                  label={`Copy the ${label.toLowerCase()} for ${detail.title}`}
                 >
                   Copy
                 </CopyAction>
-              </GroupRow>
+              </GroupedRow>
             );
           })}
 
-          {/* §6's strength row, for a login only: a card PIN has no crack-time band. */}
-          {present.some((s) => isPassword(s.field)) ? (
-            <GroupRow>
-              <span className="field-label">Strength</span>
-              <StrengthMeter filled={strength.band} label={strength.label} />
-              <span className="meter-label" data-band={strength.band}>
+          {/* Strength, for a login only: a card PIN has no crack-time band. */}
+          {present.some((s) => s.field.field === 'password') ? (
+            <GroupedRow className="h-12">
+              <FieldLabel>Strength</FieldLabel>
+              <StrengthMeter score={strength.band} label={strength.label} />
+              <div
+                className="text-chip w-[68px] shrink-0 text-right font-bold"
+                data-tone={strengthTone(strength.band)}
+              >
                 {strength.label}
-              </span>
-            </GroupRow>
+              </div>
+            </GroupedRow>
           ) : null}
-        </Group>
+        </GroupedList>
 
-        <div className="meta-grid">
-          <article className="card">
-            <h2 className="card__label">Activity</h2>
-            <div className="card__body">
-              {/* §6 shows "Password changed …" and "Last autofilled …". Activity is a
-                  separate command (`item_activity`) and autofill is V3, so the card
-                  shows what the item itself carries rather than inventing history. */}
-              <p>Created {new Date(detail.createdAt).toLocaleDateString()}</p>
-              <p>Revision {detail.revision}</p>
+        <div className="mt-4 grid grid-cols-2 gap-4">
+          {/* HO-002 pairs Activity with "Shared with". Sharing is SPEC-V2, so Activity
+              spans the grid rather than leaving an empty cell or an invented neighbour. */}
+          <Card className="col-span-2 min-h-24">
+            <SectionLabel className="h-auto">Activity</SectionLabel>
+            <div className="text-caption text-text-secondary mt-3 flex flex-col gap-1.5">
+              <div>Created {new Date(detail.createdAt).toLocaleDateString()}</div>
+              <div>Revision {detail.revision}</div>
             </div>
-          </article>
-
-          <article className="card">
-            <h2 className="card__label">Shared with</h2>
-            <div className="card__body">
-              {/* §6 shows person chips and a "+ Invite" affordance. Sharing is V2 and
-                  §7.5 says never a control that does nothing, so the slot states the
-                  truth instead of offering a button that cannot work. */}
-              <p>Not shared. Multi-owner sharing arrives in V2.</p>
-            </div>
-          </article>
+          </Card>
         </div>
 
-        {detail.notes === '' ? null : (
-          <article className="card card--notes">
-            <h2 className="card__label">Notes</h2>
-            <p className="card__notes" data-selectable>
-              {detail.notes}
+        <Card className="mt-4">
+          <SectionLabel className="h-auto">Notes</SectionLabel>
+          {editing ? (
+            <textarea
+              aria-label="Notes"
+              rows={3}
+              className="border-strong bg-surface-panel text-body text-text-primary mt-3 w-full resize-none rounded-md border px-2.5 py-2 leading-[18px] outline-none"
+              value={draft.Notes ?? detail.notes}
+              onChange={(event) => {
+                setDraft((prev) => ({ ...prev, Notes: event.target.value }));
+              }}
+            />
+          ) : (
+            <p
+              className="text-body text-text-secondary mt-3 leading-5 text-pretty whitespace-pre-wrap"
+              data-selectable
+            >
+              {detail.notes === '' ? 'No notes yet.' : detail.notes}
             </p>
-          </article>
-        )}
+          )}
+        </Card>
       </div>
     </section>
   );

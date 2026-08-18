@@ -1,45 +1,40 @@
 /**
- * Security report — components.md §11, SPEC-V1 §7.4.
+ * Security report — HO-002 `components/SecurityView.tsx`, SPEC-V1 §7.4.
  *
- * ## The stat cards, and where their colours come from
+ * ## The stat cards
  *
- * §11 says the four cards *"map to --stat-red/-amber/-violet/-cyan"*. Those tokens live
- * in the design's external design-system file, and their values are exactly Keyring's
- * `--status-danger`, `--status-warning`, `--accent` and `--status-info`. So the cards use
- * Keyring's own names: same appearance, one token layer, and light theme works — the
- * `--stat-*` values are dark-only raw hex with no light override.
+ * HO-002 colours the four figures from `--status-danger`, `--status-warning`, `--accent`
+ * and `--status-info`. Same tones here, resolved through the `[data-tone]` rules in
+ * `theme/dynamic.css` so a 26px figure still passes AA on a light raised surface.
  *
  * ## Two things this surface must not do
  *
  * **It makes no network request.** `security_report_run` is handed a cache-only breach
- * source in Rust, so AC14's "zero requests from a report" is structural. Refreshing the
- * cache is a separate command the user triggers.
+ * source in Rust, so AC14's "zero requests from a report" is structural rather than a
+ * promise this component keeps. Refreshing the cache is a separate command the user
+ * triggers, and HO-002's "Change all with autofill" button is not it — autofill is V3, so
+ * the action here is the breach check, which is the one thing that can actually run.
  *
  * **It never shows an unchecked item as safe.** §7.4: *"Offline → 'not checked,' never
- * 'safe.'"* `notChecked` is reported separately from `breached` and gets its own line,
- * because folding it into either would be the lie the criterion exists to prevent.
+ * 'safe.'"* `notChecked` is reported separately and gets its own card, because folding it
+ * into either of the others would be the lie the criterion exists to prevent.
  *
  * ## The score
  *
- * `null` means "not enough data" — §7.4: *"not 0, not 100."* The breakdown renders
- * beside it because §7.4 requires the arithmetic to be visible, and the weights come
- * from the response rather than being hardcoded, so shipping the 2FA directory later
- * needs no frontend change.
+ * HO-002 prints a fixed 82. `null` means "not enough data" — §7.4: *"not 0, not 100"* — and
+ * the breakdown renders below it because §7.4 requires the arithmetic to be visible. The
+ * weights come from the response, so shipping the 2FA directory later needs no change here.
  */
 
-import { useNavigation } from '../../app/navigation';
-import { Button, Group, GroupRow } from '../../components/Controls';
+import { Button } from '../../components/Button';
+import { Badge } from '../../components/Bits';
+import { GroupedList, GroupedRow } from '../../components/GroupedList';
 import { Glyph } from '../../components/Glyph';
 import { IdentityTile } from '../../components/IdentityTile';
+import { StatCards } from '../../components/StatCards';
+import type { Stat } from '../../components/StatCards';
+import { useNavigation } from '../../app/navigation';
 import type { ItemSummaryDto, RiskDto, SecurityReportDto } from '../../ipc';
-
-/** Card tone per stat, mapped onto Keyring's status tokens. */
-const CARDS = [
-  { key: 'breached', tone: 'danger', label: 'Breached', sub: 'Found in a known credential dump' },
-  { key: 'weak', tone: 'warning', label: 'Weak', sub: 'Guessable in under a day' },
-  { key: 'reused', tone: 'accent', label: 'Reused', sub: 'Shared across two or more items' },
-  { key: 'notChecked', tone: 'info', label: 'Not checked', sub: 'No breach data for these yet' },
-] as const;
 
 /** Tag copy and tone per risk kind. */
 const TAGS = {
@@ -53,7 +48,7 @@ export interface SecurityReportProps {
   report: SecurityReportDto;
   /** List rows, for the identity tile and subtitle on each risk. */
   items: readonly ItemSummaryDto[];
-  /** Refresh the breach cache. The only command here that reaches the network. */
+  /** Refresh the breach cache. The only thing here that reaches the network. */
   onCheckNow: () => void;
   /** Whether a refresh is permitted right now (§7.4's 24-hour cadence). */
   canCheck: boolean;
@@ -63,81 +58,103 @@ export function SecurityReport({ report, items, onCheckNow, canCheck }: Security
   const select = useNavigation((s) => s.select);
   const go = useNavigation((s) => s.go);
 
-  const counts: Record<string, number> = {
-    breached: report.breached,
-    weak: report.weak,
-    reused: report.reused,
-    notChecked: report.notChecked,
-  };
+  const stats: readonly Stat[] = [
+    {
+      label: 'Breached',
+      value: String(report.breached),
+      sub: 'Found in a known credential dump',
+      tone: 'danger',
+    },
+    { label: 'Weak', value: String(report.weak), sub: 'Guessable in under a day', tone: 'warning' },
+    {
+      label: 'Reused',
+      value: String(report.reused),
+      sub: 'Shared across two or more items',
+      tone: 'accent',
+    },
+    {
+      label: 'Not checked',
+      value: String(report.notChecked),
+      sub: 'No breach data for these yet',
+      tone: 'info',
+    },
+  ];
 
   return (
-    <section className="pane pane--wide" aria-label="Security report">
-      <div className="pane__content pane__content--wide">
-        <header className="security__header">
-          <div className="security__intro">
-            <h1 className="pane__title">Security report</h1>
-            <p className="pane__prose">
-              {/* §7.4's own framing, and it is the honest one: only 5-character hash
-                  prefixes are ever sent, and never on this screen. */}
+    <section
+      className="bg-surface-panel min-w-0 flex-1 overflow-y-auto"
+      aria-label="Security report"
+    >
+      <div className="max-w-[880px] px-10 pt-8 pb-12">
+        <header className="flex items-start gap-8">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-display tracking-display font-bold">Security report</h1>
+            <p className="text-body text-text-caption-aa mt-1 max-w-[62ch] leading-5 text-pretty">
+              {/* §7.4's own framing, and the honest one: only 5-character hash prefixes
+                  are ever sent, and never from this screen. */}
               Checked against the Have I Been Pwned corpus using k-anonymous hash prefixes. Your
               passwords never leave this device, and opening this report sends nothing.
             </p>
           </div>
-          <div className="security__score">
-            <span className="security__score-value">
+          <div className="shrink-0 text-right">
+            <div
+              className="text-metric tracking-metric font-bold tabular-nums"
+              data-tone={report.score === null ? 'empty' : 'accent'}
+            >
               {report.score === null ? '—' : report.score}
-            </span>
-            <span className="security__score-label">Vault health</span>
+            </div>
+            <div className="text-micro tracking-label text-text-caption-aa mt-1.5 font-bold uppercase">
+              Vault health
+            </div>
           </div>
         </header>
 
         {report.score === null ? (
-          <p className="security__empty">
-            {/* §7.4: N == 0 is null, "not 0, not 100". Saying so beats a zero that reads
-                as a catastrophic score. */}
+          <p className="text-body text-text-caption-aa mt-6">
+            {/* §7.4: N == 0 is null, "not 0, not 100". Saying so beats a zero that reads as
+                a catastrophic score. */}
             Not enough data to score. Add a login and the report will have something to measure.
           </p>
         ) : (
           <>
-            <div className="stat-cards">
-              {CARDS.map((card) => (
-                <article key={card.key} className="stat-card" data-tone={card.tone}>
-                  <span className="stat-card__value">{counts[card.key] ?? 0}</span>
-                  <span className="stat-card__label">{card.label}</span>
-                  <span className="stat-card__sub">{card.sub}</span>
-                </article>
-              ))}
-            </div>
+            <StatCards className="mt-6" stats={stats} />
 
             {report.breakdown === null ? null : (
-              <Group label="How the score is calculated">
-                {/* §7.4: "breakdown always visible — the user should see why, not just
-                    what". The weights come from the response, so the 43.75/31.25/25
-                    redistribution while no 2FA directory ships needs no code here. */}
-                {[
-                  { label: 'Not breached', term: report.breakdown.breached },
-                  { label: 'Not weak', term: report.breakdown.weak },
-                  { label: 'Not reused', term: report.breakdown.reused },
-                  { label: 'Two-factor', term: report.breakdown.twoFactor },
-                ].map(({ label, term }) => (
-                  <GroupRow key={label}>
-                    <span className="field-label field-label--wide">{label}</span>
-                    <span className="breakdown__weight">
-                      {term.weight === 0
-                        ? 'no weight'
-                        : `${term.weight.toFixed(2)} × ${(term.fraction * 100).toFixed(0)}%`}
-                    </span>
-                    <span className="breakdown__points">{term.points.toFixed(2)}</span>
-                  </GroupRow>
-                ))}
-              </Group>
+              <>
+                <h2 className="text-micro tracking-label text-text-caption-aa mt-8 flex h-6 items-end font-bold uppercase">
+                  How the score is calculated
+                </h2>
+                <GroupedList className="mt-2">
+                  {/* §7.4: "breakdown always visible — the user should see why, not just
+                      what". The weights come from the response, so the 43.75/31.25/25
+                      redistribution while no 2FA directory ships needs no code here. */}
+                  {[
+                    { label: 'Not breached', term: report.breakdown.breached },
+                    { label: 'Not weak', term: report.breakdown.weak },
+                    { label: 'Not reused', term: report.breakdown.reused },
+                    { label: 'Two-factor', term: report.breakdown.twoFactor },
+                  ].map(({ label, term }) => (
+                    <GroupedRow key={label} className="h-12">
+                      <span className="text-body min-w-0 flex-1 font-medium">{label}</span>
+                      <span className="text-caption text-text-caption-aa shrink-0 tabular-nums">
+                        {term.weight === 0
+                          ? 'no weight'
+                          : `${term.weight.toFixed(2)} × ${(term.fraction * 100).toFixed(0)}%`}
+                      </span>
+                      <span className="text-body w-14 shrink-0 text-right font-bold tabular-nums">
+                        {term.points.toFixed(2)}
+                      </span>
+                    </GroupedRow>
+                  ))}
+                </GroupedList>
+              </>
             )}
 
             {report.twoFactorCapable === 0 ? (
-              <p className="security__note">
+              <p className="text-chip text-text-caption-aa mt-3 max-w-[62ch] leading-4 text-pretty">
                 {/* Not a footnote. The 2FA term carries no weight in this build and the
-                    other three weights are larger as a result, so the score is not
-                    comparable with one from a build that ships the directory. */}
+                    other three are larger as a result, so this score is not comparable
+                    with one from a build that ships the directory. */}
                 The two-factor term carries no weight in this build: the bundled directory of which
                 services support a second factor is not shipped, so nothing can be reported as
                 capable. Its 20 points are redistributed across the other three, exactly as §7.4
@@ -147,33 +164,39 @@ export function SecurityReport({ report, items, onCheckNow, canCheck }: Security
           </>
         )}
 
-        <div className="security__section-head">
-          <h2 className="security__section-title">Needs attention</h2>
-          <span className="security__section-count">
+        <div className="mt-8 flex h-8 items-center gap-2.5">
+          <h2 className="text-heading tracking-title font-bold">Needs attention</h2>
+          <span className="text-caption text-text-caption-aa tabular-nums">
             {report.risks.length === 1 ? '1 item' : `${String(report.risks.length)} items`}
           </span>
-          <span className="detail-spacer" />
+          <div className="flex-1" />
+          {/* HO-002's button is "Change all with autofill". Autofill is V3 and bulk
+              rotation is out of scope (§7.4), so the action is the one thing this surface
+              can actually do. */}
           <Button variant="outline" onClick={onCheckNow} disabled={!canCheck}>
             {canCheck ? 'Check for breaches now' : 'Checked in the last 24 hours'}
           </Button>
         </div>
 
         {report.risks.length === 0 ? (
-          <Group>
-            <GroupRow height="risk">
-              <span className="security__clear">
-                {/* §11's own empty state: "a --accent shield-check and 'Every password is
-                    strong.'" Reworded because with `notChecked` above zero, "every" would
-                    be a claim the data does not support. */}
-                <Glyph name="verified" />
+          <GroupedList className="mt-3">
+            <GroupedRow className="h-14">
+              <span className="text-body text-text-secondary flex items-center gap-2">
+                {/* HO-002 has no empty state here; components.md specifies an accent
+                    shield-check and "Every password is strong." Reworded when
+                    `notChecked` is above zero, because "every" would then be a claim the
+                    data does not support. */}
+                <span className="text-accent">
+                  <Glyph name="verified" />
+                </span>
                 {report.notChecked > 0
                   ? 'Nothing flagged among the passwords that could be checked.'
                   : 'Every password is strong.'}
               </span>
-            </GroupRow>
-          </Group>
+            </GroupedRow>
+          </GroupedList>
         ) : (
-          <Group>
+          <GroupedList className="mt-3">
             {report.risks.map((risk) => (
               <RiskRow
                 key={`${risk.itemId}-${risk.kind}`}
@@ -185,7 +208,7 @@ export function SecurityReport({ report, items, onCheckNow, canCheck }: Security
                 }}
               />
             ))}
-          </Group>
+          </GroupedList>
         )}
       </div>
     </section>
@@ -208,26 +231,38 @@ function RiskRow({ risk, item, onOpen }: RiskRowProps) {
         : (risk.subtitle ?? '');
 
   return (
-    <GroupRow height="risk" onClick={onOpen} label={`Open ${risk.title}`}>
+    <GroupedRow
+      interactive
+      className="h-14 gap-3"
+      onClick={onOpen}
+      role="button"
+      tabIndex={0}
+      data-focus-ring
+      aria-label={`Open ${risk.title}`}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
+    >
       {item ? (
         <IdentityTile icon={item.icon} title={risk.title} />
       ) : (
-        <span className="tile tile--md" aria-hidden="true" />
+        <span className="tile" data-size="32" data-tone="0" aria-hidden="true" />
       )}
-      <span className="risk__labels">
-        <span className="risk__name">{risk.title}</span>
-        <span className="risk__sub">{detail}</span>
-      </span>
-      <span className="risk__tag-column">
-        <span className="risk-tag" data-tone={tag.tone}>
-          {tag.label}
-        </span>
-      </span>
-      <span className="risk__fix">
+      <div className="min-w-0 flex-1">
+        <div className="text-body font-semibold">{risk.title}</div>
+        <div className="text-chip text-text-caption-aa truncate">{detail}</div>
+      </div>
+      <div className="flex w-[84px] shrink-0 justify-end">
+        <Badge tone={tag.tone}>{tag.label}</Badge>
+      </div>
+      <span className="text-caption text-accent-text flex shrink-0 items-center gap-0.5 font-semibold">
         Fix
-        <Glyph name="next" />
+        <Glyph name="next" size={14} />
       </span>
-    </GroupRow>
+    </GroupedRow>
   );
 }
 

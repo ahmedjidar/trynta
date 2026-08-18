@@ -1,11 +1,11 @@
 /**
- * Item list column — components.md §4, SPEC-V1 §7.1.
+ * Item list column — HO-002 `components/ItemList.tsx`, SPEC-V1 §7.1.
  *
- * Closes two more of the handoff's accessibility gaps: the column is a real listbox
- * with options rather than divs, and arrow keys are bound to it rather than to
- * `window`. The handoff's note — *"arrow keys are bound at window level"* — is a bug
- * with a specific symptom: pressing Down while typing in the search field moves the
- * list selection instead of the caret.
+ * HO-002 gives every row `tabIndex={0}` inside its listbox, so each row is its own tab
+ * stop. This keeps HO-002's visual treatment and moves the tab stop to the list, with
+ * `aria-activedescendant` carrying the selection: a 5,000-item vault must not cost 5,000
+ * tab presses to walk past, and binding the arrow keys to the list rather than to `window`
+ * is what stops Down moving the selection while the user is typing in the search field.
  *
  * SPEC-V1 §7.1 requires ⌘C / Ctrl+C to copy the selected item's primary secret
  * **without opening it**. That happens entirely in Rust (`item_copy_field`), so the
@@ -21,8 +21,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 
 import { NO_FILTERS, sourceLabel, useNavigation } from '../../app/navigation';
+import { Badge, Chip } from '../../components/Bits';
+import { Glyph } from '../../components/Glyph';
 import { IdentityTile } from '../../components/IdentityTile';
 import { Spacer } from '../../components/Spacer';
+import { cn } from '../../lib/cn';
 import type { ItemSummaryDto, SortOrderDto } from '../../ipc';
 
 /** Rows rendered beyond the viewport, so a fast scroll does not show gaps. */
@@ -47,9 +50,11 @@ export interface ItemListProps {
   onCopy: (id: string) => void;
   /** Open the new-item sheet. */
   onNew: () => void;
+  /** The platform's modifier label, for the keyboard hints. Never hardcoded (§8). */
+  modifierKey: string;
 }
 
-export function ItemList({ items, risks, vaultNames, onCopy, onNew }: ItemListProps) {
+export function ItemList({ items, risks, vaultNames, onCopy, onNew, modifierKey }: ItemListProps) {
   const selectedId = useNavigation((s) => s.selectedId);
   const source = useNavigation((s) => s.source);
   const setFilters = useNavigation((s) => s.setFilters);
@@ -146,17 +151,24 @@ export function ItemList({ items, risks, vaultNames, onCopy, onNew }: ItemListPr
   const anyFilter = filters.weak || filters.hasTotp || filters.shared;
 
   return (
-    <section className="list-column" aria-label="Items">
-      <header className="list-header">
-        {/* The design's `listTitle` is the selected source's own name, not a fixed
-            word: "All items", "Logins", or the vault's name. */}
-        <h1 className="list-header__title">
+    <section
+      className="border-hairline bg-surface-raised flex w-80 shrink-0 flex-col border-r"
+      aria-label="Items"
+    >
+      <header className="border-hairline flex h-11 shrink-0 items-center gap-2 border-b pr-3 pl-4">
+        {/* HO-002's `listTitle` is the selected source's own name, not a fixed word:
+            "All items", "Logins", or the vault's name. */}
+        <h1 className="text-heading tracking-title font-bold">
           {sourceLabel(source, source.source === 'vault' ? vaultNames[source.id] : undefined)}
         </h1>
-        <span className="list-header__count">{items.length}</span>
+        <span className="text-caption text-text-caption-aa tabular-nums">
+          {items.length === 1 ? '1 item' : `${String(items.length)} items`}
+        </span>
+        <div className="flex-1" />
         <button
           type="button"
-          className="sort-control"
+          data-focus-ring
+          className="text-micro text-text-secondary duration-quick hover:bg-surface-hover hover:text-text-primary flex h-6 items-center gap-1 rounded-full px-2 font-semibold transition-colors"
           onClick={() => {
             const at = SORTS.findIndex((s) => s.value === sort);
             const next = SORTS[(at + 1) % SORTS.length];
@@ -165,55 +177,58 @@ export function ItemList({ items, risks, vaultNames, onCopy, onNew }: ItemListPr
           aria-label={`Sort: ${currentSort?.label ?? ''}. Change sort order`}
         >
           {currentSort?.label}
+          <Glyph name="sort" size={12} />
         </button>
-        <button type="button" className="new-item-button" onClick={onNew} aria-label="New item">
-          +
+        <button
+          type="button"
+          data-focus-ring
+          className="bg-accent text-text-on-accent shadow-add duration-instant flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-transform active:scale-[.92]"
+          onClick={onNew}
+          aria-label="New item"
+        >
+          <Glyph name="add" />
         </button>
       </header>
 
       {/* Quick filters (§7.1). `shared` is V2 and is deliberately absent rather than
           present and inert — "never a toggle that does nothing" (§7.5). */}
-      <div className="filter-bar" role="group" aria-label="Quick filters">
-        {/* The design's filter bar opens with an "All" chip. Its own logic makes the
-            filters exclusive, but §7.1 says "combinable", and the spec wins on
-            behaviour — so the others toggle and this one clears them. */}
-        <button
-          type="button"
-          className="filter-chip"
-          aria-pressed={!anyFilter}
-          data-selected={!anyFilter || undefined}
+      <div
+        className="border-hairline flex h-10 shrink-0 items-center gap-1.5 border-b px-3"
+        role="group"
+        aria-label="Quick filters"
+      >
+        {/* HO-002's bar is All / Weak / Has 2FA / Shared, and its own logic makes them
+            exclusive. §7.1 says "combinable" and the spec wins on behaviour, so the two
+            real ones toggle and All clears them. `Shared` is V2 and is absent rather than
+            inert — "never a toggle that does nothing" (§7.5). */}
+        <Chip
+          selected={!anyFilter}
           onClick={() => {
             setFilters(NO_FILTERS);
           }}
         >
           All
-        </button>
-        <button
-          type="button"
-          className="filter-chip"
-          aria-pressed={filters.weak}
-          data-selected={filters.weak || undefined}
+        </Chip>
+        <Chip
+          selected={filters.weak}
           onClick={() => {
             toggleFilter('weak');
           }}
         >
           Weak
-        </button>
-        <button
-          type="button"
-          className="filter-chip"
-          aria-pressed={filters.hasTotp}
-          data-selected={filters.hasTotp || undefined}
+        </Chip>
+        <Chip
+          selected={filters.hasTotp}
           onClick={() => {
             toggleFilter('hasTotp');
           }}
         >
           Has 2FA
-        </button>
+        </Chip>
       </div>
 
       <div
-        className="list-scroll"
+        className="flex-1 overflow-y-auto px-2 pt-2 pb-4"
         ref={scrollRef}
         role="listbox"
         aria-label="Items"
@@ -225,7 +240,7 @@ export function ItemList({ items, risks, vaultNames, onCopy, onNew }: ItemListPr
         }}
       >
         {items.length === 0 ? (
-          <p className="list-empty">
+          <p className="text-caption text-text-caption-aa px-6 py-14 text-center">
             {search === '' ? 'Nothing here yet.' : `No items match “${search}”.`}
           </p>
         ) : (
@@ -247,13 +262,12 @@ export function ItemList({ items, risks, vaultNames, onCopy, onNew }: ItemListPr
         )}
       </div>
 
-      <footer className="kbd-footer">
-        <span>
-          <kbd className="kbd">↑↓</kbd> navigate
-        </span>
-        <span>
-          <kbd className="kbd">↵</kbd> open
-        </span>
+      {/* HO-002 also lists "⌘C Copy". The modifier resolves from the platform rather
+          than being typed (SPEC-V1 §8). */}
+      <footer className="border-hairline text-micro text-text-caption-aa flex h-8 shrink-0 items-center gap-3.5 border-t px-4">
+        <span>↑↓ Navigate</span>
+        <span>⏎ Open</span>
+        <span>{modifierKey}C Copy</span>
       </footer>
     </section>
   );
@@ -272,30 +286,39 @@ function ItemRow({ item, risk, selected, onSelect }: ItemRowProps) {
       id={`item-${item.id}`}
       role="option"
       aria-selected={selected}
-      className="item-row"
-      data-selected={selected || undefined}
       onClick={onSelect}
+      className={cn(
+        'duration-quick flex h-[var(--row-h)] shrink-0 cursor-pointer items-center gap-3 rounded-lg px-3 transition-colors',
+        selected ? 'bg-surface-selected' : 'hover:bg-surface-hover',
+      )}
     >
       <IdentityTile icon={item.icon} title={item.title} />
-      <span className="item-row__labels">
-        <span className="item-row__name">{item.title}</span>
-        <span className="item-row__sub">{item.subtitle ?? ''}</span>
-      </span>
-      <span className="item-row__indicators">
+      <div className="min-w-0 flex-1">
+        <div
+          className={cn(
+            'text-body truncate tracking-tight',
+            selected ? 'font-bold' : 'font-medium',
+          )}
+        >
+          {item.title}
+        </div>
+        <div className="text-chip text-text-caption-aa truncate">{item.subtitle ?? ''}</div>
+      </div>
+      <div className="flex shrink-0 items-center gap-1.5">
         {item.hasTotp ? (
-          <span className="totp-pill" aria-label="Has a one-time code">
+          <Badge tone="accent" size="sm">
             2FA
-          </span>
+          </Badge>
         ) : null}
         {risk ? (
           <span
-            className="risk-dot"
-            data-risk={risk}
+            className="dot h-1.5 w-1.5 rounded-full"
+            data-tone={risk === 'breached' ? 'danger' : 'warning'}
             role="img"
             aria-label={risk === 'breached' ? 'Password found in a breach' : 'Weak password'}
           />
         ) : null}
-      </span>
+      </div>
     </div>
   );
 }

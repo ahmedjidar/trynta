@@ -1,0 +1,271 @@
+/*
+ * Tailwind theme layer — the utility vocabulary, resolved through the token layer.
+ *
+ * HO-002 ships a Tailwind **v3** `tailwind.config.ts`. This repo is on Tailwind **v4**
+ * (`@tailwindcss/vite`), where the theme is declared in CSS. This is that config,
+ * translated: same utility names, same values, but every one points at a custom property
+ * in `tokens.css` rather than carrying a literal.
+ *
+ * The values are identical. `tokens.css` and HO-002's `tokens.css` were diffed token by
+ * token — 222 names, 222 matching values, zero differences — so this is a change of
+ * mechanism, not of appearance.
+ *
+ * ## Why `@theme inline` and not `@theme`
+ *
+ * Many of our token names are exactly Tailwind v4's own theme names: `--radius-md`,
+ * `--text-body`, `--tracking-title`, `--shadow-lift`, `--font-mono`. A plain `@theme`
+ * block emits its keys into `:root`, so `--radius-md: var(--radius-md)` would be a
+ * self-reference and resolve to nothing. `inline` substitutes the declared value into the
+ * utility instead of re-declaring the variable, so `rounded-md` compiles to
+ * `border-radius: var(--radius-md)` and `tokens.css` remains the single declaration site.
+ * That is also what keeps `[data-theme]` working: the utility reads the property at
+ * runtime, so a theme swap needs no rebuilt CSS.
+ *
+ * Two things deliberately absent:
+ *
+ * - **No `--color-white`/`--color-black`.** HO-002 uses `text-white` for identity-tile
+ *   monograms; the token for that is `--identity-text`. `check:tokens` treats a bare
+ *   colour keyword as the hardcoded value it is.
+ * - **No spacing overrides.** Tailwind's default scale is 4px-based and `--space-1…6` are
+ *   4/8/12/16/20/24 — the same numbers, so `p-5` and `var(--space-5)` are the same 20px
+ *   without a second name for one scale.
+ */
+
+@theme inline {
+  /* ── Colour ─────────────────────────────────────────────────────────────── */
+  --color-surface-desk: var(--surface-desk);
+  --color-surface-app: var(--surface-app);
+  --color-surface-panel: var(--surface-panel);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-chrome: var(--surface-chrome);
+  --color-surface-sidebar: var(--surface-sidebar);
+  --color-surface-veil: var(--surface-veil);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-selected: var(--surface-selected);
+  --color-surface-knob: var(--surface-knob);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-on-accent: var(--text-on-accent);
+  --color-text-inverse: var(--text-inverse);
+  /* The AA-safe alias, for anything that is body text rather than decoration:
+     a11y.css finding 2 — `--text-muted` fails AA on every surface, both themes. */
+  --color-text-caption-aa: var(--text-caption-aa);
+  --color-identity-text: var(--identity-text);
+
+  --color-hairline: var(--border-hairline);
+  --color-strong: var(--border-strong);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-accent-text: var(--accent-text);
+
+  --color-status-warning: var(--status-warning);
+  --color-status-warning-subtle: var(--status-warning-subtle);
+  --color-status-warning-text: var(--status-warning-text);
+  --color-status-danger: var(--status-danger);
+  --color-status-danger-subtle: var(--status-danger-subtle);
+  --color-status-danger-text: var(--status-danger-text);
+  --color-status-info: var(--status-info);
+  --color-status-info-text: var(--status-info-text);
+
+  --color-window-close: var(--window-close);
+  --color-window-minimise: var(--window-minimise);
+  --color-window-zoom: var(--window-zoom);
+
+  /* ── Type ───────────────────────────────────────────────────────────────── */
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  --text-badge-xs: var(--text-badge-xs);
+  --text-badge-xs--line-height: var(--leading-none);
+  --text-badge-sm: var(--text-badge-sm);
+  --text-badge-sm--line-height: var(--leading-none);
+  --text-badge: var(--text-badge);
+  --text-badge--line-height: var(--leading-none);
+  --text-micro: var(--text-micro);
+  --text-micro--line-height: var(--leading-micro);
+  --text-chip: var(--text-chip);
+  --text-chip--line-height: var(--leading-caption);
+  --text-caption: var(--text-caption);
+  --text-caption--line-height: var(--leading-caption);
+  --text-control: var(--text-control);
+  --text-control--line-height: var(--leading-none);
+  --text-body: var(--text-body);
+  --text-body--line-height: var(--leading-body);
+  --text-body-lg: var(--text-body-lg);
+  --text-body-lg--line-height: var(--leading-body);
+  --text-heading: var(--text-heading);
+  --text-heading--line-height: var(--leading-body);
+  --text-input-lg: var(--text-input-lg);
+  --text-input-lg--line-height: var(--leading-none);
+  --text-secret: var(--text-secret);
+  --text-secret--line-height: var(--leading-body);
+  --text-secret-lg: var(--text-secret-lg);
+  --text-secret-lg--line-height: var(--leading-none);
+  --text-title: var(--text-title);
+  --text-title--line-height: var(--leading-chip);
+  --text-secret-xl: var(--text-secret-xl);
+  --text-secret-xl--line-height: var(--leading-secret);
+  --text-tile: var(--text-tile);
+  --text-tile--line-height: var(--leading-none);
+  --text-tile-lock: var(--text-tile-lock);
+  --text-tile-lock--line-height: var(--leading-none);
+  --text-display: var(--text-display);
+  --text-display--line-height: var(--leading-display);
+  --text-metric: var(--text-metric);
+  --text-metric--line-height: var(--leading-metric);
+
+  /* HO-002's config declares the stat-card figure as a literal 26px/30px and the
+     token layer has no name for that step. Kept here in the theme layer rather
+     than in a component, so it is still one place — recorded in MANIFEST.md. */
+  --text-stat: 26px;
+  --text-stat--line-height: 30px;
+
+  --font-weight-medium: var(--weight-regular);
+  --font-weight-semibold: var(--weight-medium);
+  --font-weight-bold: var(--weight-bold);
+  --font-weight-extrabold: var(--weight-heavy);
+
+  --tracking-label: var(--tracking-label);
+  --tracking-badge: var(--tracking-badge);
+  --tracking-tight: var(--tracking-tight);
+  --tracking-title: var(--tracking-title);
+  --tracking-display: var(--tracking-display);
+  --tracking-metric: var(--tracking-metric);
+  --tracking-masked: var(--tracking-secret-masked);
+  --tracking-shown: var(--tracking-secret-shown);
+  --tracking-otp: var(--tracking-otp);
+
+  --leading-caption: var(--leading-caption);
+  --leading-body: var(--leading-body);
+  --leading-relaxed: var(--leading-relaxed);
+  --leading-chip: var(--leading-chip);
+
+  /* ── Geometry ───────────────────────────────────────────────────────────── */
+  --radius-xs: var(--radius-xs);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
+  --radius-window: var(--radius-window);
+  --radius-full: var(--radius-full);
+
+  /* ── Shadow ─────────────────────────────────────────────────────────────── */
+  --shadow-hairline: var(--shadow-hairline);
+  --shadow-lift: var(--shadow-lift);
+  --shadow-window: var(--shadow-window);
+  --shadow-sheet: var(--shadow-sheet);
+  --shadow-knob: var(--shadow-knob);
+  --shadow-segment: var(--shadow-segment);
+  --shadow-inner-top: var(--shadow-inner-top);
+  --shadow-accent-glow: var(--shadow-accent-glow);
+  --shadow-accent-glow-lg: var(--shadow-accent-glow-lg);
+  --shadow-focus-ring: var(--shadow-focus-ring);
+  --shadow-card: var(--shadow-card-outline), var(--shadow-lift);
+  /* HO-002's `boxShadow.tile`, verbatim apart from reading our token name. */
+  --shadow-tile: inset 0 0 0 0.5px var(--border-strong), var(--shadow-lift);
+  /* Inline in HO-002's ItemList (`shadow-[0_2px_8px_var(--accent-subtle)]`) and
+     its Toolbar hover (`0 0 0 4px`). Named here so no component carries geometry. */
+  --shadow-add: 0 2px 8px var(--accent-subtle);
+  --shadow-search-hover: 0 0 0 4px var(--accent-subtle);
+
+  /* ── Motion ─────────────────────────────────────────────────────────────── */
+  --ease-spring: var(--ease-spring);
+  --ease-standard: var(--ease-standard);
+
+  --animate-toast-in: toastIn var(--duration-toast) var(--ease-spring);
+  --animate-sheet-in: sheetIn var(--duration-slow) var(--ease-spring);
+  --animate-lock-in: sheetIn var(--duration-lock) var(--ease-spring);
+  --animate-veil-in: veilIn var(--duration-moderate) var(--ease-standard);
+}
+
+/*
+ * HO-002 declares these three in its Tailwind config's `keyframes`. In v4 they are
+ * ordinary CSS, which is where they belong — the `prefers-reduced-motion` block in
+ * base.css can then reach them without knowing they came from a config file.
+ */
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+@keyframes sheetIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes veilIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/*
+ * Duration utilities. Tailwind v4 has no `--duration-*` theme namespace, and the token
+ * values are the design's own motion scale, so these are thin named utilities over the
+ * tokens rather than arbitrary `duration-[…]` values scattered through the components.
+ */
+@utility duration-instant {
+  transition-duration: var(--duration-instant);
+}
+@utility duration-fast {
+  transition-duration: var(--duration-fast);
+}
+@utility duration-quick {
+  transition-duration: var(--duration-quick);
+}
+@utility duration-base {
+  transition-duration: var(--duration-base);
+}
+@utility duration-moderate {
+  transition-duration: var(--duration-moderate);
+}
+@utility duration-slow {
+  transition-duration: var(--duration-slow);
+}
+@utility duration-slower {
+  transition-duration: var(--duration-slower);
+}
+@utility duration-toast {
+  transition-duration: var(--duration-toast);
+}
+@utility duration-meter {
+  transition-duration: var(--duration-meter);
+}
+@utility duration-countdown {
+  transition-duration: var(--duration-countdown);
+}
+
+/*
+ * Vibrancy and veil. The tokens hold complete filter lists (`saturate(180%) blur(28px)`),
+ * not lengths, so they cannot feed Tailwind's `--blur-*` namespace — which is also why
+ * HO-002 needed two config entries plus a `backdrop-saturate` scale for one effect.
+ */
+@utility vibrancy {
+  backdrop-filter: var(--blur-vibrancy);
+  -webkit-backdrop-filter: var(--blur-vibrancy);
+}
+
+@utility veil-blur {
+  backdrop-filter: var(--blur-veil);
+  -webkit-backdrop-filter: var(--blur-veil);
+}

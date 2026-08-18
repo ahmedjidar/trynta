@@ -738,6 +738,107 @@ fn update_item(
     })
 }
 
+/// Metadata-only edits to an existing item (SPEC-V1 §7.1, the detail pane's edit mode).
+///
+/// Every field here lives in `meta_ct`. The secret envelope is read and re-sealed
+/// **unchanged**, which is the whole point: `item_upsert` rebuilds the secret half
+/// from the draft, so a metadata edit routed through it with an empty password
+/// field would wipe the password. This path cannot, because it never constructs a
+/// secret payload — it carries the previous one across verbatim.
+///
+/// Both envelopes bind the revision in their AAD, so changing metadata means
+/// re-sealing the secret half too. That is a re-seal, not a re-write of its
+/// contents.
+#[derive(Debug, Clone, Default)]
+pub struct MetaEdits {
+    /// New title, or `None` to leave it.
+    pub title: Option<String>,
+    /// New notes.
+    pub notes: Option<String>,
+    /// New tags.
+    pub tags: Option<Vec<String>>,
+    /// New username, for a login. Ignored for any other kind.
+    pub username: Option<String>,
+    /// New URL list, for a login. Ignored for any other kind.
+    pub urls: Option<Vec<String>>,
+}
+
+impl MetaEdits {
+    /// Whether anything would change. Used to avoid burning a revision on a no-op.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.title.is_none()
+            && self.notes.is_none()
+            && self.tags.is_none()
+            && self.username.is_none()
+            && self.urls.is_none()
+    }
+}
+
+/// Apply [`MetaEdits`] to an item, leaving every secret field untouched.
+///
+/// Returns whether anything was written.
+///
+/// # Errors
+///
+/// [`StoreError::ItemNotFound`] if the item is absent or deleted,
+/// [`StoreError::Database`] on a query failure, [`StoreError::Crypto`] if an
+/// envelope fails to open or seal.
+pub(crate) fn item_edit_meta(
+    conn: &Connection,
+    muk: &Muk,
+    id: Uuid,
+    edits: &MetaEdits,
+    now: i64,
+) -> Result<bool, StoreError> {
+    if edits.is_empty() {
+        return Ok(false);
+    }
+
+    let revision: i64 = conn
+        .query_row(
+            "SELECT revision FROM items WHERE id = ?1 AND deleted_at IS NULL",
+            [uuid_bytes(id).as_slice()],
+            |r| r.get(0),
+        )
+        .optional()?
+        .ok_or(StoreError::ItemNotFound)?;
+
+    let (item_key, key_id) = item_key(conn, muk, id)?;
+    let mut meta = read_meta_payload(conn, &item_key, id, key_id, revision.unsigned_abs())?;
+
+    if let Some(title) = &edits.title {
+        meta.title.clone_from(title);
+    }
+    if let Some(notes) = &edits.notes {
+        meta.notes.clone_from(notes);
+    }
+    if let Some(tags) = &edits.tags {
+        meta.tags.clone_from(tags);
+    }
+    if let ItemBodyMeta::Login { username, urls, .. } = &mut meta.body {
+        if let Some(next) = &edits.username {
+            username.clone_from(next);
+        }
+        if let Some(next) = &edits.urls {
+            urls.clone_from(next);
+        }
+    }
+
+    // Read and carry forward. Nothing in this function can construct a secret
+    // payload, so nothing in it can lose one.
+    let secret = read_secret(conn, &item_key, id, key_id, revision.unsigned_abs())?;
+    let next = revision.saturating_add(1);
+    let (meta_ct, secret_ct) =
+        seal_payloads(&item_key, id, key_id, next.unsigned_abs(), &meta, &secret)?;
+
+    conn.execute(
+        "UPDATE items SET meta_ct = ?1, secret_ct = ?2, revision = ?3, updated_at = ?4          WHERE id = ?5",
+        rusqlite::params![meta_ct, secret_ct, next, now, uuid_bytes(id).as_slice()],
+    )?;
+    Ok(true)
+}
+
 /// Set or clear an item's favourite flag.
 ///
 /// `favorite` lives in `meta_ct`, and both envelopes bind the revision in their

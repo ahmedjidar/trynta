@@ -23,7 +23,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import { Button, Group, GroupRow } from '../../components/Controls';
+import { Button } from '../../components/Button';
+import { GroupedList, GroupedRow, SectionLabel } from '../../components/GroupedList';
 import { updateCheck, updateInstall } from '../../ipc';
 import type { UpdateCheckDto } from '../../ipc';
 
@@ -77,81 +78,94 @@ export function Updates({ onBack, onFailed }: UpdatesProps) {
   }, []);
 
   return (
-    <section className="pane" aria-label="Updates">
-      <div className="pane__content">
-        <button type="button" className="pane__back" onClick={onBack}>
+    <section className="bg-surface-panel min-w-0 flex-1 overflow-y-auto" aria-label="Updates">
+      <div className="max-w-[704px] px-10 pt-8 pb-12">
+        <button
+          type="button"
+          data-focus-ring
+          className="text-chip text-accent-text duration-quick hover:bg-surface-hover flex h-6 items-center gap-1 rounded-full px-2 font-semibold transition-colors"
+          onClick={onBack}
+        >
           Settings
         </button>
-        <h1 className="pane__title">Updates</h1>
+        <h1 className="text-display tracking-display mt-2 font-bold">Updates</h1>
 
         {failed || check === null ? (
-          <p className="pane__prose">
+          <p className="text-body text-text-caption-aa mt-2">
             {failed
               ? 'The update state could not be read. Nothing was downloaded and nothing was installed.'
               : ''}
           </p>
         ) : (
           <>
-            <Group label="This build">
-              <GroupRow height="setting">
-                <span className="setting-text">
-                  <span className="setting-name">Version</span>
-                  <span className="setting-description">{describe(check)}</span>
-                </span>
-                <span className="setting-value">{check.currentVersion}</span>
-              </GroupRow>
+            <section className="mt-7">
+              <SectionLabel>This build</SectionLabel>
+              <GroupedList className="mt-2">
+                <GroupedRow className="min-h-[60px] py-2.5">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-body font-semibold">Version</div>
+                    <div className="text-chip text-text-caption-aa mt-0.5 text-pretty">
+                      {describe(check)}
+                    </div>
+                  </div>
+                  <span className="text-control shrink-0 tabular-nums">{check.currentVersion}</span>
+                </GroupedRow>
 
-              <GroupRow height="setting">
-                <span className="setting-text">
-                  <span className="setting-name">Automatic checks</span>
-                  <span className="setting-description">
-                    {check.checksEnabled
-                      ? 'On: at most once every 24 hours, on launch.'
-                      : 'Off. This screen still checks when you ask it to.'}
+                <GroupedRow className="min-h-[60px] py-2.5">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-body font-semibold">Automatic checks</div>
+                    <div className="text-chip text-text-caption-aa mt-0.5 text-pretty">
+                      {check.checksEnabled
+                        ? 'On: at most once every 24 hours, on launch.'
+                        : 'Off. This screen still checks when you ask it to.'}
+                    </div>
+                  </div>
+                  <span className="text-control text-text-caption-aa shrink-0">
+                    {check.checksEnabled ? 'On' : 'Off'}
                   </span>
-                </span>
-                <span className="setting-value setting-value--muted">
-                  {check.checksEnabled ? 'On' : 'Off'}
-                </span>
-              </GroupRow>
-            </Group>
+                </GroupedRow>
+              </GroupedList>
+            </section>
 
             {check.available === null ? null : (
-              <Group label="Available">
-                <GroupRow height="setting">
-                  <span className="setting-text">
-                    <span className="setting-name">{check.available.version}</span>
-                    <span className="setting-description">
-                      {check.available.notes ??
-                        'No release notes were included in the signed manifest.'}
-                    </span>
-                  </span>
-                  <Button
-                    variant="primary"
-                    disabled={busy}
-                    onClick={() => {
-                      setBusy(true);
-                      updateInstall().then(
-                        () => {
-                          setBusy(false);
-                        },
-                        () => {
-                          setBusy(false);
-                          // §9: a failed signature check is not a retry. The message
-                          // never suggests one.
-                          onFailed('The update was not installed');
-                        },
-                      );
-                    }}
-                  >
-                    {busy ? 'Working…' : 'Install and restart'}
-                  </Button>
-                </GroupRow>
-              </Group>
+              <section className="mt-7">
+                <SectionLabel>Available</SectionLabel>
+                <GroupedList className="mt-2">
+                  <GroupedRow className="min-h-[60px] py-2.5">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-body font-semibold">{check.available.version}</div>
+                      <div className="text-chip text-text-caption-aa mt-0.5 text-pretty">
+                        {check.available.notes ??
+                          'No release notes were included in the signed manifest.'}
+                      </div>
+                    </div>
+                    <Button
+                      variant="primary"
+                      disabled={busy}
+                      onClick={() => {
+                        setBusy(true);
+                        updateInstall().then(
+                          () => {
+                            setBusy(false);
+                          },
+                          () => {
+                            setBusy(false);
+                            // §9: a failed signature check is not a retry. The message
+                            // never suggests one.
+                            onFailed('The update was not installed');
+                          },
+                        );
+                      }}
+                    >
+                      {busy ? 'Working…' : 'Install and restart'}
+                    </Button>
+                  </GroupedRow>
+                </GroupedList>
+              </section>
             )}
 
-            <div className="security__section-head">
-              <span className="detail-spacer" />
+            <div className="mt-6 flex h-8 items-center">
+              <div className="flex-1" />
               <Button variant="outline" onClick={run} disabled={busy}>
                 {busy ? 'Checking…' : 'Check now'}
               </Button>
@@ -159,11 +173,17 @@ export function Updates({ onBack, onFailed }: UpdatesProps) {
           </>
         )}
 
-        <section className="card card--notes" aria-labelledby="update-privacy">
-          <h2 className="card__label" id="update-privacy">
+        <section
+          className="bg-surface-raised shadow-card mt-7 rounded-lg p-4"
+          aria-labelledby="update-privacy"
+        >
+          <h2
+            className="text-micro tracking-label text-text-caption-aa flex h-6 items-end font-bold uppercase"
+            id="update-privacy"
+          >
             What an update check sends
           </h2>
-          <ul className="leaves-list">
+          <ul className="text-caption text-text-secondary mt-3 flex flex-col gap-2.5 leading-4 text-pretty">
             <li>
               A request for a <strong>signed manifest</strong>. The endpoint learns your IP address,
               the version you are running and your platform.

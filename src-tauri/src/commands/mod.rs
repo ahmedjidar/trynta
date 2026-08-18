@@ -22,6 +22,7 @@
 
 pub mod account;
 pub mod app;
+pub mod backup;
 pub mod dto;
 pub mod generator;
 pub mod items;

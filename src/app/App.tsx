@@ -1,5 +1,5 @@
 /**
- * Application shell (components.md §1).
+ * Application shell — HO-002 `KeyringApp.tsx`.
  *
  * Composition only: the window, the title bar, the sidebar and whichever pane is
  * active. Everything with state of its own lives in the component that owns it.
@@ -19,6 +19,19 @@
  * settings row says so instead of opening something half-drawn: a pane that renders a
  * plausible-looking placeholder is worse than one that admits it is unfinished, because
  * placeholder styling never gets replaced (CLAUDE.md §3).
+ *
+ * ## There is no window
+ *
+ * HO-002's README is emphatic about this: the grey desk, the rounded card and the drop
+ * shadow are a **picture of a Mac** that lives in `presentation/DesktopFrame.tsx`, and a
+ * real desktop build mounts `KeyringApp` directly — *"Do not recreate the window chrome
+ * for panes, dialogs, sheets, cards or any inner surface. Nesting a second Mac window
+ * inside the first is the most common error when rebuilding this design, and it is always
+ * wrong."*
+ *
+ * That is exactly what this file used to do: a `.desk` backdrop centring a `.window` card,
+ * inside the real Windows window. Both are gone. The shell now fills the OS window, draws
+ * no background of its own beyond `--surface-app`, and the OS draws the title-bar buttons.
  *
  * ## The lock gate
  *
@@ -40,6 +53,7 @@ import { Palette } from '../features/palette/Palette';
 import { Generator } from '../features/generator/Generator';
 import { SecurityReport } from '../features/security/SecurityReport';
 import { useBreachCheck, useSecurityReport } from '../features/security/useSecurity';
+import { Backup } from '../features/settings/Backup';
 import { Settings } from '../features/settings/Settings';
 import { Updates } from '../features/settings/Updates';
 import { ItemDetail } from '../features/items/ItemDetail';
@@ -152,6 +166,16 @@ function Shell() {
     });
   }, [clearCache]);
 
+  const onVaultReplaced = useCallback(() => {
+    // The vault file was rewritten and Rust locked the session. Everything cached
+    // describes a vault that no longer exists, so drop it and re-read the state —
+    // which puts the lock screen back up for the restored vault's own password.
+    clearCache();
+    accountStatus().then(setAccount, () => {
+      setToast('Could not read the vault state');
+    });
+  }, [clearCache]);
+
   const onCopy = useCallback((id: string) => {
     // Rust reads the item, writes the OS clipboard and returns nothing. The
     // plaintext never enters the webview (CLAUDE.md §4.3).
@@ -182,7 +206,7 @@ function Shell() {
 
   if (account === null) {
     // One frame at most, and the window is still hidden behind `revealWindow()`.
-    return <div className="desk" />;
+    return <div className="bg-surface-app h-full w-full" />;
   }
 
   if (account.state !== 'unlocked') {
@@ -190,100 +214,97 @@ function Shell() {
     // mounted, so there are no item titles to read through a blur and no query
     // holding decrypted metadata.
     return (
-      <div className="desk">
-        <div className="window">
-          <LockScreen
-            exists={account.state !== 'uninitialised'}
-            biometricLabel={account.biometricLabel}
-            biometricAvailable={account.biometricAvailable}
-            onUnlocked={(next) => {
-              // The queries were created while locked and every one of them failed.
-              // Clearing makes them refetch against an open vault instead of
-              // serving their cached rejection.
-              clearCache();
-              setAccount(next);
-            }}
-          />
-        </div>
+      <div className="bg-surface-app text-text-primary relative h-full w-full overflow-hidden">
+        <LockScreen
+          exists={account.state !== 'uninitialised'}
+          biometricLabel={account.biometricLabel}
+          biometricAvailable={account.biometricAvailable}
+          onUnlocked={(next) => {
+            // The queries were created while locked and every one of them failed.
+            // Clearing makes them refetch against an open vault instead of serving
+            // their cached rejection.
+            clearCache();
+            setAccount(next);
+          }}
+        />
       </div>
     );
   }
 
   return (
-    <div className="desk">
-      <div className="window">
-        <TitleBar
-          onOpenPalette={() => {
-            setPaletteOpen(true);
+    <div className="bg-surface-app text-text-primary relative flex h-full w-full flex-col overflow-hidden">
+      <TitleBar
+        onOpenPalette={() => {
+          setPaletteOpen(true);
+        }}
+        onLock={onLock}
+        modifierKey={platform.modifierKey}
+      />
+      <div className="flex min-h-0 flex-1">
+        <Sidebar vaults={vaults.data ?? []} counts={counts} riskCount={0} />
+
+        {surface === 'vault' ? (
+          <>
+            <ItemList
+              items={items.data ?? []}
+              risks={risks}
+              vaultNames={vaultNames}
+              onCopy={onCopy}
+              onNew={() => {
+                setSheetOpen(true);
+              }}
+              modifierKey={platform.modifierKey}
+            />
+            <DetailPane vaultNames={vaultNames} onCopied={onCopied} onFailed={onFailed} />
+          </>
+        ) : surface === 'generator' ? (
+          <Generator onCopied={onCopied} onFailed={onFailed} />
+        ) : surface === 'settings' ? (
+          <SettingsPane onCopied={onCopied} onFailed={onFailed} onVaultReplaced={onVaultReplaced} />
+        ) : (
+          // All four surfaces are handled, so TypeScript narrows this to `security`
+          // and there is no placeholder branch left to write — the lint proved the
+          // last comparison was always true, which is a pleasant way to find out.
+          <SecurityPane items={items.data ?? []} onCopied={onCopied} onFailed={onFailed} />
+        )}
+      </div>
+
+      {sheetOpen ? (
+        <NewItemSheet
+          vaults={vaults.data ?? []}
+          defaultVaultId={vaults.data?.[0]?.id}
+          onClose={() => {
+            setSheetOpen(false);
+          }}
+          onCreated={(title) => {
+            // The list is keyed on the query, so a new row needs the cache dropped
+            // rather than a refetch of one key.
+            clearCache();
+            setToast(`${title} saved`);
+          }}
+          onFailed={onFailed}
+        />
+      ) : null}
+
+      {paletteOpen ? (
+        <Palette
+          onClose={() => {
+            setPaletteOpen(false);
           }}
           onLock={onLock}
           modifierKey={platform.modifierKey}
-          os={platform.os}
         />
-        <div className="window__body">
-          <Sidebar vaults={vaults.data ?? []} counts={counts} riskCount={0} />
+      ) : null}
 
-          {surface === 'vault' ? (
-            <>
-              <ItemList
-                items={items.data ?? []}
-                risks={risks}
-                vaultNames={vaultNames}
-                onCopy={onCopy}
-                onNew={() => {
-                  setSheetOpen(true);
-                }}
-              />
-              <DetailPane vaultNames={vaultNames} onCopied={onCopied} onFailed={onFailed} />
-            </>
-          ) : surface === 'generator' ? (
-            <Generator onCopied={onCopied} onFailed={onFailed} />
-          ) : surface === 'settings' ? (
-            <SettingsPane onCopied={onCopied} onFailed={onFailed} />
-          ) : (
-            // All four surfaces are handled, so TypeScript narrows this to `security`
-            // and there is no placeholder branch left to write — the lint proved the
-            // last comparison was always true, which is a pleasant way to find out.
-            <SecurityPane items={items.data ?? []} onCopied={onCopied} onFailed={onFailed} />
-          )}
-        </div>
-
-        {sheetOpen ? (
-          <NewItemSheet
-            vaults={vaults.data ?? []}
-            defaultVaultId={vaults.data?.[0]?.id}
-            onClose={() => {
-              setSheetOpen(false);
-            }}
-            onCreated={(title) => {
-              // The list is keyed on the query, so a new row needs the cache dropped
-              // rather than a refetch of one key.
-              clearCache();
-              setToast(`${title} saved`);
-            }}
-            onFailed={onFailed}
-          />
-        ) : null}
-
-        {paletteOpen ? (
-          <Palette
-            onClose={() => {
-              setPaletteOpen(false);
-            }}
-            onLock={onLock}
-          />
-        ) : null}
-
-        <Toast
-          message={toast}
-          onDismiss={() => {
-            setToast(null);
-          }}
-          // Until settings are read this is the §7.5 default. The toast must not claim
-          // a clear that is switched off, so it takes the value rather than a literal.
-          clipboardSeconds={30}
-        />
-      </div>
+      <Toast
+        message={toast}
+        onDismiss={() => {
+          setToast(null);
+        }}
+        // Until settings are read this is the §7.5 default. The toast must not claim a
+        // clear that is switched off, so it takes the value rather than a literal.
+        clipboardSeconds={30}
+      />
     </div>
   );
 }
@@ -297,6 +318,7 @@ interface DetailPaneProps {
 
 function DetailPane({ vaultNames, onCopied, onFailed }: DetailPaneProps) {
   const selectedId = useNavigation((s) => s.selectedId);
+  const clearCache = useClearCache();
   // Only rendered inside the unlocked branch, so the gate is satisfied by construction.
   const items = useItems();
   const detail = useItemDetail(selectedId);
@@ -343,6 +365,7 @@ function DetailPane({ vaultNames, onCopied, onFailed }: DetailPaneProps) {
       strength={{ band: 0, label: 'Not checked' }}
       onCopied={onCopied}
       onFailed={onFailed}
+      onEdited={clearCache}
     />
   );
 }
@@ -408,12 +431,14 @@ function SecurityPane({ items, onCopied, onFailed }: SecurityPaneProps) {
 interface SettingsPaneProps {
   onCopied: (what: string) => void;
   onFailed: (message: string) => void;
+  /** A restore that rewrote the vault file locks the session; re-read the state. */
+  onVaultReplaced: () => void;
 }
 
-function SettingsPane({ onCopied, onFailed }: SettingsPaneProps) {
+function SettingsPane({ onCopied, onFailed, onVaultReplaced }: SettingsPaneProps) {
   const [settings, setSettings] = useState<SettingsDto | null>(null);
   const [failed, setFailed] = useState(false);
-  const [sub, setSub] = useState<'none' | 'updates'>('none');
+  const [sub, setSub] = useState<'none' | 'updates' | 'backup'>('none');
 
   useEffect(() => {
     settingsGet().then(setSettings, () => {
@@ -436,6 +461,19 @@ function SettingsPane({ onCopied, onFailed }: SettingsPaneProps) {
 
   if (!settings) {
     return <section className="pane" aria-label="Settings" />;
+  }
+
+  if (sub === 'backup') {
+    return (
+      <Backup
+        onBack={() => {
+          setSub('none');
+        }}
+        onDone={onCopied}
+        onFailed={onFailed}
+        onVaultReplaced={onVaultReplaced}
+      />
+    );
   }
 
   if (sub === 'updates') {

@@ -1,0 +1,33 @@
+/**
+ * Four-up KPI row — HO-002 `ui/StatCards.tsx`.
+ *
+ * The figure's colour comes from `dynamic.css`'s `[data-tone]` rules rather than an inline
+ * style, for the CSP reason in that file's header, and it uses the a11y `-text` aliases so
+ * a 26px number still passes AA on a light raised surface.
+ */
+
+import { cn } from '../lib/cn';
+import type { Tone } from './Bits';
+
+export interface Stat {
+  label: string;
+  value: string;
+  sub: string;
+  tone: Tone;
+}
+
+export function StatCards({ stats, className }: { stats: readonly Stat[]; className?: string }) {
+  return (
+    <div className={cn('grid grid-cols-4 gap-3', className)}>
+      {stats.map((stat) => (
+        <div key={stat.label} className="bg-surface-raised shadow-card rounded-lg p-4">
+          <div className="text-stat tracking-metric font-bold tabular-nums" data-tone={stat.tone}>
+            {stat.value}
+          </div>
+          <div className="text-control text-text-primary mt-1 font-semibold">{stat.label}</div>
+          <div className="text-chip text-text-caption-aa mt-0.5">{stat.sub}</div>
+        </div>
+      ))}
+    </div>
+  );
+}

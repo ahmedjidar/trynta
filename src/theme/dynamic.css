@@ -1,0 +1,293 @@
+/*
+ * Values that vary at runtime — expressed as CSS keyed on data attributes.
+ *
+ * ## Why this file exists at all
+ *
+ * HO-002 sets every varying value with the React `style` prop: the segmented indicator's
+ * `left`, the strength meter's `transform` and colour, the identity tile's size and
+ * background, the stat figure's colour, the TOTP countdown's width. That works in its
+ * dev server and **silently stops working in our release build**: the production CSP in
+ * `tauri.conf.json` is `style-src 'self'` with no `unsafe-inline`, so a markup `style`
+ * attribute is dropped — while `devCsp` allows `unsafe-inline`, which is why the port
+ * looks correct when you run it. An eslint rule bans the prop for exactly this reason
+ * (SPEC-V1 §7.6); this file is the replacement.
+ *
+ * The rule for what belongs here: a value that varies over a **small, closed set** becomes
+ * a data attribute and a rule below. A value that is genuinely continuous — the TOTP
+ * countdown — is written through the CSSOM instead, which the CSP permits because it is a
+ * script API rather than markup.
+ *
+ * Appearance is identical to HO-002 in every case. Nothing here introduces a value: every
+ * colour is a token and every geometry figure is the design's own.
+ */
+
+:root {
+  /* HO-002's segmented track has a 3px inset and the token layer has no 1.5-step.
+     Declared once here, in the theme layer, rather than repeated as a literal in
+     each of the eight indicator rules below. Recorded in MANIFEST.md. */
+  --space-075: 3px;
+}
+
+/* ── Segmented control indicator — HO-002 SegmentedControl ─────────────────── */
+
+/*
+ * HO-002 computes `left: calc(index * 100/count% + 3px)` and
+ * `width: calc(100/count% - 6px)`. Only two segment counts exist in the product — three
+ * (generator types) and four (item kinds) — so those are the rules written, plus two for
+ * completeness. A count with no rule leaves the indicator at its first position rather
+ * than jumping somewhere wrong.
+ */
+.segmented__indicator {
+  inset-block: var(--space-075);
+  transition: left var(--duration-slower) var(--ease-spring);
+}
+
+.segmented[data-count='2'] .segmented__indicator {
+  width: calc(50% - var(--space-15));
+}
+.segmented[data-count='2'][data-index='1'] .segmented__indicator {
+  left: calc(50% + var(--space-075));
+}
+
+.segmented[data-count='3'] .segmented__indicator {
+  width: calc(33.3333% - var(--space-15));
+}
+.segmented[data-count='3'][data-index='1'] .segmented__indicator {
+  left: calc(33.3333% + var(--space-075));
+}
+.segmented[data-count='3'][data-index='2'] .segmented__indicator {
+  left: calc(66.6667% + var(--space-075));
+}
+
+.segmented[data-count='4'] .segmented__indicator {
+  width: calc(25% - var(--space-15));
+}
+.segmented[data-count='4'][data-index='1'] .segmented__indicator {
+  left: calc(25% + var(--space-075));
+}
+.segmented[data-count='4'][data-index='2'] .segmented__indicator {
+  left: calc(50% + var(--space-075));
+}
+.segmented[data-count='4'][data-index='3'] .segmented__indicator {
+  left: calc(75% + var(--space-075));
+}
+
+.segmented[data-index='0'] .segmented__indicator {
+  left: var(--space-075);
+}
+
+/* ── Strength meter — HO-002 StrengthMeter ─────────────────────────────────── */
+
+/*
+ * A `scaleX` transform on an inner element, not a width change, so it is composited and
+ * the collapse mirrors the fill exactly. The 60ms stagger is HO-002's; `--stagger-meter`
+ * carries it and drops to 0 under `prefers-reduced-motion`.
+ */
+.meter__fill {
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: var(--strength-empty);
+  transition:
+    transform var(--duration-meter) var(--ease-spring),
+    background-color var(--duration-moderate) var(--ease-standard);
+}
+
+.meter[data-score='1'] .meter__fill,
+.meter[data-score='2'] .meter__fill,
+.meter[data-score='3'] .meter__fill,
+.meter[data-score='4'] .meter__fill {
+  background: var(--strength-1);
+}
+.meter[data-score='2'] .meter__fill {
+  background: var(--strength-2);
+}
+.meter[data-score='3'] .meter__fill,
+.meter[data-score='4'] .meter__fill {
+  background: var(--strength-3);
+}
+
+.meter[data-score='1'] .meter__fill[data-index='0'],
+.meter[data-score='2'] .meter__fill[data-index='0'],
+.meter[data-score='2'] .meter__fill[data-index='1'],
+.meter[data-score='3'] .meter__fill[data-index='0'],
+.meter[data-score='3'] .meter__fill[data-index='1'],
+.meter[data-score='3'] .meter__fill[data-index='2'],
+.meter[data-score='4'] .meter__fill[data-index='0'],
+.meter[data-score='4'] .meter__fill[data-index='1'],
+.meter[data-score='4'] .meter__fill[data-index='2'],
+.meter[data-score='4'] .meter__fill[data-index='3'] {
+  transform: scaleX(1);
+}
+
+.meter__fill[data-index='1'] {
+  transition-delay: var(--stagger-meter);
+}
+.meter__fill[data-index='2'] {
+  transition-delay: calc(var(--stagger-meter) * 2);
+}
+.meter__fill[data-index='3'] {
+  transition-delay: calc(var(--stagger-meter) * 3);
+}
+
+/* ── Tone ramps ───────────────────────────────────────────────────────────── */
+
+/*
+ * One set of rules for every place the design colours a value by status: the strength
+ * label, the four stat figures, the risk dot. HO-002 passes these as inline colours from
+ * three separate lookup tables; here the tone name is the attribute and the token is the
+ * value, so a tone cannot be spelled differently in two components.
+ *
+ * The `-text` variants are the a11y.css aliases: the raw status colours fail AA for text
+ * on light surfaces (contrast-report findings 6 and 7).
+ */
+[data-tone='danger'] {
+  color: var(--status-danger-text);
+}
+[data-tone='warning'] {
+  color: var(--status-warning-text);
+}
+[data-tone='accent'] {
+  color: var(--accent-text);
+}
+[data-tone='info'] {
+  color: var(--status-info-text);
+}
+[data-tone='neutral'] {
+  color: var(--text-secondary);
+}
+[data-tone='empty'] {
+  color: var(--text-caption-aa);
+}
+
+.dot[data-tone='danger'] {
+  background: var(--status-danger);
+}
+.dot[data-tone='warning'] {
+  background: var(--status-warning);
+}
+
+/* ── Identity tile — HO-002 IdentityTile ──────────────────────────────────── */
+
+/*
+ * HO-002 sets `width`/`height` inline from a numeric prop and picks the background from
+ * `identityColor()`. Both become attributes: six sizes and seven tones, which is the
+ * whole closed set. ADD-001 removes the favicon layer entirely — the monogram is not a
+ * fallback here, it is the tile — so the inlay rules HO-002 needs are gone with it.
+ */
+.tile {
+  display: grid;
+  place-items: center;
+  flex: none;
+  overflow: hidden;
+  color: var(--identity-text);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-none);
+  box-shadow: var(--shadow-hairline), var(--shadow-lift);
+}
+
+.tile[data-size='24'] {
+  width: var(--size-avatar-sm);
+  height: var(--size-avatar-sm);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-badge-sm);
+}
+.tile[data-size='28'] {
+  width: var(--size-avatar);
+  height: var(--size-avatar);
+  border-radius: var(--radius-md);
+  font-size: var(--text-caption);
+}
+.tile[data-size='32'] {
+  width: var(--size-tile);
+  height: var(--size-tile);
+  border-radius: var(--radius-md);
+  font-size: var(--text-caption);
+}
+.tile[data-size='56'] {
+  width: var(--size-tile-lg);
+  height: var(--size-tile-lg);
+  border-radius: var(--radius-xl);
+  font-size: var(--text-title);
+}
+.tile[data-size='64'] {
+  width: var(--size-tile-xl);
+  height: var(--size-tile-xl);
+  border-radius: var(--radius-2xl);
+  font-size: var(--text-tile);
+}
+
+.tile[data-tone='1'] {
+  background: var(--identity-1);
+}
+.tile[data-tone='2'] {
+  background: var(--identity-2);
+}
+.tile[data-tone='3'] {
+  background: var(--identity-3);
+}
+.tile[data-tone='4'] {
+  background: var(--identity-4);
+}
+.tile[data-tone='5'] {
+  background: var(--identity-5);
+}
+.tile[data-tone='6'] {
+  background: var(--identity-6);
+}
+.tile[data-tone='7'] {
+  background: var(--identity-7);
+}
+
+/* A bundled brand icon fills the tile; the monogram underneath is then redundant. */
+.tile__icon {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* ── Vault swatch ─────────────────────────────────────────────────────────── */
+
+/*
+ * Vaults carry a `colorToken` such as `vault.accent.3` and the token layer defines no
+ * `--vault-accent-*` ramp (MANIFEST HO-002 item 2, still open). Until it does, the swatch
+ * borrows the identity ramp, which at least distinguishes vaults from each other instead
+ * of rendering them all in `--accent`.
+ */
+.swatch[data-accent='vault.accent.1'] {
+  background: var(--identity-1);
+}
+.swatch[data-accent='vault.accent.2'] {
+  background: var(--identity-2);
+}
+.swatch[data-accent='vault.accent.3'] {
+  background: var(--identity-3);
+}
+.swatch[data-accent='vault.accent.4'] {
+  background: var(--identity-4);
+}
+.swatch[data-accent='vault.accent.5'] {
+  background: var(--identity-5);
+}
+.swatch[data-accent='vault.accent.6'] {
+  background: var(--identity-6);
+}
+.swatch[data-accent='vault.accent.7'] {
+  background: var(--identity-7);
+}
+.swatch {
+  background: var(--accent);
+}
+
+/* ── TOTP countdown ───────────────────────────────────────────────────────── */
+
+/*
+ * The one genuinely continuous value in the product: 0–100% once a second. Written
+ * through the CSSOM by `TotpRow`, which the CSP allows because it is a script API and not
+ * a markup attribute. The transition lives here so the write is a single property set.
+ */
+.countdown__fill {
+  width: 100%;
+  background: var(--accent);
+  transition: width var(--duration-countdown) linear;
+}

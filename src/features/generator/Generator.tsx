@@ -29,14 +29,12 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import {
-  Button,
-  Group,
-  GroupRow,
-  Segmented,
-  StrengthMeter,
-  Switch,
-} from '../../components/Controls';
+import { Button } from '../../components/Button';
+import { CopyAction } from '../../components/Bits';
+import { FieldLabel, GroupedList, GroupedRow, SectionLabel } from '../../components/GroupedList';
+import { SegmentedControl } from '../../components/SegmentedControl';
+import { StrengthMeter } from '../../components/StrengthMeter';
+import { Switch } from '../../components/Switch';
 import { Glyph } from '../../components/Glyph';
 import {
   generatorHistoryClear,
@@ -50,12 +48,12 @@ import type { GeneratedDto, HistoryEntryDto } from '../../ipc';
 
 /** The three types, in the design's order. */
 const TYPES = [
-  { value: 'password', label: 'Password' },
-  { value: 'passphrase', label: 'Passphrase' },
-  { value: 'pin', label: 'Numeric PIN' },
+  { id: 'password', name: 'Password' },
+  { id: 'passphrase', name: 'Passphrase' },
+  { id: 'pin', name: 'Numeric PIN' },
 ] as const;
 
-type GeneratorType = (typeof TYPES)[number]['value'];
+type GeneratorType = (typeof TYPES)[number]['id'];
 
 /** §10: the slider runs 8–64. */
 const MIN_LENGTH = 8;
@@ -162,35 +160,39 @@ export function Generator({ onCopied, onFailed }: GeneratorProps) {
   const strength = bandFor(generated?.entropyBits ?? 0);
 
   return (
-    <section className="pane" aria-label="Generator">
-      <div className="pane__content">
-        <h1 className="pane__title">Generator</h1>
-        <p className="pane__prose">
-          {/* The design says "generated locally on this Mac". Platform-neutral, since
-              Windows is the verified platform (ADD-005) and the claim is about the
-              device, not the OS. */}
+    <section className="bg-surface-panel min-w-0 flex-1 overflow-y-auto" aria-label="Generator">
+      <div className="max-w-[704px] px-10 pt-8 pb-12">
+        <h1 className="text-display tracking-display font-bold">Generator</h1>
+        <p className="text-body text-text-caption-aa mt-1 max-w-[60ch] leading-5 text-pretty">
+          {/* HO-002 says "generated locally on this Mac". Platform-neutral, since Windows
+              is the verified platform (ADD-005) and the claim is about the device. */}
           Every password is generated on this device. Nothing leaves it unencrypted.
         </p>
 
-        <div className="output-card">
-          <output className="output-card__secret" data-selectable>
+        <div className="bg-surface-raised shadow-card mt-6 rounded-lg p-5">
+          <output
+            className="text-secret-xl block min-h-16 font-mono font-medium tracking-tight break-all"
+            data-selectable
+          >
             {unavailable ?? generated?.value ?? ''}
           </output>
           {generated !== null && !generated.recorded ? (
-            <p className="output-card__note">
+            <p className="text-chip text-text-caption-aa mt-2">
               Not saved to history — the vault is locked. Select the value above to copy it by hand.
             </p>
           ) : null}
-          <div className="output-card__footer">
-            <div className="output-card__meter">
-              <StrengthMeter filled={strength.band} label={strength.label} />
-            </div>
-            <span className="output-card__entropy">
+          <div className="mt-4 flex items-center gap-3">
+            <StrengthMeter
+              score={strength.band}
+              label={strength.label}
+              className="w-40 flex-none"
+            />
+            <span className="text-caption text-text-caption-aa tabular-nums">
               {generated === null
                 ? '—'
                 : `${String(Math.round(generated.entropyBits))} bits of entropy`}
             </span>
-            <span className="detail-spacer" />
+            <div className="flex-1" />
             <Button variant="outline" onClick={regenerate}>
               Regenerate
             </Button>
@@ -221,15 +223,19 @@ export function Generator({ onCopied, onFailed }: GeneratorProps) {
           </div>
         </div>
 
-        <div className="generator__type">
-          <Segmented options={TYPES} value={type} onChange={setType} label="Type" />
-        </div>
+        <SegmentedControl
+          className="mt-5"
+          segments={TYPES}
+          value={type}
+          onChange={setType}
+          label="Type"
+        />
 
-        <Group>
-          <GroupRow height="option">
-            <span className="field-label field-label--strong">Length</span>
+        <GroupedList className="mt-4">
+          <GroupedRow className="h-[52px]">
+            <FieldLabel>Length</FieldLabel>
             <input
-              className="slider"
+              className="min-w-0 flex-1 accent-[var(--accent)]"
               type="range"
               min={MIN_LENGTH}
               max={MAX_LENGTH}
@@ -239,8 +245,10 @@ export function Generator({ onCopied, onFailed }: GeneratorProps) {
                 setLength(Number(event.target.value));
               }}
             />
-            <span className="slider__value">{length}</span>
-          </GroupRow>
+            <span className="text-body-lg w-7 shrink-0 text-right font-bold tabular-nums">
+              {length}
+            </span>
+          </GroupedRow>
 
           {type === 'password' ? (
             <>
@@ -256,28 +264,30 @@ export function Generator({ onCopied, onFailed }: GeneratorProps) {
               />
             </>
           ) : null}
-        </Group>
+        </GroupedList>
 
-        <Group label="Recently generated">
+        <SectionLabel className="mt-6">Recently generated</SectionLabel>
+        <GroupedList className="mt-2">
           {history.length === 0 ? (
-            <GroupRow height="history">
-              <span className="field-value">Nothing generated yet.</span>
-            </GroupRow>
+            <GroupedRow className="h-11">
+              <span className="text-body text-text-caption-aa min-w-0 flex-1">
+                Nothing generated yet.
+              </span>
+            </GroupedRow>
           ) : (
             history.map((entry) => (
-              <GroupRow key={entry.id} height="history">
-                {/* No value. `HistoryEntryDto` does not carry one — see the module note.
-                    What it is and how strong it was is enough to pick the right entry,
-                    and Copy does the rest in Rust. */}
-                <span className="field-value">
+              <GroupedRow key={entry.id} className="h-11">
+                {/* HO-002 prints the generated value in each history row. `HistoryEntryDto`
+                    deliberately does not carry one — SPEC-V1 §6 gives history a copy
+                    command and no reveal, so twenty old passwords are never rendered into
+                    the webview. Kind and strength are enough to pick the right entry. */}
+                <span className="text-control text-text-secondary min-w-0 flex-1 truncate font-mono">
                   {KIND_LABELS[entry.kind] ?? 'Value'} · {Math.round(entry.entropyBits)} bits
                 </span>
-                <span className="history__when">
+                <span className="text-chip text-text-caption-aa shrink-0">
                   {new Date(entry.createdAt).toLocaleTimeString()}
                 </span>
-                <button
-                  type="button"
-                  className="copy-action"
+                <CopyAction
                   aria-label="Copy this generated value"
                   onClick={() => {
                     generatorHistoryCopy(entry.id).then(
@@ -291,17 +301,18 @@ export function Generator({ onCopied, onFailed }: GeneratorProps) {
                   }}
                 >
                   Copy
-                </button>
-              </GroupRow>
+                </CopyAction>
+              </GroupedRow>
             ))
           )}
-        </Group>
+        </GroupedList>
 
         {history.length === 0 ? null : (
-          <footer className="generator__footer">
+          <footer className="mt-4 flex justify-end">
             <button
               type="button"
-              className="link-button"
+              data-focus-ring
+              className="text-chip text-text-secondary duration-quick hover:bg-surface-hover hover:text-accent flex h-6 items-center gap-1.5 rounded-full px-2 font-semibold transition-colors"
               onClick={() => {
                 generatorHistoryClear().then(
                   () => {
@@ -314,7 +325,7 @@ export function Generator({ onCopied, onFailed }: GeneratorProps) {
                 );
               }}
             >
-              <Glyph name="close" />
+              <Glyph name="close" size={12} />
               Clear history
             </button>
           </footer>
@@ -332,11 +343,14 @@ interface OptionRowProps {
 }
 
 function OptionRow({ name, hint, checked, onChange }: OptionRowProps) {
+  const toggle = () => {
+    onChange(!checked);
+  };
   return (
-    <GroupRow height="option">
-      <span className="field-label field-label--strong field-label--wide">{name}</span>
-      <span className="option-hint">{hint}</span>
-      <Switch checked={checked} onChange={onChange} label={name} />
-    </GroupRow>
+    <GroupedRow interactive className="h-[52px]" onClick={toggle}>
+      <span className="text-body min-w-0 flex-1 font-medium">{name}</span>
+      <span className="text-chip text-text-caption-aa font-mono">{hint}</span>
+      <Switch checked={checked} onChange={toggle} label={name} />
+    </GroupedRow>
   );
 }

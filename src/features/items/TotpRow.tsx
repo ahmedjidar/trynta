@@ -14,9 +14,10 @@
  * the timer reaches zero. One request per period.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import { CopyAction, GroupRow } from '../../components/Controls';
+import { CopyAction } from '../../components/Bits';
+import { FieldLabel, GroupedRow } from '../../components/GroupedList';
 import { itemCopyField, totpCurrent } from '../../ipc';
 import type { TotpCodeDto } from '../../ipc';
 
@@ -72,29 +73,30 @@ export function TotpRow({ itemId, title, onCopied, onFailed }: TotpRowProps) {
 
   if (!code) {
     return (
-      <GroupRow>
-        <span className="field-label">One-time code</span>
-        <span className="field-value">Unavailable — the stored configuration is incomplete.</span>
-      </GroupRow>
+      <GroupedRow className="h-12">
+        <FieldLabel>One-time code</FieldLabel>
+        <span className="text-body text-text-caption-aa min-w-0 flex-1 truncate">
+          Unavailable — the stored configuration is incomplete.
+        </span>
+      </GroupedRow>
     );
   }
 
-  // The trough drains left to right over the period. Width is a percentage of a fixed
-  // 56px column, so it is arithmetic rather than a token, and it is set through a data
-  // attribute bucket rather than the banned `style` prop.
-  const decile = Math.max(0, Math.min(10, Math.round((remaining / code.period) * 10)));
-
   return (
-    <GroupRow>
-      <span className="field-label">One-time code</span>
-      <span className="otp" data-selectable>
+    <GroupedRow className="h-12">
+      <FieldLabel>One-time code</FieldLabel>
+      <span
+        className="text-secret-lg tracking-otp text-accent shrink-0 font-mono font-semibold whitespace-nowrap"
+        data-selectable
+      >
         {code.code}
       </span>
-      <span className="otp-trough" role="img" aria-label={`${String(remaining)} seconds remaining`}>
-        <span className="otp-trough__fill" data-decile={decile} />
-      </span>
-      <span className="otp-count">{remaining}s</span>
-      <span className="detail-spacer" />
+      {/* HO-002 sets the trough's width inline from `remaining / 30`. That is the one
+          genuinely continuous value in the product, and an inline style is dropped under
+          the production CSP, so `Countdown` writes it through the CSSOM instead. */}
+      <Countdown remaining={remaining} period={code.period} />
+      <span className="text-chip text-text-caption-aa w-6 shrink-0 tabular-nums">{remaining}s</span>
+      <div className="flex-1" />
       <CopyAction
         onClick={() => {
           itemCopyField(itemId, { field: 'totpSecret' }).then(
@@ -106,10 +108,40 @@ export function TotpRow({ itemId, title, onCopied, onFailed }: TotpRowProps) {
             },
           );
         }}
-        label={`Copy the one-time code for ${title}`}
+        aria-label={`Copy the one-time code for ${title}`}
       >
         Copy
       </CopyAction>
-    </GroupRow>
+    </GroupedRow>
+  );
+}
+
+/**
+ * The draining trough beside the code.
+ *
+ * Width is set on the element through the CSSOM rather than as a markup `style`
+ * attribute: the production CSP is `style-src 'self'`, which drops the attribute but
+ * permits a script-driven property write. This is the sanctioned escape hatch for a value
+ * that is genuinely continuous — everything with a small closed set of values uses a data
+ * attribute and a rule in `theme/dynamic.css` instead.
+ */
+function Countdown({ remaining, period }: { remaining: number; period: number }) {
+  const fill = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const node = fill.current;
+    if (!node) return;
+    const share = period === 0 ? 0 : Math.max(0, Math.min(1, remaining / period));
+    node.style.setProperty('width', `${String(Math.round(share * 100))}%`);
+  }, [remaining, period]);
+
+  return (
+    <span
+      className="bg-strong h-1 w-14 shrink-0 overflow-hidden rounded-sm"
+      role="img"
+      aria-label={`${String(remaining)} seconds remaining`}
+    >
+      <span ref={fill} className="countdown__fill block h-full" />
+    </span>
   );
 }

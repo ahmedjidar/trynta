@@ -48,6 +48,7 @@ function setup(overrides: Partial<Parameters<typeof ItemList>[0]> = {}) {
       vaultNames={{}}
       onCopy={onCopy}
       onNew={onNew}
+      modifierKey="Ctrl"
       {...overrides}
     />,
   );
@@ -160,13 +161,29 @@ describe('item list', () => {
   it('names the query in the empty state, and does not when there is none', () => {
     useNavigation.setState({ search: 'zzz' });
     const { unmount } = render(
-      <ItemList items={[]} risks={{}} vaultNames={{}} onCopy={vi.fn()} onNew={vi.fn()} />,
+      <ItemList
+        items={[]}
+        risks={{}}
+        vaultNames={{}}
+        onCopy={vi.fn()}
+        onNew={vi.fn()}
+        modifierKey="Ctrl"
+      />,
     );
     expect(screen.getByText(/No items match/)).toBeInTheDocument();
     unmount();
 
     useNavigation.setState({ search: '' });
-    render(<ItemList items={[]} risks={{}} vaultNames={{}} onCopy={vi.fn()} onNew={vi.fn()} />);
+    render(
+      <ItemList
+        items={[]}
+        risks={{}}
+        vaultNames={{}}
+        onCopy={vi.fn()}
+        onNew={vi.fn()}
+        modifierKey="Ctrl"
+      />,
+    );
     expect(screen.getByText(/Nothing here yet/)).toBeInTheDocument();
   });
 
@@ -178,6 +195,7 @@ describe('item list', () => {
         vaultNames={{}}
         onCopy={vi.fn()}
         onNew={vi.fn()}
+        modifierKey="Ctrl"
       />,
     );
     // The design conveys risk with a 6px coloured dot. Colour alone is not an

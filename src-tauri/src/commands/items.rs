@@ -231,6 +231,50 @@ pub fn item_restore(state: State<'_, AppState>, id: Uuid) -> Result<(), AppError
     Ok(())
 }
 
+/// Apply non-secret edits to an item (SPEC-V1 §7.1).
+///
+/// The detail pane's edit mode. Distinct from `item_upsert` because upsert rebuilds
+/// the secret envelope from the draft it is given: routing a title change through it
+/// would mean the edit form had to hold the password, and an empty field would wipe
+/// the stored one. This path reads the sealed secret and carries it across, so the
+/// form never sees it and cannot lose it.
+///
+/// Returns whether anything changed. A no-op edit does not burn a revision — that
+/// number is what the manifest uses to detect a rollback.
+///
+/// # Errors
+///
+/// [`AppError::Invalid`] if the title is present but blank or over the limit,
+/// [`AppError::NotFound`] if the item does not exist, otherwise as [`item_delete`].
+#[tauri::command]
+pub fn item_edit_meta(
+    state: State<'_, AppState>,
+    id: Uuid,
+    edits: crate::commands::dto::MetaEditsInput,
+) -> Result<bool, AppError> {
+    let mut edits = edits;
+    if let Some(title) = &edits.title {
+        let trimmed = title.trim();
+        if trimmed.is_empty() || trimmed.chars().count() > MAX_TITLE {
+            return Err(AppError::Invalid);
+        }
+        edits.title = Some(trimmed.to_owned());
+    }
+
+    let edits: keyring_store::MetaEdits = edits.into();
+    let changed = state
+        .session
+        .with_session(|s| s.item_edit_meta(id, &edits).map_err(AppError::from))?;
+    if changed {
+        // Rebuilt rather than patched, for the same reason as `item_upsert`: title,
+        // username and urls are all index inputs, and an index that drifts from the
+        // store is a search that shows the user something no longer true.
+        state.session.build_index()?;
+        state.session.touch();
+    }
+    Ok(changed)
+}
+
 /// Flip an item's favourite flag and report the new value.
 ///
 /// # Errors

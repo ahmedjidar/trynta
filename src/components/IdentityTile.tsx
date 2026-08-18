@@ -1,68 +1,64 @@
 /**
- * The identity tile — bundled brand icon or monogram (ADD-001, components.md §4).
+ * Identity tile — HO-002 `ui/IdentityTile.tsx`, with the favicon layer removed.
  *
- * The prototype fetched a favicon here. This cannot: it is handed an
- * {@link IconDto}, which is either a key naming a file inside our own bundle or a
- * pair of initials, and there is no field on it a URL could be built from. Rust
- * resolved the domain; the webview never sees one.
+ * ## What changed, and why it is not negotiable
  *
- * A bundled icon renders through `<img src>` rather than inlined SVG, per ADD-001:
- * an SVG in an `<img>` cannot execute script, which also means no
- * `dangerouslySetInnerHTML`.
+ * HO-002 renders a monogram tile and lays a Google favicon service request over it
+ * (`https://www.google.com/s2/favicons?domain=…`). That is one request per item to a third
+ * party, keyed by the domain the item is for — which is an inventory of the vault, sent
+ * out, item by item. ADD-001 forbids it, SPEC-V1 §11's packet-capture criterion tests for
+ * it, `check:network` fails the build on it, and the production CSP's `img-src 'self'
+ * data:` would block it anyway.
+ *
+ * So the tile is the monogram, and where a brand icon exists it comes from the bundled set
+ * that Rust already resolved. `IconDto` is that decision, made in one place: `Bundled` when
+ * the registrable domain matched a bundled key, `Monogram` otherwise, with the tone Rust
+ * chose so a re-render cannot change an item's colour.
+ *
+ * HO-002 keeps the monogram *underneath* the favicon so a blocked request degrades without
+ * layout shift. Nothing can be blocked here, so there is nothing to degrade to — the two
+ * cases are exclusive.
  */
 
+import { cn } from '../lib/cn';
 import type { IconDto } from '../ipc';
-
-/** Tile sizes the design uses (`--size-tile`, `-lg`, `-xl`). */
-export type TileSize = 'sm' | 'md' | 'lg' | 'xl';
 
 export interface IdentityTileProps {
   /** How to draw it, resolved in Rust. */
   icon: IconDto;
-  /** Which size step. */
-  size?: TileSize;
+  /** Tile edge in px. Radius and type scale from it (see `dynamic.css`). */
+  size?: 24 | 28 | 32 | 56 | 64;
   /**
    * The item title, for the accessible name.
    *
-   * The tile is decorative when it sits next to a visible title — which is every
-   * case in HO-001 — so it is `aria-hidden` and this is used only to build a
-   * meaningful `alt` when the icon is the sole content.
+   * The tile is decorative wherever a visible title sits beside it — which is every case
+   * in HO-002 — so it is `aria-hidden` and this only builds the `alt` when a bundled icon
+   * is the sole content.
    */
   title: string;
-  /** Whether the tile carries the accessible name itself. */
-  labelled?: boolean;
+  className?: string;
 }
 
-export function IdentityTile({ icon, size = 'md', title, labelled = false }: IdentityTileProps) {
-  const className = `tile tile--${size}`;
-
+export function IdentityTile({ icon, size = 32, title, className }: IdentityTileProps) {
   if (icon.kind === 'bundled') {
     return (
-      <span className={className} data-bundled>
-        {/* Relative, same-origin, and built from a key Rust chose from a closed
-            set — not from anything the item contains. */}
-        <img
-          className="tile__icon"
-          src={`icons/${icon.key}.svg`}
-          alt={labelled ? title : ''}
-          aria-hidden={labelled ? undefined : true}
-          width={20}
-          height={20}
-          draggable={false}
-        />
+      <span className={cn('tile', className)} data-size={size} data-tone="0" aria-hidden="true">
+        {/* Bundled asset under `img-src 'self'`. Never a remote URL, and an <img> cannot
+            execute script even if the file were replaced. */}
+        <img className="tile__icon" src={`/icons/${icon.key}.svg`} alt="" />
       </span>
     );
   }
 
   return (
     <span
-      className={className}
+      className={cn('tile', className)}
+      data-size={size}
       data-tone={icon.tone}
-      role={labelled ? 'img' : undefined}
-      aria-label={labelled ? title : undefined}
-      aria-hidden={labelled ? undefined : true}
+      aria-hidden="true"
+      title={title}
     >
-      <span className="tile__monogram">{icon.initials}</span>
+      {icon.initials}
     </span>
   );
 }
