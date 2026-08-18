@@ -113,10 +113,11 @@ export function Backup({ onBack, onDone, onFailed, onVaultReplaced }: BackupProp
 
   return (
     <section
-      className="bg-surface-panel min-w-0 flex-1 overflow-y-auto"
+      data-scroll-pane
+      className="bg-surface-panel animate-pane-in min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
       aria-label="Backup and restore"
     >
-      <div className="max-w-[704px] px-10 pt-8 pb-12">
+      <div className="mx-auto w-full max-w-[var(--measure-pane-wide)] px-10 pt-8 pb-12">
         <button
           type="button"
           data-focus-ring

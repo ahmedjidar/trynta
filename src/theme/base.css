@@ -24,9 +24,20 @@
     height: 100%;
   }
 
+  /*
+   * `--surface-app`, not `--surface-desk`, and that is the one place the design cannot
+   * be followed literally. The handoff paints the desk here because it renders the app
+   * inside a picture of a desktop. A real window has no desk behind it — painting one
+   * would put a 2px band of near-black around the whole product — so the window's own
+   * base surface goes here, and `WindowFrame` paints the same value over it.
+   */
+  html,
+  body {
+    background: var(--surface-app);
+  }
+
   body {
     margin: 0;
-    background: var(--surface-desk);
     color: var(--text-primary);
     font-family: var(--font-sans);
     font-size: var(--text-body);
@@ -50,7 +61,33 @@
   input,
   textarea {
     user-select: text;
-    cursor: auto;
+    cursor: text;
+  }
+
+  /*
+   * Every control says so under the pointer.
+   *
+   * `cursor: default` used to be set here and on `body`, on the reasoning that a
+   * desktop app is not a document. The effect was an arrow over every button, row,
+   * chip and switch in the product — no affordance anywhere, which reads as a dead
+   * interface. A native desktop control does show a hand on hover; what a desktop
+   * app avoids is the *I-beam* over non-text, and `body { cursor: default }` above
+   * already handles that.
+   */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  [role='option'],
+  [role='tab'],
+  [role='switch'],
+  summary,
+  label[for],
+  a[href] {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [aria-disabled='true'] {
+    cursor: not-allowed;
   }
 
   button {
@@ -61,7 +98,6 @@
     color: inherit;
     font: inherit;
     letter-spacing: inherit;
-    cursor: default;
   }
 
   input,
@@ -157,19 +193,29 @@
     border: 0;
   }
 
-  /* Scrollbar — components.md §16. */
-  * {
-    scrollbar-width: thin;
-    scrollbar-color: var(--border-strong) transparent;
-  }
-
+  /*
+   * Scrollbar — components.md §16.
+   *
+   * `scrollbar-width` / `scrollbar-color` used to be set on `*` here, and that is
+   * why the app had platform scrollbars despite all of the styling below: in
+   * Chromium the standard properties and the `::-webkit-scrollbar` pseudo-elements
+   * are mutually exclusive, and whichever is specified wins for the whole element.
+   * Setting `scrollbar-width: thin` on everything disabled every rule under it.
+   *
+   * The pseudo-elements are the ones kept, because they are the only half that can
+   * express the design: a capsule thumb inset from the track by transparent border,
+   * so the bar reads as floating over the pane rather than as a gutter cut into it.
+   * WebView2 and WKWebView are both WebKit-lineage engines and support them.
+   */
   ::-webkit-scrollbar {
     width: var(--scrollbar-width);
     height: var(--scrollbar-width);
+    background: transparent;
   }
 
   ::-webkit-scrollbar-track {
     background: transparent;
+    border: 0;
   }
 
   ::-webkit-scrollbar-thumb {
@@ -177,6 +223,7 @@
     border-radius: var(--scrollbar-radius);
     border: var(--scrollbar-inset) solid transparent;
     background-clip: content-box;
+    transition: background-color var(--duration-quick) var(--ease-standard);
   }
 
   ::-webkit-scrollbar-thumb:hover {
@@ -184,8 +231,30 @@
     background-clip: content-box;
   }
 
+  ::-webkit-scrollbar-thumb:active {
+    background: var(--accent);
+    background-clip: content-box;
+  }
+
   ::-webkit-scrollbar-corner {
     background: transparent;
+  }
+
+  /* The buttons at each end are a platform artefact the design does not draw. */
+  ::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  /*
+   * Momentum without jank. A pane that jumps to a new scroll position on
+   * keyboard navigation reads as a redraw; easing it reads as movement.
+   * `scroll-behavior: smooth` is overridden under `prefers-reduced-motion` below.
+   */
+  [data-scroll-pane] {
+    scroll-behavior: smooth;
+    overscroll-behavior: contain;
   }
 
   /*

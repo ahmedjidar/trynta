@@ -25,7 +25,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { IdentityTile } from '../../components/IdentityTile';
+import { useDismiss } from '../../components/useDismiss';
 import { Glyph } from '../../components/Glyph';
+import type { GlyphName } from '../../components/Glyph';
 import { useItems, useVaults } from '../items/useItems';
 import { useNavigation } from '../../app/navigation';
 import type { Surface } from '../../app/navigation';
@@ -35,13 +37,20 @@ interface Action {
   id: string;
   label: string;
   surface: Surface;
+  glyph: GlyphName;
 }
 
+/** Each action carries its own glyph: a row of identical marks is a row of no marks. */
 const ACTIONS: readonly Action[] = [
-  { id: 'action:generator', label: 'Generate a new password', surface: 'generator' },
-  { id: 'action:security', label: 'Run security report', surface: 'security' },
-  { id: 'action:settings', label: 'Open settings', surface: 'settings' },
-  { id: 'action:vault', label: 'Show all items', surface: 'vault' },
+  {
+    id: 'action:generator',
+    label: 'Generate a new password',
+    surface: 'generator',
+    glyph: 'generate',
+  },
+  { id: 'action:security', label: 'Run security report', surface: 'security', glyph: 'security' },
+  { id: 'action:settings', label: 'Open settings', surface: 'settings', glyph: 'settings' },
+  { id: 'action:vault', label: 'Show all items', surface: 'vault', glyph: 'all' },
 ];
 
 export interface PaletteProps {
@@ -60,6 +69,7 @@ export function Palette({ onClose, onLock, modifierKey }: PaletteProps) {
 
   const go = useNavigation((s) => s.go);
   const select = useNavigation((s) => s.select);
+  const { closing, dismiss } = useDismiss(onClose);
 
   // Every item, ranked by the Rust index. The palette's own query filters below rather
   // than through this hook, so typing here does not disturb the list behind the veil.
@@ -76,13 +86,14 @@ export function Palette({ onClose, onLock, modifierKey }: PaletteProps) {
       .map((item) => ({
         id: item.id,
         name: item.title,
+        glyph: null,
         // The trailing label is the owning vault's name, not the subtitle.
         kind: vaults.data?.find((v) => v.id === item.vaultId)?.name ?? 'Item',
         icon: item.icon,
         run: () => {
           select(item.id);
           go('vault');
-          onClose();
+          dismiss();
         },
       }));
 
@@ -91,9 +102,10 @@ export function Palette({ onClose, onLock, modifierKey }: PaletteProps) {
       name: action.label,
       kind: 'Action',
       icon: null,
+      glyph: action.glyph,
       run: () => {
         go(action.surface);
-        onClose();
+        dismiss();
       },
     }));
 
@@ -103,15 +115,16 @@ export function Palette({ onClose, onLock, modifierKey }: PaletteProps) {
         name: 'Lock vault',
         kind: `${modifierKey}L`,
         icon: null,
+        glyph: 'lock',
         run: () => {
-          onClose();
+          dismiss();
           onLock();
         },
       });
     }
 
     return [...itemRows, ...actionRows];
-  }, [items.data, vaults.data, query, go, select, onClose, onLock, modifierKey]);
+  }, [items.data, vaults.data, query, go, select, dismiss, onLock, modifierKey]);
 
   useEffect(() => {
     field.current?.focus();
@@ -124,7 +137,7 @@ export function Palette({ onClose, onLock, modifierKey }: PaletteProps) {
   function onKeyDown(event: React.KeyboardEvent) {
     if (event.key === 'Escape') {
       event.preventDefault();
-      onClose();
+      dismiss();
       return;
     }
     if (event.key === 'ArrowDown') {
@@ -146,8 +159,11 @@ export function Palette({ onClose, onLock, modifierKey }: PaletteProps) {
   return (
     <div
       role="presentation"
-      onClick={onClose}
-      className="animate-veil-in bg-surface-veil veil-blur absolute inset-0 z-[6] flex justify-center pt-28"
+      onClick={dismiss}
+      className={cn(
+        'bg-surface-veil veil-blur absolute inset-0 z-[6] flex justify-center pt-28',
+        closing ? 'animate-veil-out' : 'animate-veil-in',
+      )}
     >
       <div
         role="dialog"
@@ -156,7 +172,10 @@ export function Palette({ onClose, onLock, modifierKey }: PaletteProps) {
         onClick={(event) => {
           event.stopPropagation();
         }}
-        className="animate-sheet-in bg-surface-panel shadow-sheet flex h-fit max-h-[420px] w-[600px] flex-col overflow-hidden rounded-xl"
+        className={cn(
+          'bg-surface-panel shadow-sheet flex h-fit max-h-[420px] w-[600px] flex-col overflow-hidden rounded-xl',
+          closing ? 'animate-sheet-out' : 'animate-sheet-in',
+        )}
       >
         <input
           ref={field}
@@ -175,6 +194,7 @@ export function Palette({ onClose, onLock, modifierKey }: PaletteProps) {
         />
 
         <div
+          data-scroll-pane
           className="flex flex-col gap-[var(--row-gap)] overflow-y-auto p-2"
           role="listbox"
           aria-label="Results"
@@ -201,7 +221,7 @@ export function Palette({ onClose, onLock, modifierKey }: PaletteProps) {
               >
                 {row.icon === null ? (
                   <span className="bg-accent-subtle text-accent flex h-6 w-6 shrink-0 items-center justify-center rounded-sm">
-                    <Glyph name="generate" size={12} />
+                    <Glyph name={row.glyph} size={12} />
                   </span>
                 ) : (
                   <IdentityTile icon={row.icon} size={24} title={row.name} />

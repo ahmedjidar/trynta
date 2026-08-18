@@ -173,6 +173,11 @@
   --animate-sheet-in: sheetIn var(--duration-slow) var(--ease-spring);
   --animate-lock-in: sheetIn var(--duration-lock) var(--ease-spring);
   --animate-veil-in: veilIn var(--duration-moderate) var(--ease-standard);
+  --animate-pane-in: paneIn var(--duration-moderate) var(--ease-spring);
+  --animate-row-in: rowIn var(--duration-quick) var(--ease-standard);
+  --animate-veil-out: veilOut var(--duration-fast) var(--ease-standard) forwards;
+  --animate-sheet-out: sheetOut var(--duration-fast) var(--ease-standard) forwards;
+  --animate-toast-out: toastOut var(--duration-base) var(--ease-standard) forwards;
 }
 
 /*
@@ -180,14 +185,19 @@
  * ordinary CSS, which is where they belong — the `prefers-reduced-motion` block in
  * base.css can then reach them without knowing they came from a config file.
  */
+/*
+ * The toast rises straight up. No `translateX` here: the pill is centred by its
+ * flex parent, so a horizontal component in the keyframe would fight the layout
+ * and land the toast off-centre for the length of the animation.
+ */
 @keyframes toastIn {
   from {
     opacity: 0;
-    transform: translate(-50%, 12px) scale(0.96);
+    transform: translateY(12px) scale(0.96);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, 0) scale(1);
+    transform: none;
   }
 }
 
@@ -208,6 +218,71 @@
   }
   to {
     opacity: 1;
+  }
+}
+
+/*
+ * Surface entry. A pane that appears fully formed reads as a redraw; four pixels of
+ * rise over 200 ms reads as the pane arriving. Deliberately smaller than the sheet's
+ * travel — this fires on every sidebar click, and anything larger becomes a tic.
+ */
+@keyframes paneIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Rows arriving in a list that has just been refiltered. */
+@keyframes rowIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/*
+ * Leaving. Every surface that animates in also animates out — a sheet that fades up
+ * over 260 ms and then vanishes on the next frame reads as a crash, not a dismissal.
+ * Out is deliberately quicker than in: an entrance is worth watching, an exit is not.
+ *
+ * `forwards` on all three, so the last frame holds for the moment between the
+ * animation ending and React unmounting the node.
+ */
+@keyframes veilOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes sheetOut {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.99);
+  }
+}
+
+@keyframes toastOut {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
   }
 }
 

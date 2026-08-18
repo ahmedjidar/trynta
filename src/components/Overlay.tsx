@@ -17,6 +17,7 @@ import { useEffect, useRef } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 
 import { cn } from '../lib/cn';
+import { useDismiss } from './useDismiss';
 
 export interface OverlayProps {
   /** Called on Escape or a click on the scrim. */
@@ -30,6 +31,7 @@ export interface OverlayProps {
 
 export function Overlay({ onDismiss, label, placement = 'sheet', children }: OverlayProps) {
   const dialog = useRef<HTMLDivElement>(null);
+  const { closing, dismiss } = useDismiss(onDismiss);
 
   useEffect(() => {
     // Focus the dialog itself if nothing inside it took focus, so Escape reaches the
@@ -41,17 +43,18 @@ export function Overlay({ onDismiss, label, placement = 'sheet', children }: Ove
   function onKeyDown(event: KeyboardEvent) {
     if (event.key === 'Escape') {
       event.preventDefault();
-      onDismiss();
+      dismiss();
     }
   }
 
   return (
     <div
       role="presentation"
-      onClick={onDismiss}
+      onClick={dismiss}
       onKeyDown={onKeyDown}
       className={cn(
-        'animate-veil-in bg-surface-veil veil-blur absolute inset-0 z-[6] flex justify-center',
+        'bg-surface-veil veil-blur absolute inset-0 z-[6] flex justify-center',
+        closing ? 'animate-veil-out' : 'animate-veil-in',
         placement === 'centre' ? 'items-center' : 'items-start',
         placement === 'palette' && 'pt-28',
         placement === 'sheet' && 'pt-16',
@@ -66,7 +69,10 @@ export function Overlay({ onDismiss, label, placement = 'sheet', children }: Ove
         onClick={(event) => {
           event.stopPropagation();
         }}
-        className="animate-sheet-in bg-surface-panel shadow-sheet flex flex-col overflow-hidden rounded-xl outline-none"
+        className={cn(
+          'bg-surface-panel shadow-sheet flex flex-col overflow-hidden rounded-xl outline-none',
+          closing ? 'animate-sheet-out' : 'animate-sheet-in',
+        )}
       >
         {children}
       </div>

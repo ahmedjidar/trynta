@@ -175,6 +175,31 @@ the same path.
 | G4  | woff2 in the `.app`                | `Contents/Resources/…/fonts/manrope-latin.woff2` exists in the bundle   | `find <Keyring.app> -name 'manrope-*.woff2'` after `pnpm tauri build`                                                                                        |
 | G5  | AC18 under WKWebView               | an injected `<style>` is blocked and `adoptedStyleSheets` still applies | this is verified on WebView2 by `e2e/specs/theme.e2e.ts`; the WKWebView half has no harness — run the two probes by hand in the Web Inspector console        |
 
+## H — Window chrome
+
+Windows runs frameless (`decorations: false`) with the app drawing its own minimise,
+maximise and close. macOS must **not** do that: `tauri.macos.conf.json` overrides the
+window with `decorations: true`, `titleBarStyle: "Overlay"` and `hiddenTitle: true`, so the
+OS keeps its real traffic lights and floats them over our content. That override file has
+never been parsed by anything.
+
+| #   | Check                            | Expected                                                                                                           | How                                                                                                                                                                     |
+| --- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| H1  | Platform config is merged        | The window has native traffic lights and no custom minimise/maximise/close                                         | run the app. Three drawn buttons at the top right means `tauri.macos.conf.json` was not merged and the Windows config applied                                           |
+| H2  | Traffic-light inset              | The lights do not overlap the "Keyring" wordmark                                                                   | visual. `TitleBar` reserves `--pad-traffic-lights` plus a 68px lead-in on macOS; if Apple's inset differs the wordmark needs a different offset                         |
+| H3  | Title bar drags the window       | Press and move on the bar moves the window                                                                         | manual. `useDragRegion` calls `startDragging()`; the Windows path needed this because Tauri's `data-tauri-drag-region` was inert — check whether macOS behaves the same |
+| H4  | Double-click the title bar       | Zooms/unzooms, per the user's "Prefer tabs / double-click to" setting                                              | manual. Ours always calls `toggleMaximize`, which ignores that setting — decide whether that is acceptable on macOS                                                     |
+| H5  | Corner radius                    | The window wears the system radius, and no app-coloured square peeks past it                                       | visual, on a light desktop background. Windows leaves the corner to DWM for the same reason                                                                             |
+| H6  | `isMaximized` on a zoomed window | The restore/maximise glyph is not rendered on macOS at all, so nothing to check — but `WindowFrame` still reads it | it drives the frame's hairline; a wrong answer there is cosmetic, not functional                                                                                        |
+
+## I — Interface scale
+
+| #   | Check                      | Expected                                                 | How                                                                                                                                                             |
+| --- | -------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| I1  | `Cmd` +, - and 0           | Zoom steps and resets                                    | manual. The handler accepts `metaKey                                                                                                                            |     | ctrlKey`, so it should need no macOS-specific code — this is the assumption to test |
+| I2  | `Cmd`+wheel                | Zooms, and the webview does not also zoom underneath it  | manual. The wheel listener is non-passive and calls `preventDefault`; WKWebView may still apply its own pinch zoom                                              |
+| I3  | CSS `zoom` under WKWebView | Text is re-rendered at the new size, not a scaled bitmap | zoom to 1.4 and inspect a hairline. Safari added `zoom` support later than Chromium; if it degrades to a transform, the fix is to scale the token layer instead |
+
 ## F — Things that only exist on Windows so far
 
 Not gaps in macOS code — gaps in the platform layer that will need a macOS half

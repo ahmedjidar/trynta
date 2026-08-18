@@ -33,6 +33,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { Sidebar } from './Sidebar';
 import { TitleBar } from './TitleBar';
+import { WindowControls } from './WindowControls';
+import { WindowFrame } from './WindowFrame';
+import { useDragRegion } from './useDragRegion';
+import { bindZoomShortcuts } from './zoom';
 import { useNavigation } from './navigation';
 import { Toast } from '../components/Toast';
 import { LockScreen } from '../features/account/LockScreen';
@@ -103,6 +107,7 @@ function Shell() {
   const [settings, setSettings] = useState<SettingsDto | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const lockBarDrag = useDragRegion();
 
   const unlocked = account?.state === 'unlocked';
   const items = useItems(unlocked);
@@ -144,6 +149,12 @@ function Shell() {
       void revealWindow();
     });
   }, [hydrate]);
+
+  useEffect(() => {
+    // Ctrl/Cmd with +, - and 0. Bound before first paint so the starting level is
+    // applied in the same frame the shell mounts, rather than as a visible resize.
+    return bindZoomShortcuts();
+  }, []);
 
   useEffect(() => {
     // SPEC-V1 §8: never hardcode the modifier. It resolves from the platform.
@@ -245,15 +256,27 @@ function Shell() {
 
   if (account === null) {
     // One frame at most, and the window is still hidden behind `revealWindow()`.
-    return <div className="bg-surface-app h-full w-full" />;
+    return <WindowFrame />;
   }
 
   if (account.state !== 'unlocked') {
     // §4.9: lock is real. The shell is not rendered *behind* this — it is not
     // mounted, so there are no item titles to read through a blur and no query
     // holding decrypted metadata.
+    //
+    // The frame still wraps it: the window is the window whether or not the vault is
+    // open, and a lock screen with square corners inside a rounded window is a seam.
     return (
-      <div className="bg-surface-app text-text-primary relative h-full w-full overflow-hidden">
+      <WindowFrame>
+        {/* A locked window is still a window: it has to be movable, minimisable and
+            closable. Without this the only way out of a locked app is Task Manager. */}
+        <div
+          data-drag-region
+          {...lockBarDrag}
+          className="relative z-[8] flex h-[52px] shrink-0 items-center justify-end pr-3"
+        >
+          {platform.os === 'macos' ? null : <WindowControls />}
+        </div>
         <LockScreen
           exists={account.state !== 'uninitialised'}
           onUnlocked={(next) => {
@@ -264,18 +287,19 @@ function Shell() {
             setAccount(next);
           }}
         />
-      </div>
+      </WindowFrame>
     );
   }
 
   return (
-    <div className="bg-surface-app text-text-primary relative flex h-full w-full flex-col overflow-hidden">
+    <WindowFrame>
       <TitleBar
         onOpenPalette={() => {
           setPaletteOpen(true);
         }}
         onLock={onLock}
         modifierKey={platform.modifierKey}
+        os={platform.os}
       />
       <div className="flex min-h-0 flex-1">
         <Sidebar
@@ -358,7 +382,7 @@ function Shell() {
           settings === null ? null : settings.clearClipboard ? settings.clipboardSeconds : null
         }
       />
-    </div>
+    </WindowFrame>
   );
 }
 
@@ -366,7 +390,7 @@ function Shell() {
 function PaneNotice({ label, children }: { label: string; children?: React.ReactNode }) {
   return (
     <section
-      className="bg-surface-panel flex min-w-0 flex-1 items-center justify-center overflow-y-auto"
+      className="bg-surface-panel animate-pane-in flex min-w-0 flex-1 items-center justify-center overflow-y-auto"
       aria-label={label}
     >
       <p className="text-caption text-text-muted max-w-[42ch] px-10 text-center text-pretty">

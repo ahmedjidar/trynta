@@ -152,7 +152,7 @@ export function ItemList({ items, risks, vaultNames, onCopy, onNew, modifierKey 
 
   return (
     <section
-      className="border-hairline bg-surface-raised flex w-80 shrink-0 flex-col border-r"
+      className="border-hairline bg-surface-raised flex w-[clamp(var(--width-list),28%,440px)] shrink-0 flex-col border-r"
       aria-label="Items"
     >
       <header className="border-hairline flex h-11 shrink-0 items-center gap-2 border-b pr-3 pl-4">
@@ -228,6 +228,7 @@ export function ItemList({ items, risks, vaultNames, onCopy, onNew, modifierKey 
       </div>
 
       <div
+        data-scroll-pane
         className="flex-1 overflow-y-auto px-2 pt-2 pb-4"
         ref={scrollRef}
         role="listbox"

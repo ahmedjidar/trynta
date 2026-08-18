@@ -17,15 +17,18 @@
       {
         "label": "main",
         "title": "Keyring",
-        "width": 1360,
-        "height": 880,
-        "minWidth": 900,
-        "minHeight": 560,
+        "width": 1440,
+        "height": 920,
+        "minWidth": 940,
+        "minHeight": 620,
         "center": true,
         "resizable": true,
         "visible": false,
         "dragDropEnabled": false,
-        "contentProtected": false
+        "contentProtected": false,
+        "decorations": false,
+        "transparent": false,
+        "shadow": true
       }
     ],
     "security": {

@@ -93,8 +93,12 @@ export function Updates({ onBack, onFailed }: UpdatesProps) {
   }, []);
 
   return (
-    <section className="bg-surface-panel min-w-0 flex-1 overflow-y-auto" aria-label="Updates">
-      <div className="max-w-[704px] px-10 pt-8 pb-12">
+    <section
+      data-scroll-pane
+      className="bg-surface-panel animate-pane-in min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
+      aria-label="Updates"
+    >
+      <div className="mx-auto w-full max-w-[var(--measure-pane-wide)] px-10 pt-8 pb-12">
         <button
           type="button"
           data-focus-ring

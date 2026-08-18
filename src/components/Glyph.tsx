@@ -27,9 +27,13 @@ import {
   ChevronRight,
   ChevronsUpDown,
   CreditCard,
+  Dices,
   Fingerprint,
   KeyRound,
   Lock,
+  Maximize2,
+  Minimize2,
+  Minus,
   Monitor,
   Moon,
   Plus,
@@ -37,7 +41,6 @@ import {
   Settings,
   Shield,
   ShieldCheck,
-  Sparkles,
   Star,
   StickyNote,
   Sun,
@@ -62,7 +65,10 @@ const GLYPHS = {
   next: ChevronRight,
   close: X,
   check: Check,
-  generate: Sparkles,
+  // Dice, not a sparkle. A sparkle has become the house mark for "a language model
+  // did this", and nothing here involves one: the generator is a CSPRNG with
+  // rejection sampling (§7.3). Dice say *random*, which is what the button does.
+  generate: Dices,
   security: Activity,
   settings: Settings,
   biometric: Fingerprint,
@@ -73,6 +79,10 @@ const GLYPHS = {
   card: CreditCard,
   identity: User,
   favorite: Star,
+  windowMinimise: Minus,
+  windowMaximise: Maximize2,
+  windowRestore: Minimize2,
+  windowClose: X,
 } as const;
 
 /** A glyph role. */

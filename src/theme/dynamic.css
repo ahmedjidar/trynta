@@ -320,6 +320,30 @@
   transition: width var(--duration-countdown) linear;
 }
 
+/* ── Toast ─────────────────────────────────────────────────────────────────── */
+
+/*
+ * One transition, both directions. The pill stays mounted so the exit has something to
+ * animate — see `components/Toast.tsx` — and `data-visible` is the only thing that
+ * changes. `pointer-events` goes with it, so an invisible pill never swallows a click
+ * on the pane behind it.
+ */
+.toast {
+  opacity: 0;
+  transform: translateY(10px) scale(0.97);
+  pointer-events: none;
+  transition:
+    opacity var(--duration-base) var(--ease-spring),
+    transform var(--duration-base) var(--ease-spring);
+}
+
+.toast[data-visible] {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+  transition-duration: var(--duration-toast);
+}
+
 /* ── Generator length slider ───────────────────────────────────────────────── */
 
 /*

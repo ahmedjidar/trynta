@@ -160,8 +160,12 @@ export function Generator({ onCopied, onFailed }: GeneratorProps) {
   const strength = bandFor(generated?.entropyBits ?? 0);
 
   return (
-    <section className="bg-surface-panel min-w-0 flex-1 overflow-y-auto" aria-label="Generator">
-      <div className="max-w-[704px] px-10 pt-8 pb-12">
+    <section
+      data-scroll-pane
+      className="bg-surface-panel animate-pane-in min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
+      aria-label="Generator"
+    >
+      <div className="mx-auto w-full max-w-[var(--measure-pane-wide)] px-10 pt-8 pb-12">
         <h1 className="text-display tracking-display font-bold">Generator</h1>
         <p className="text-body text-text-muted mt-1 max-w-[60ch] leading-5 text-pretty">
           {/* The design says "generated locally on this Mac". Platform-neutral here,

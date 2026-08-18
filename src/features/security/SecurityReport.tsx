@@ -82,10 +82,11 @@ export function SecurityReport({ report, items, onCheckNow, canCheck }: Security
 
   return (
     <section
-      className="bg-surface-panel min-w-0 flex-1 overflow-y-auto"
+      data-scroll-pane
+      className="bg-surface-panel animate-pane-in min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
       aria-label="Security report"
     >
-      <div className="max-w-[880px] px-10 pt-8 pb-12">
+      <div className="mx-auto w-full max-w-[var(--measure-pane-wide)] px-10 pt-8 pb-12">
         <header className="flex items-start gap-8">
           <div className="min-w-0 flex-1">
             <h1 className="text-display tracking-display font-bold">Security report</h1>

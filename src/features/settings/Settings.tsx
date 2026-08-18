@@ -32,7 +32,9 @@
 
 import { useCallback, useState } from 'react';
 
+import { Chip } from '../../components/Bits';
 import { GroupedList, GroupedRow, SectionLabel } from '../../components/GroupedList';
+import { SegmentedControl } from '../../components/SegmentedControl';
 import { Switch } from '../../components/Switch';
 import { Glyph } from '../../components/Glyph';
 import { useThemeStore } from '../../theme/store';
@@ -43,11 +45,18 @@ import type { SettingsDto, SettingsPatch } from '../../ipc';
 /** Clipboard intervals offered, in seconds. §7.5's default is 30. */
 const CLIPBOARD_CHOICES = [5, 15, 30, 60, 120, 300] as const;
 
-/** Appearance modes, in the order the picker cycles them. */
-const MODES: readonly { value: ThemeMode; label: string }[] = [
-  { value: 'system', label: 'Match the system' },
-  { value: 'dark', label: 'Dark' },
-  { value: 'light', label: 'Light' },
+/**
+ * Appearance modes.
+ *
+ * A segmented control rather than a menu: three mutually exclusive options with short
+ * labels is exactly what the design's segmented control is for, and a native `<select>`
+ * opens a system popup that no stylesheet in this app can reach — the one control that
+ * would still look like Windows inside a themed window.
+ */
+const MODES: readonly { id: ThemeMode; name: string }[] = [
+  { id: 'system', name: 'System' },
+  { id: 'dark', name: 'Dark' },
+  { id: 'light', name: 'Light' },
 ];
 
 export interface SettingsProps {
@@ -88,8 +97,12 @@ export function Settings({ settings, onSaved, onFailed, onBackup, onUpdates }: S
   );
 
   return (
-    <section className="bg-surface-panel min-w-0 flex-1 overflow-y-auto" aria-label="Settings">
-      <div className="max-w-[704px] px-10 pt-8 pb-12">
+    <section
+      data-scroll-pane
+      className="bg-surface-panel animate-pane-in min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
+      aria-label="Settings"
+    >
+      <div className="mx-auto w-full max-w-[var(--measure-pane-wide)] px-10 pt-8 pb-12">
         <h1 className="text-display tracking-display font-bold">Settings</h1>
 
         <section className="mt-7">
@@ -134,28 +147,29 @@ export function Settings({ settings, onSaved, onFailed, onBackup, onUpdates }: S
             </GroupedRow>
 
             {settings.clearClipboard ? (
-              <GroupedRow className="min-h-[60px] py-2.5">
+              <GroupedRow className="min-h-[60px] gap-3 py-2.5">
                 <RowText
                   name="Clear after"
                   description="How long a copied secret stays available."
                 />
-                <select
-                  className="border-strong bg-surface-panel text-control text-text-primary h-6 max-w-[180px] shrink-0 appearance-none rounded-sm border px-2"
+                <div
+                  className="flex shrink-0 flex-wrap justify-end gap-1.5"
+                  role="group"
                   aria-label="Clear clipboard after"
-                  value={settings.clipboardSeconds}
-                  disabled={saving}
-                  onChange={(event) => {
-                    patch({ clipboardSeconds: Number(event.target.value) });
-                  }}
                 >
                   {CLIPBOARD_CHOICES.map((seconds) => (
-                    <option key={seconds} value={seconds}>
-                      {seconds < 60
-                        ? `${String(seconds)} seconds`
-                        : `${String(seconds / 60)} minutes`}
-                    </option>
+                    <Chip
+                      key={seconds}
+                      selected={settings.clipboardSeconds === seconds}
+                      disabled={saving}
+                      onClick={() => {
+                        patch({ clipboardSeconds: seconds });
+                      }}
+                    >
+                      {seconds < 60 ? `${String(seconds)}s` : `${String(seconds / 60)}m`}
+                    </Chip>
                   ))}
-                </select>
+                </div>
               </GroupedRow>
             ) : null}
 
@@ -211,20 +225,15 @@ export function Settings({ settings, onSaved, onFailed, onBackup, onUpdates }: S
           <GroupedList className="mt-2">
             <GroupedRow className="min-h-[60px] py-2.5">
               <RowText name="Theme" description="Dark, light, or whatever the system is set to." />
-              <select
-                className="border-strong bg-surface-panel text-control text-text-primary h-6 max-w-[180px] shrink-0 appearance-none rounded-sm border px-2"
-                aria-label="Theme"
+              <SegmentedControl
+                className="w-[260px]"
+                segments={MODES}
                 value={mode}
-                onChange={(event) => {
-                  void setMode(event.target.value as ThemeMode);
+                label="Theme"
+                onChange={(next) => {
+                  void setMode(next);
                 }}
-              >
-                {MODES.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+              />
             </GroupedRow>
 
             <GroupedRow className="min-h-[60px] py-2.5">

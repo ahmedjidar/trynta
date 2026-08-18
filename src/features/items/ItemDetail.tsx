@@ -264,8 +264,12 @@ export function ItemDetail({
   const subtitle = [summary.subtitle, vaultName].filter((part) => part).join(' · ');
 
   return (
-    <section className="bg-surface-panel min-w-0 flex-1 overflow-y-auto" aria-label="Item detail">
-      <div className="max-w-[704px] px-8 pt-7 pb-12">
+    <section
+      data-scroll-pane
+      className="bg-surface-panel animate-pane-in min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
+      aria-label="Item detail"
+    >
+      <div className="mx-auto w-full max-w-[var(--measure-pane-wide)] px-8 pt-8 pb-12">
         <header className="flex items-center gap-4">
           <IdentityTile icon={summary.icon} size={56} title={summary.title} />
           <div className="min-w-0 flex-1">

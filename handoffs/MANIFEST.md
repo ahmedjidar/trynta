@@ -113,6 +113,104 @@ and item list are single-tab-stop listboxes with arrow keys and `aria-activedesc
 one tab stop per row (a 5,000-item vault must not cost 5,000 tab presses), and Escape is handled per
 overlay rather than in one global handler that closes whichever it thinks is open.
 
+### 11. The window is frameless, and its corner is the platform's
+
+The design is drawn inside a picture of a Mac: grey desk, 20px rounded card, drop shadow,
+traffic lights. A real window cannot borrow any of that — but it also must not wear the
+system titlebar, which is a grey OS rectangle bolted to the top of a dark themed window
+and the one piece of chrome no stylesheet can reach.
+
+So `decorations: false` on Windows and the app draws minimise / maximise / close itself,
+in the same capsule vocabulary as the rest of the title bar. macOS keeps its real traffic
+lights — `tauri.macos.conf.json` sets `titleBarStyle: Overlay` and `hiddenTitle`, the OS
+floats them over our content, and the bar just reserves `--pad-traffic-lights` for them.
+Those three dots are a platform convention, not chrome, and users reach for them in a
+fixed place.
+
+**The corner radius is not `--radius-window`.** Measured on WebView2: a CSS radius on the
+root element does not clip what the compositor paints, so the visible corner is the one
+DWM draws — and DWM draws the same corner whether the window is transparent or not.
+`transparent: true` was tried and produced an identical corner while costing subpixel text
+antialiasing, which is a bad trade in an app whose smallest type is 11px. Forcing 20px
+means `SetWindowRgn`, which clips without antialiasing and gives a visibly jagged curve.
+The window therefore wears the platform's corner, and `--radius-window` is unused.
+
+Everything native survives the change: the window keeps `WS_THICKFRAME` (edge resize),
+`WS_MAXIMIZEBOX` (Snap Layouts), and DWM rounding and shadow. Verified by reading the
+window styles, and by driving a real press-and-drag on the title bar and watching
+`GetWindowRect` move.
+
+**One thing the design's own attribute could not do.** `data-tauri-drag-region` is inert
+in this build — `__TAURI_INTERNALS__` arrives carrying `plugins` and nothing else, so the
+listener that implements it never installs, and a press on the title bar left the window
+where it was. `app/useDragRegion.ts` calls `startDragging()` from its own `mousedown`
+instead, under the same capability.
+
+### 12. Interface scale
+
+`Ctrl`/`Cmd` with `+`, `-` and `0`, plus `Ctrl`+wheel, over a seven-step ladder that keeps
+the design's fixed row heights on whole pixels. CSS `zoom` on the root, written through
+the CSSOM — a *layout* property in Chromium, so text is re-rendered at the new size rather
+than a scaled bitmap.
+
+**The default is 1.1, not 1.0.** The type scale tops out at 13px for body text, drawn for a
+1360-wide window; at the 1440-wide default and above, 1.0 leaves the panes short of the
+space they have. This is the one place the design's absolute type sizes are not taken
+literally, and it is a scale factor rather than a redrawn scale — every relationship in the
+design is preserved.
+
+**Not persisted, and that needs a decision.** SPEC-V1 §4.5's plaintext key list is
+exhaustive and has no entry for it, and the encrypted settings blob is unreadable at the
+moment the shell first paints. So the level resets on launch. Either §4.5 gains a key, or
+it rides inside `window_geometry`, which is already permitted.
+
+### 13. Columns hold their proportion, not their pixel count
+
+`--width-sidebar` (240) and `--width-list` (320) are the design's, and at the 1360-wide
+window they were drawn for they are 17% and 28% of it. Kept as absolute pixels they leave a
+1920-wide window with two narrow columns against one enormous pane. They are now
+`clamp(token, proportion, cap)`: identical at the design width, growing to a cap above it.
+
+Pane content is centred (`mx-auto`) and measured at `--measure-pane-wide` rather than
+`--measure-pane`. Centring is the actual fix for "empty space on the right" — the slack was
+all on one side because the column was left-aligned in a pane wider than its measure.
+
+### 14. No sparkle
+
+The generator's glyph was `Sparkles`. A sparkle has become the house mark for "a language
+model produced this", and nothing here involves one — the generator is a CSPRNG with
+rejection sampling and exact inclusion–exclusion entropy (§7.3). It is `Dices` now, which
+says *random*, which is what the control does. The command palette's action rows carried
+the same single glyph for every action and now carry one each.
+
+### 15. Two native menus removed
+
+`<select>` opens a system popup that no stylesheet in this app can reach — the last two
+controls that still looked like Windows inside a themed window. Appearance is a segmented
+control (three mutually exclusive options with short labels is what the design's segmented
+control is for) and the clipboard interval is a chip row, both already in the design's
+vocabulary.
+
+### 16. Pointers, scrollbars, motion
+
+Three faults rather than deviations, recorded because each was invisible to every check:
+
+- **`cursor: default` on `body` and on every `button`.** An arrow over every control in the
+  product, with no affordance anywhere. What a desktop app avoids is the I-beam over
+  non-text, which `body` already handles; controls now say so under the pointer.
+- **`scrollbar-width: thin` on `*`.** In Chromium the standard scrollbar properties and the
+  `::-webkit-scrollbar` pseudo-elements are mutually exclusive, so setting the standard one
+  on everything disabled every custom scrollbar rule beneath it. The pseudo-elements are the
+  half that can express the design's inset capsule thumb, so the standard properties are
+  gone.
+- **The toast flew in from the left.** `-translate-x-1/2` on the pill and a keyframe
+  animating `translate(-50%, …)` are two rules writing one property: the keyframe won for
+  320 ms, then the utility took over. It is centred by flex now, and `transform` belongs to
+  the animation alone.
+
+Every overlay and the toast also animate *out*. A surface that fades in over 260 ms and
+then vanishes on the next frame reads as a crash rather than a dismissal.
+
 ### 10. `@layer base` is load-bearing
 
 Found by rendering, and worth recording: Tailwind v4 emits utilities inside `@layer utilities`, and

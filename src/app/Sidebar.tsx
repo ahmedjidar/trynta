@@ -163,10 +163,11 @@ export function Sidebar({ vaults, counts, riskCount }: SidebarProps) {
 
   return (
     <nav
-      className="border-hairline bg-surface-sidebar vibrancy flex w-60 shrink-0 flex-col border-r"
+      className="border-hairline bg-surface-sidebar vibrancy flex w-[clamp(var(--width-sidebar),17%,300px)] shrink-0 flex-col border-r"
       aria-label="Sources"
     >
       <div
+        data-scroll-pane
         className="min-h-0 flex-1 overflow-y-auto px-3 pt-3"
         ref={listRef}
         role="listbox"

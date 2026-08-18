@@ -11,7 +11,15 @@
  */
 
 export { IpcError, IpcTransportError } from './client';
-export { revealWindow } from './window';
+export {
+  revealWindow,
+  startDragging,
+  minimizeWindow,
+  toggleMaximizeWindow,
+  closeWindow,
+  isWindowMaximized,
+  onWindowResized,
+} from './window';
 
 export {
   accountCreate,
