@@ -25,6 +25,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { IdentityTile } from '../../components/IdentityTile';
+import { useItemIcons } from '../items/useItemIcons';
+import { useThemeStore } from '../../theme/store';
 import { useDismiss } from '../../components/useDismiss';
 import { Glyph } from '../../components/Glyph';
 import type { GlyphName } from '../../components/Glyph';
@@ -70,11 +72,13 @@ export function Palette({ onClose, onLock, modifierKey }: PaletteProps) {
   const go = useNavigation((s) => s.go);
   const select = useNavigation((s) => s.select);
   const { closing, dismiss } = useDismiss(onClose);
+  const resolvedTheme = useThemeStore((s) => s.resolved);
 
   // Every item, ranked by the Rust index. The palette's own query filters below rather
   // than through this hook, so typing here does not disturb the list behind the veil.
   const items = useItems();
   const vaults = useVaults();
+  const iconSources = useItemIcons(items.data ?? []);
 
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -224,7 +228,13 @@ export function Palette({ onClose, onLock, modifierKey }: PaletteProps) {
                     <Glyph name={row.glyph} size={12} />
                   </span>
                 ) : (
-                  <IdentityTile icon={row.icon} size={24} title={row.name} />
+                  <IdentityTile
+                    icon={row.icon}
+                    size={24}
+                    title={row.name}
+                    customSrc={iconSources[row.id]}
+                    theme={resolvedTheme}
+                  />
                 )}
                 <span className="text-body min-w-0 flex-1 truncate font-medium">{row.name}</span>
                 <span className="text-micro text-text-muted shrink-0">{row.kind}</span>

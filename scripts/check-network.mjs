@@ -19,7 +19,7 @@
 // own rationale would push people to stop writing it down.
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
 import { stripComments } from './lib/strip-comments.mjs';
@@ -83,6 +83,39 @@ const CLIENTS = [
   { name: 'WebSocket', re: /\bnew\s+WebSocket\b/, exts: WEB },
   { name: 'navigator.sendBeacon', re: /\bsendBeacon\s*\(/, exts: WEB },
   { name: 'tauri http plugin', re: /tauri[-_]plugin[-_]http/, exts: new Set([...RUST, ...WEB]) },
+
+  // ── ADD-001: no icon URL is ever constructed at runtime ────────────────────
+  //
+  // The clients above catch code that *makes* a request. These catch code that *hands a
+  // URL to the platform* and lets it make the request — which is how the favicon leak
+  // arrives in practice: not `fetch()`, but `<img src={`https://${domain}/favicon.ico`}>`.
+  // A URL in an `<img>` is still a packet on the wire, and it still names the service.
+  //
+  // Web files only. A Rust string containing a URL is a fixture, an error message or the
+  // theme validator's own rejection test; the two files that genuinely make requests are
+  // on the sanctioned list, and the host list above applies to them regardless.
+  //
+  // The bundled tiles pass because they are root-relative — `/icons/<key>.svg`, resolved
+  // against the app's own origin under `img-src 'self'`. `IconDto` carries a bundle key
+  // and never a domain, so there is nothing in the webview to build a remote URL from
+  // even by accident; these rules exist so that stays true.
+  { name: 'absolute URL in web source', re: /\bhttps?:\/\//, exts: WEB, shipped: true },
+  {
+    name: 'protocol-relative URL in a src/href',
+    re: /\b(?:src|href)\s*=\s*\{?\s*[`"']\s*\/\//,
+    exts: WEB,
+    shipped: true,
+  },
+  {
+    name: 'favicon probe',
+    re: /favicon\.(?:ico|png|svg|jpg)/i,
+    exts: new Set([...RUST, ...WEB]),
+  },
+  {
+    name: 'well-known probe',
+    re: /\.well-known\/(?:change-password|security\.txt)/i,
+    exts: new Set([...RUST, ...WEB]),
+  },
 ];
 
 /**
@@ -135,6 +168,11 @@ for (const dir of SCAN_DIRS) {
     const original = source.split(/\r?\n/);
     const isSanctioned = SANCTIONED.has(rel);
     const ext = rel.slice(rel.lastIndexOf('.'));
+    // A bare URL is a finding in code that ships and a help message in code that does
+    // not: `check-e2e-ready` tells you where to download a WebDriver. Rules marked
+    // `shipped` apply to the webview bundle only. The forbidden-host list is not one of
+    // them — a CDN host is wrong in a build script too, because build scripts get copied.
+    const isShipped = rel.startsWith(`src${sep}`) && !rel.startsWith(`src-tauri${sep}`);
 
     code.forEach((line, i) => {
       const at = `${rel}:${i + 1}`;
@@ -155,8 +193,9 @@ for (const dir of SCAN_DIRS) {
       }
 
       if (isSanctioned) return;
-      for (const { name, re, exts } of CLIENTS) {
+      for (const { name, re, exts, shipped } of CLIENTS) {
         if (!exts.has(ext)) continue;
+        if (shipped === true && !isShipped) continue;
         if (re.test(line)) findings.push(`${at}  ${name}   ${shown}`);
       }
     });

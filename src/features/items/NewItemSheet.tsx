@@ -11,7 +11,9 @@
  *   Windows the platform, and sync is SPEC-V3 — there is nothing to sync to, so the
  *   sentence promises a feature that does not exist. Rewritten to what actually happens.
  * - **The preview tile has no favicon.** The design crossfades a favicon-service icon over the
- *   monogram once the domain parses. ADD-001 forbids the request; the monogram is the tile.
+ *   generated mark once the domain parses. ADD-001 forbids the request; the mark stands
+ *   in until a bundled brand icon matches, and the user may attach their own from the
+ *   detail pane afterwards.
  * - **"Ask for Touch ID before autofill" is not built.** Autofill is V3 (§7.5), there is no
  *   field to store it against, and §7.5 forbids a toggle that does nothing.
  * - **Generate calls Rust.** The design generates with `Math.random()`. A
@@ -22,7 +24,7 @@
  * report's verdict rather than approximating it in TypeScript.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Button } from '../../components/Button';
 import { Chip, CopyAction, Input } from '../../components/Bits';
@@ -172,7 +174,6 @@ export function NewItemSheet({
     };
   }, [kind, password, name, fields.username, fields.website]);
 
-  const initials = useMemo(() => monogram(name), [name]);
   const ready = name.trim().length > 0 && vaultId !== '';
   const vaultName = vaults.find((v) => v.id === vaultId)?.name ?? '';
 
@@ -233,14 +234,12 @@ export function NewItemSheet({
           <SegmentedControl segments={KINDS} value={kind} onChange={setKind} label="Item type" />
 
           <div className="flex items-center gap-4">
-            {/* The monogram the stored item will get. The tone is Rust's to choose (it
-                hashes the title), so the preview uses a fixed one rather than
-                reimplementing that hash in TypeScript where the two could drift. */}
-            <IdentityTile
-              size={64}
-              title={name}
-              icon={{ kind: 'monogram', initials: initials === '' ? '+' : initials, tone: 1 }}
-            />
+            {/* A preview of the generated mark. The real seed and tone are Rust's to
+                choose — it hashes the item's registrable domain — so this shows a fixed
+                one rather than reimplementing that hash in TypeScript, where the two
+                would drift the first time either changed. The tile the item actually
+                gets is resolved on save, and a matching brand icon outranks this. */}
+            <IdentityTile size={64} title={name} icon={{ kind: 'shape', seed: 5, tone: 1 }} />
             <label className="min-w-0 flex-1">
               <span className="text-micro tracking-label text-text-muted font-bold uppercase">
                 Item name
@@ -369,21 +368,6 @@ function strengthTone(band: number): string {
   if (band <= 1) return 'danger';
   if (band === 2) return 'warning';
   return 'accent';
-}
-
-/** Up to two initials, by code point — which is what Rust's `chars()` iterates. */
-function monogram(name: string): string {
-  return name
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => {
-      const first = word.codePointAt(0);
-      return first === undefined ? '' : String.fromCodePoint(first);
-    })
-    .join('')
-    .toUpperCase();
 }
 
 /** Build the discriminated body the command expects from the flat field state. */

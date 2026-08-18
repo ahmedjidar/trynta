@@ -52,8 +52,23 @@ permits. Appearance is unchanged.
 `IdentityTile` and the new-item sheet's preview tile fetch `https://www.google.com/s2/favicons`
 per item, keyed by the item's domain — an inventory of the vault, sent out item by item. ADD-001
 forbids it, §11's packet-capture criterion tests for it, `check:network` fails the build on it, and
-`img-src 'self' data:` would block it anyway. The monogram is the tile; where a brand icon exists it
-comes from the bundled set Rust already resolved.
+`img-src 'self' data:` would block it anyway.
+
+What replaced it, since run 3, is the whole of ADD-001's three tiers rather than a monogram:
+
+1. A bundled full-colour brand mark, resolved in Rust from the item's URL by reducing it to eTLD+1
+   through the Public Suffix List and looking that up in a compiled-in map. 3,778 brands ship.
+2. The user's own icon, if they attached one — processed entirely in Rust and stored encrypted in
+   the item like any other field.
+3. A generated geometric mark, seeded from the registrable domain.
+
+**Tier 3 is not a monogram, deliberately.** Two letters on a coloured square next to a row of real
+logos reads as an image that failed to load, and it says nothing the item's title does not already
+say at a legible size. `components/GeneratedMark.tsx` draws eight shape families × four rotations ×
+three opacity variants from the seed, so an unmapped item still gets an identity you can learn.
+
+What a design would settle: the shape vocabulary itself, and whether a bundled mark should sit on
+`--surface-raised` (as now, reading as a chip) or be cut out against the row.
 
 ### 3. Tailwind v3 config → v4 `@theme inline`
 
@@ -397,7 +412,54 @@ read like `upToDate`: a failed check is an unknown.
 Shipped: one sentence per status, the current version, the automatic-check state, and a statement of
 exactly what an update check sends (IP, version, platform — and nothing about the vault).
 
-### 3. Two token names
+### 3. Bundled icons under share-alike and copyleft terms
+
+41 of the 3,778 bundled marks record a share-alike or copyleft licence upstream: 18 CC-BY-SA
+(2.5/3.0/4.0), 19 GPL/AGPL, 1 LGPL-3.0 and 3 MPL-2.0. The last two are file-level or weak copyleft
+rather than the same obligation, which is why they are counted separately here and aggregated apart
+in `THIRD-PARTY-NOTICES.md`. They ship as
+separate, individually licensed files, optimised but never redrawn — the position, and the reason it
+is a position rather than a settled fact, is written out in `THIRD-PARTY-NOTICES.md`. **Confirm
+before 1.0.** If the answer is unclear, dropping them is a one-line change to `FORBIDDEN_LICENCE` in
+`scripts/build-icon-map.ts` and a rebuild; nothing in the app changes, and 41 items fall back to a
+generated mark.
+
+### 4. Bundled marks with dark ink, on a dark tile
+
+**Measured, not suspected: 758 of the 3,778 bundled marks (20.1%) have no ink reaching 3:1 against
+`--surface-raised` in dark.** GitHub, Trezor, Kia, Rivian, InfluxDB and 753 others sit at or near
+1.01:1 — a black mark on a near-black chip. A further 359 marks declare no colour at all and
+inherit. In light both groups are fine; this is a dark-theme-only failure, and it is new.
+
+It is new because it is the cost of the favicon removal, not a regression in the port. Google's
+favicon service returned a *raster with its own opaque background*, so HO-002's dark screenshots
+show every brand sitting on a white square that came baked into the PNG. A bundled SVG is a
+transparent mark. Same logo, same tile, and now nothing behind it.
+
+Three things are already ruled out:
+
+- **Recolouring the mark is forbidden.** ADD-001 is explicit, and it is right — a recoloured brand
+  mark is the wrong mark.
+- **Taking the other source's light/dark pair does not work in general.** thesvg publishes
+  `light.svg` and `dark.svg` for GitHub, so this looked like a pipeline bug at first. It is not:
+  thesvg's `default.svg` and `dark.svg` for GitHub declare `viewBox="0 0 1024 1024"` and then draw
+  in a 0–16 coordinate space, so both render as a speck in the corner. Only `light.svg` is correct.
+  A sweep of the emitted set for that defect found 1 suspect file in 3,949, which is the
+  gilbarbara-first rule already doing its job — but it means cross-source variant substitution
+  cannot be trusted without a per-file geometry check.
+- **Inventing a chip colour is not ours to do** (CLAUDE.md §3). `--surface-knob` is white in both
+  themes and would work mechanically, but it is the switch-thumb token and using it here would be a
+  colour decision wearing a borrowed name.
+
+What a design would settle: what sits behind a transparent brand mark in dark. A light chip in both
+themes is the obvious candidate and is what the favicons were accidentally providing, but the tile
+is 24–64px and shipping a white square into a dark UI 3,778 times is a visual decision with real
+weight. A per-mark luminance test that only chips the dark ones is the other candidate, and it
+trades consistency for restraint.
+
+Until then the tile renders as drawn, which is honest but leaves a fifth of the set weak in dark.
+
+### 5. Two token names
 
 `--text-stat` (26px/30px) and `--space-075` (3px), both literals in HO-002's Tailwind config. See
 deviation 4 above.

@@ -34,7 +34,8 @@ use crate::error::{StoreError, TamperKind, UnlockError};
 use crate::header::Header;
 use crate::manifest;
 use crate::model::{
-    IndexRow, ItemDraft, ItemMeta, ItemSummary, SecretField, TotpConfig, VaultKind, VaultSummary,
+    IndexRow, ItemDraft, ItemMeta, ItemSummary, SecretField, StoredIcon, TotpConfig, VaultKind,
+    VaultSummary,
 };
 use crate::repository::{self, MetaEdits};
 use crate::schema::{
@@ -903,6 +904,51 @@ impl Session<'_> {
     pub fn item_set_favorite(&self, id: Uuid, favorite: bool) -> Result<bool, StoreError> {
         let conn = self.file.conn.lock().expect("connection lock");
         let changed = repository::item_set_favorite(&conn, &self.keys.muk, id, favorite, now_ms())?;
+        if changed {
+            self.reseal(&conn)?;
+        }
+        Ok(changed)
+    }
+
+    /// The user's own icon for one item, if it has one (ADD-001).
+    ///
+    /// Reads and decrypts that item's `meta_ct` alone. The search index carries only a
+    /// flag, so this is how the bytes are obtained.
+    ///
+    /// # Errors
+    ///
+    /// [`StoreError::ItemNotFound`], [`StoreError::Database`], or [`StoreError::Crypto`].
+    ///
+    /// # Panics
+    ///
+    /// If an internal lock is poisoned, which can only happen if another thread panicked
+    /// while holding it.
+    pub fn item_custom_icon(&self, id: Uuid) -> Result<Option<StoredIcon>, StoreError> {
+        let conn = self.file.conn.lock().expect("connection lock");
+        repository::item_custom_icon(&conn, &self.keys.muk, id)
+    }
+
+    /// Attach an icon to an item, or remove the one it has.
+    ///
+    /// Returns whether anything changed; setting the same bytes twice does not burn a
+    /// revision. The caller is responsible for having processed the image first — this
+    /// stores exactly what it is given.
+    ///
+    /// # Errors
+    ///
+    /// [`StoreError::ItemNotFound`], [`StoreError::Database`], or [`StoreError::Crypto`].
+    ///
+    /// # Panics
+    ///
+    /// If an internal lock is poisoned, which can only happen if another thread panicked
+    /// while holding it.
+    pub fn item_set_custom_icon(
+        &self,
+        id: Uuid,
+        icon: Option<StoredIcon>,
+    ) -> Result<bool, StoreError> {
+        let conn = self.file.conn.lock().expect("connection lock");
+        let changed = repository::item_set_custom_icon(&conn, &self.keys.muk, id, icon, now_ms())?;
         if changed {
             self.reseal(&conn)?;
         }

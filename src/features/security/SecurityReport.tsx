@@ -31,6 +31,8 @@ import { Badge } from '../../components/Bits';
 import { GroupedList, GroupedRow } from '../../components/GroupedList';
 import { Glyph } from '../../components/Glyph';
 import { IdentityTile } from '../../components/IdentityTile';
+import { useItemIcons } from '../items/useItemIcons';
+import { useThemeStore } from '../../theme/store';
 import { StatCards } from '../../components/StatCards';
 import type { Stat } from '../../components/StatCards';
 import { useNavigation } from '../../app/navigation';
@@ -57,6 +59,8 @@ export interface SecurityReportProps {
 export function SecurityReport({ report, items, onCheckNow, canCheck }: SecurityReportProps) {
   const select = useNavigation((s) => s.select);
   const go = useNavigation((s) => s.go);
+  const iconSources = useItemIcons(items);
+  const resolvedTheme = useThemeStore((s) => s.resolved);
 
   const stats: readonly Stat[] = [
     {
@@ -202,6 +206,8 @@ export function SecurityReport({ report, items, onCheckNow, canCheck }: Security
                 key={`${risk.itemId}-${risk.kind}`}
                 risk={risk}
                 item={items.find((i) => i.id === risk.itemId)}
+                customSrc={iconSources[risk.itemId]}
+                theme={resolvedTheme}
                 onOpen={() => {
                   select(risk.itemId);
                   go('vault');
@@ -218,10 +224,14 @@ export function SecurityReport({ report, items, onCheckNow, canCheck }: Security
 interface RiskRowProps {
   risk: RiskDto;
   item: ItemSummaryDto | undefined;
+  /** `data:` URI, when the user supplied this item's icon. */
+  customSrc: string | undefined;
+  /** Resolved theme, for brands that ship a light/dark pair. */
+  theme: 'light' | 'dark';
   onOpen: () => void;
 }
 
-function RiskRow({ risk, item, onOpen }: RiskRowProps) {
+function RiskRow({ risk, item, customSrc, theme, onOpen }: RiskRowProps) {
   const tag = TAGS[risk.kind];
   const detail =
     risk.kind === 'breached' && risk.breachCount !== null
@@ -247,7 +257,7 @@ function RiskRow({ risk, item, onOpen }: RiskRowProps) {
       }}
     >
       {item ? (
-        <IdentityTile icon={item.icon} title={risk.title} />
+        <IdentityTile icon={item.icon} title={risk.title} customSrc={customSrc} theme={theme} />
       ) : (
         <span className="tile" data-size="32" data-tone="0" aria-hidden="true" />
       )}

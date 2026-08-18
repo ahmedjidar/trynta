@@ -42,11 +42,19 @@ import {
   SectionLabel,
 } from '../../components/GroupedList';
 import { IdentityTile } from '../../components/IdentityTile';
+import { useItemIcon } from './useItemIcons';
+import { useThemeStore } from '../../theme/store';
 import { StrengthMeter } from '../../components/StrengthMeter';
 import { TotpRow } from './TotpRow';
 import { useNavigation } from '../../app/navigation';
 import { cn } from '../../lib/cn';
-import { itemCopyField, itemEditMeta, itemRevealField } from '../../ipc';
+import {
+  itemClearIcon,
+  itemCopyField,
+  itemEditMeta,
+  itemRevealField,
+  itemSetIcon,
+} from '../../ipc';
 import type {
   ItemDetailDto,
   ItemSummaryDto,
@@ -129,6 +137,51 @@ export function ItemDetail({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [iconBusy, setIconBusy] = useState(false);
+
+  const isCustomIcon = summary.icon.kind === 'custom';
+  const customSrc = useItemIcon(detail.id, isCustomIcon);
+  const resolvedTheme = useThemeStore((s) => s.resolved);
+
+  /**
+   * Attach or remove the item's own icon (ADD-001 tier 2).
+   *
+   * `itemSetIcon` opens the dialog and does the whole pipeline in Rust; the webview
+   * never sees the file. `null` back means the user cancelled, which is not an error and
+   * must not produce a toast.
+   */
+  function pickIcon() {
+    setIconBusy(true);
+    itemSetIcon(detail.id).then(
+      (result) => {
+        setIconBusy(false);
+        if (result === null) return;
+        onEdited();
+        onCopied(`Icon set, ${String(Math.round(result.bytes / 1024))} KB`);
+      },
+      () => {
+        setIconBusy(false);
+        // One message for every rejection. The Rust side deliberately does not report
+        // *which* rule refused the file, so this states what is accepted instead.
+        onFailed('That file was not accepted. Use an SVG, PNG, JPEG, WebP or ICO under 2 MB.');
+      },
+    );
+  }
+
+  function clearIcon() {
+    setIconBusy(true);
+    itemClearIcon(detail.id).then(
+      () => {
+        setIconBusy(false);
+        onEdited();
+        onCopied('Icon removed');
+      },
+      () => {
+        setIconBusy(false);
+        onFailed('Could not remove the icon');
+      },
+    );
+  }
 
   // §4.4: clear on blur. A revealed password left visible while the user alt-tabs is
   // exactly what shoulder-surfing and screen capture take.
@@ -271,7 +324,13 @@ export function ItemDetail({
     >
       <div className="mx-auto w-full max-w-[var(--measure-pane-wide)] px-8 pt-8 pb-12">
         <header className="flex items-center gap-4">
-          <IdentityTile icon={summary.icon} size={56} title={summary.title} />
+          <IdentityTile
+            icon={summary.icon}
+            size={56}
+            title={summary.title}
+            customSrc={customSrc}
+            theme={resolvedTheme}
+          />
           <div className="min-w-0 flex-1">
             {editing ? (
               <Input
@@ -286,6 +345,24 @@ export function ItemDetail({
               <h1 className="text-display tracking-display truncate font-bold">{detail.title}</h1>
             )}
             <p className="text-body text-text-muted mt-0.5 truncate">{subtitle}</p>
+
+            {/* The icon controls live in edit mode rather than behind a hover on the
+                tile: an affordance nobody can see is an affordance nobody uses, and
+                attaching an icon is an edit. Nothing here is required — almost every
+                item resolves to a bundled brand mark on its own. */}
+            {editing ? (
+              <div className="mt-2 flex items-center gap-2">
+                <CopyAction onClick={pickIcon} disabled={iconBusy}>
+                  {isCustomIcon ? 'Change icon' : 'Use my own icon'}
+                </CopyAction>
+                {isCustomIcon ? (
+                  <CopyAction onClick={clearIcon} disabled={iconBusy}>
+                    Remove
+                  </CopyAction>
+                ) : null}
+                <span className="text-chip text-text-muted">SVG, PNG, JPEG, WebP or ICO</span>
+              </div>
+            ) : null}
           </div>
           <div className="flex shrink-0 gap-2">
             <Button

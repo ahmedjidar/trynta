@@ -149,6 +149,9 @@ fn no_secret_field_reaches_the_metadata_envelope() {
             created_at: meta.created_at,
             custom_fields: meta.custom_fields.clone(),
             body: meta.body.clone(),
+            // The icon is bytes the user picked, never a secret — but it goes through
+            // the same assertion as everything else in this envelope.
+            custom_icon: session.item_custom_icon(id).expect("icon"),
         };
         assert_no_secret_in_meta(&payload);
     }

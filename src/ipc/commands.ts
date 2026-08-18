@@ -26,6 +26,7 @@ import type { BreachCheckDto } from './generated/BreachCheckDto';
 import type { GeneratedDto } from './generated/GeneratedDto';
 import type { StrengthDto } from './generated/StrengthDto';
 import type { HistoryEntryDto } from './generated/HistoryEntryDto';
+import type { IconUploadDto } from './generated/IconUploadDto';
 import type { PassphraseOptionsDto } from './generated/PassphraseOptionsDto';
 import type { PasswordOptionsDto } from './generated/PasswordOptionsDto';
 import type { ThemeCatalogDto } from './generated/ThemeCatalogDto';
@@ -399,6 +400,55 @@ export function itemRestore(id: string): Promise<void> {
  */
 export function itemEditMeta(id: string, edits: MetaEditsInput): Promise<boolean> {
   return call<boolean>('item_edit_meta', { id, edits });
+}
+
+/**
+ * The user's own icon for an item, as a `data:` URI, or `null` if it has none.
+ *
+ * Only worth calling when the item's {@link IconDto} is `custom`; every other kind
+ * renders without a round trip.
+ *
+ * The URI is safe to put in an `<img src>`: the production CSP is `img-src 'self'
+ * data:`, and an SVG inside an `<img>` cannot execute script even if it contained any —
+ * which it cannot, because Rust sanitised it on the way in.
+ *
+ * @throws {IpcError} `locked`, `notFound`, `storage`.
+ *
+ * @beta
+ */
+export function itemIcon(id: string): Promise<string | null> {
+  return call<string | null>('item_icon', { id });
+}
+
+/**
+ * Ask the user for an image file and attach it to an item.
+ *
+ * Opens a file dialog; **Rust reads, decodes, resizes and re-encodes it**. The webview
+ * never receives the chosen file or its path, which is the point: an image found on the
+ * internet is untrusted input, and a decoder is a parser.
+ *
+ * Resolves to `null` when the dialog is cancelled, which is not an error.
+ *
+ * @returns The processed size in bytes, so the UI can show what it cost.
+ * @throws {IpcError} `invalid` if the image is refused — over 2 MB, not one of
+ * SVG/PNG/JPEG/WebP/ICO, or an SVG carrying script or an external reference. Also
+ * `locked`, `notFound`, `storage`.
+ *
+ * @beta
+ */
+export function itemSetIcon(id: string): Promise<IconUploadDto | null> {
+  return call<IconUploadDto | null>('item_set_icon', { id });
+}
+
+/**
+ * Remove an item's icon, so it falls back to the bundled mark or a generated one.
+ *
+ * @throws {IpcError} `locked`, `notFound`, `storage`.
+ *
+ * @beta
+ */
+export function itemClearIcon(id: string): Promise<void> {
+  return callVoid('item_clear_icon', { id });
 }
 
 /**

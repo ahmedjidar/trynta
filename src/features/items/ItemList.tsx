@@ -24,6 +24,9 @@ import { NO_FILTERS, sourceLabel, useNavigation } from '../../app/navigation';
 import { Badge, Chip } from '../../components/Bits';
 import { Glyph } from '../../components/Glyph';
 import { IdentityTile } from '../../components/IdentityTile';
+import { useItemIcons } from './useItemIcons';
+import type { IconSources } from './useItemIcons';
+import { useThemeStore } from '../../theme/store';
 import { Spacer } from '../../components/Spacer';
 import { cn } from '../../lib/cn';
 import type { ItemSummaryDto, SortOrderDto } from '../../ipc';
@@ -147,6 +150,10 @@ export function ItemList({ items, risks, vaultNames, onCopy, onNew, modifierKey 
     }
   };
 
+  // Only the rows with a custom icon cost anything here; in most vaults that is none.
+  const iconSources = useItemIcons(items);
+  const resolved = useThemeStore((s) => s.resolved);
+
   const currentSort = SORTS.find((s) => s.value === sort) ?? SORTS[0];
   const anyFilter = filters.weak || filters.hasTotp || filters.shared;
 
@@ -257,6 +264,8 @@ export function ItemList({ items, risks, vaultNames, onCopy, onNew, modifierKey 
                 item={item}
                 risk={risks[item.id]}
                 selected={item.id === selectedId}
+                iconSources={iconSources}
+                theme={resolved}
                 onSelect={() => {
                   select(item.id);
                 }}
@@ -282,10 +291,14 @@ interface ItemRowProps {
   item: ItemSummaryDto;
   risk: 'breached' | 'weak' | undefined;
   selected: boolean;
+  /** `data:` URIs for the rows whose icon the user supplied. */
+  iconSources: IconSources;
+  /** Resolved theme, for brands that ship a light/dark pair. */
+  theme: 'light' | 'dark';
   onSelect: () => void;
 }
 
-function ItemRow({ item, risk, selected, onSelect }: ItemRowProps) {
+function ItemRow({ item, risk, selected, iconSources, theme, onSelect }: ItemRowProps) {
   return (
     <div
       id={`item-${item.id}`}
@@ -300,7 +313,12 @@ function ItemRow({ item, risk, selected, onSelect }: ItemRowProps) {
         selected ? 'bg-surface-selected' : 'hover:bg-surface-hover',
       )}
     >
-      <IdentityTile icon={item.icon} title={item.title} />
+      <IdentityTile
+        icon={item.icon}
+        title={item.title}
+        customSrc={iconSources[item.id]}
+        theme={theme}
+      />
       <div className="min-w-0 flex-1">
         <div
           className={cn(

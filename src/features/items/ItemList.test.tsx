@@ -11,6 +11,7 @@
  *   the copy goes to Rust rather than through any value the webview holds.
  */
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -27,7 +28,7 @@ function item(id: string, title: string, extra: Partial<ItemSummaryDto> = {}): I
     title,
     subtitle: `${title.toLowerCase()}@example.test`,
     hasTotp: false,
-    icon: { kind: 'monogram', initials: title.slice(0, 2).toUpperCase(), tone: 3 },
+    icon: { kind: 'shape', seed: 0x1234_5678, tone: 3 },
     isFavorite: false,
     isShared: false,
     revision: 1,
@@ -37,6 +38,20 @@ function item(id: string, title: string, extra: Partial<ItemSummaryDto> = {}): I
 }
 
 const ITEMS = [item('a', 'Acme'), item('b', 'Bank'), item('c', 'Cloud')];
+
+/**
+ * The list asks the query layer for the `data:` URIs of any custom icons (ADD-001 tier 2).
+ * Every row here resolves to a generated shape, so the hook is disabled and issues no
+ * request — but the client still has to exist, the same as it does in the app. Rebuilt per
+ * test in `beforeEach` so nothing caches across cases.
+ */
+let client = new QueryClient();
+
+const wrap = {
+  wrapper: ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  ),
+};
 
 function setup(overrides: Partial<Parameters<typeof ItemList>[0]> = {}) {
   const onCopy = vi.fn();
@@ -51,12 +66,14 @@ function setup(overrides: Partial<Parameters<typeof ItemList>[0]> = {}) {
       modifierKey="Ctrl"
       {...overrides}
     />,
+    wrap,
   );
   return { onCopy, onNew };
 }
 
 describe('item list', () => {
   beforeEach(() => {
+    client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     useNavigation.setState({
       selectedId: null,
       search: '',
@@ -169,6 +186,7 @@ describe('item list', () => {
         onNew={vi.fn()}
         modifierKey="Ctrl"
       />,
+      wrap,
     );
     expect(screen.getByText(/No items match/)).toBeInTheDocument();
     unmount();
@@ -183,6 +201,7 @@ describe('item list', () => {
         onNew={vi.fn()}
         modifierKey="Ctrl"
       />,
+      wrap,
     );
     expect(screen.getByText(/Nothing here yet/)).toBeInTheDocument();
   });
@@ -197,6 +216,7 @@ describe('item list', () => {
         onNew={vi.fn()}
         modifierKey="Ctrl"
       />,
+      wrap,
     );
     // The design conveys risk with a 6px coloured dot. Colour alone is not an
     // accessible signal, so it carries a name too.

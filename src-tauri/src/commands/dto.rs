@@ -158,7 +158,7 @@ impl From<&IndexRow> for ItemSummaryDto {
             title: row.title.clone(),
             subtitle: row.subtitle.clone(),
             has_totp: row.has_totp,
-            icon: IconDto::from(icons::resolve(&row.urls, &row.title)),
+            icon: IconDto::from(icons::resolve(&row.urls, &row.title, row.has_custom_icon)),
             is_favorite: row.favorite,
             is_shared: false,
             revision: row.revision,
@@ -1520,8 +1520,10 @@ pub struct ThemeCatalogDto {
 
 /// How to draw an item's identity tile.
 ///
-/// The wire form of [`icons::Icon`]. Carries a bundled key or a monogram, and
-/// nothing a URL could be built from — see the note on [`ItemSummaryDto::icon`].
+/// The wire form of [`icons::Icon`]. Carries a bundled key, a marker that the user
+/// attached their own, or a seed for a generated mark — and **nothing a URL could be
+/// built from**, which is what makes it impossible for the webview to construct an icon
+/// request even by accident. See the note on [`ItemSummaryDto::icon`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[ts(export, export_to = "../../src/ipc/generated/")]
 #[serde(
@@ -1534,12 +1536,19 @@ pub enum IconDto {
     Bundled {
         /// Key into the bundled set. Never user-supplied, never a URL.
         key: String,
+        /// Whether `<key>-light.svg` / `<key>-dark.svg` exist for theme selection.
+        themed: bool,
     },
-    /// A locally generated monogram.
-    Monogram {
-        /// One or two uppercase initials.
-        initials: String,
-        /// Which `--identity-N` fill to use, `1..=7`.
+    /// The user's own icon. Fetch the bytes with `item_icon`.
+    Custom,
+    /// A generated geometric mark, drawn by the frontend from this seed.
+    ///
+    /// A seed rather than a rendered shape: which shapes exist is a design decision and
+    /// belongs to the token layer, not to Rust. What Rust owes is determinism.
+    Shape {
+        /// Stable for a given identity, forever.
+        seed: u32,
+        /// Which `--identity-N` to build the mark from, `1..=7`.
         tone: u8,
     },
 }
@@ -1547,10 +1556,24 @@ pub enum IconDto {
 impl From<icons::Icon> for IconDto {
     fn from(icon: icons::Icon) -> Self {
         match icon {
-            icons::Icon::Bundled { key } => Self::Bundled { key },
-            icons::Icon::Monogram { initials, tone } => Self::Monogram { initials, tone },
+            icons::Icon::Bundled { key, themed } => Self::Bundled { key, themed },
+            icons::Icon::Custom => Self::Custom,
+            icons::Icon::Shape { seed, tone } => Self::Shape { seed, tone },
         }
     }
+}
+
+/// What attaching an icon cost, so the picker can show it.
+///
+/// Only the size. The processed bytes go straight into the item and come back through
+/// `item_icon`; returning them here would mean the same image crossing IPC twice for no
+/// reason.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub struct IconUploadDto {
+    /// Size of the processed icon in bytes, at most 64 KB.
+    pub bytes: u32,
 }
 
 // ── Settings (SPEC-V1 §7.5) ─────────────────────────────────────────────────

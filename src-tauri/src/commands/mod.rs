@@ -25,6 +25,7 @@ pub mod app;
 pub mod backup;
 pub mod dto;
 pub mod generator;
+pub mod icon;
 pub mod items;
 pub mod security;
 pub mod settings;

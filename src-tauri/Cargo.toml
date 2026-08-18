@@ -69,6 +69,37 @@ hmac = { workspace = true }
 sha1 = { workspace = true }
 sha2 = { workspace = true }
 
+# ADD-001's tier-2 custom icon: the user picks a file, and Rust processes it. Both
+# crates parse **untrusted input the user chose**, which is exactly the surface
+# CLAUDE.md §2 says to think about before adding, so the reasoning is written down.
+#
+# `image` decodes PNG/JPEG/WebP/ICO, resizes with Lanczos3 and re-encodes. Chosen over
+# hand-rolling because writing a JPEG decoder is how you get a memory-safety bug in a
+# password manager. Pure Rust, no C, no `unsafe` in the codecs' public path, and
+# `default-features = false` keeps it to the four formats the picker accepts — no GIF,
+# no TIFF, no farbfeld, no EXR, so the parsers that are not needed are not compiled in.
+#
+# Two things bound the blast radius, both enforced in `services::custom_icon`: the file
+# is size-capped before a decoder is handed a byte of it, and the decoded dimensions are
+# checked before an allocation is made, so a decompression bomb is refused rather than
+# sized.
+#
+# It never sees a secret. An icon is a picture of a logo; it is stored in the item's
+# metadata envelope alongside the title, and no key or plaintext field is in scope.
+image = { version = "0.25.10", default-features = false, features = [
+    "png",
+    "jpeg",
+    "webp",
+    "ico",
+] }
+
+# The SVG sanitiser. An allowlist over a real XML tokeniser rather than a regex: an
+# entity-encoded or CDATA-wrapped `<script` defeats string matching, and SPEC-V1 §7.6
+# already settled that this class of check is done by parsing, not by pattern.
+# `quick-xml` is already in the tree transitively; this makes it a direct, pinned
+# dependency. Pure Rust, no allocations we do not hand it, no I/O.
+quick-xml = "0.41.0"
+
 # SPEC-V1 §7.4 names zxcvbn for the "weak" check, so this is the spec's choice
 # rather than a new one. `default-features = false` drops the `builder` /
 # `derive_builder` pair, which exists to construct an options struct we do not

@@ -268,6 +268,17 @@
   object-fit: contain;
 }
 
+/*
+ * The generated mark is the tile, not an inlay: it is drawn to the tile's own edge with
+ * its own internal margins, so a shape and a brand icon sit at the same optical weight
+ * beside each other in a list.
+ */
+.tile__mark {
+  width: 100%;
+  height: 100%;
+  color: var(--identity-text);
+}
+
 .tile[data-size='56'] .tile__icon,
 .tile[data-size='64'] .tile__icon {
   width: 60%;

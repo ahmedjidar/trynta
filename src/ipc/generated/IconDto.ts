@@ -3,19 +3,25 @@
 /**
  * How to draw an item's identity tile.
  *
- * The wire form of [`icons::Icon`]. Carries a bundled key or a monogram, and
- * nothing a URL could be built from — see the note on [`ItemSummaryDto::icon`].
+ * The wire form of [`icons::Icon`]. Carries a bundled key, a marker that the user
+ * attached their own, or a seed for a generated mark — and **nothing a URL could be
+ * built from**, which is what makes it impossible for the webview to construct an icon
+ * request even by accident. See the note on [`ItemSummaryDto::icon`].
  */
 export type IconDto = { "kind": "bundled", 
 /**
  * Key into the bundled set. Never user-supplied, never a URL.
  */
-key: string, } | { "kind": "monogram", 
+key: string, 
 /**
- * One or two uppercase initials.
+ * Whether `<key>-light.svg` / `<key>-dark.svg` exist for theme selection.
  */
-initials: string, 
+themed: boolean, } | { "kind": "custom" } | { "kind": "shape", 
 /**
- * Which `--identity-N` fill to use, `1..=7`.
+ * Stable for a given identity, forever.
+ */
+seed: number, 
+/**
+ * Which `--identity-N` to build the mark from, `1..=7`.
  */
 tone: number, };

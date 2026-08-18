@@ -19,6 +19,7 @@
 
 pub mod base32;
 pub mod breach;
+pub mod custom_icon;
 pub mod exact;
 pub mod generator;
 pub mod hibp;
