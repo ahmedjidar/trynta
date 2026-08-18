@@ -8,17 +8,18 @@
  * real, not a UI overlay — and this goes one step further: the shell is not mounted behind
  * this at all, so there is nothing to read through it even in principle.
  *
- * ## Biometrics
+ * ## No biometric unlock, and no mention of one
  *
- * HO-002's copy says "Touch ID" twice. CLAUDE.md §6 forbids hardcoding the macOS name of
- * anything the user can see, so both come from `biometric_label` in `account_status` —
- * "Windows Hello" on this platform. Where no sensor is enrolled the affordance is not
- * rendered and the prose does not mention one.
+ * HO-002's copy says "Touch ID" twice and offers a Touch ID row. There is no biometric
+ * unlock in this build: `account_unlock_biometric` does not exist and AC06 defers
+ * enrolment to the platform secure-store work.
  *
- * The button is present but not wired to a prompt: `account_unlock_biometric` does not
- * exist and AC06 defers enrolment. It renders disabled with the reason stated rather than
- * omitted — a machine with Hello enrolled and no mention of it reads as a bug, and a button
- * that silently does nothing is worse than both.
+ * An earlier version of this file rendered the row disabled with the reason in a tooltip,
+ * and named the platform's sensor in the prose. That was the wrong call and it read as
+ * broken: the sentence told the user to unlock with Windows Hello, and the only Hello
+ * control on screen said it was not built. A screen that offers a route it cannot take is
+ * worse than one that never mentions it. So the prose names the master password only, and
+ * the row is gone until the command behind it exists.
  *
  * ## First run
  *
@@ -31,7 +32,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 
 import { Button } from '../../components/Button';
-import { Glyph } from '../../components/Glyph';
 import { IpcError } from '../../ipc';
 import { accountCreate, accountUnlock } from '../../ipc';
 import type { AccountStatus } from '../../ipc';
@@ -39,20 +39,11 @@ import type { AccountStatus } from '../../ipc';
 export interface LockScreenProps {
   /** Whether a vault file exists. False takes the create path. */
   exists: boolean;
-  /** Platform biometric name, e.g. "Windows Hello". Empty when none is available. */
-  biometricLabel: string;
-  /** Whether the platform reports an enrolled sensor. */
-  biometricAvailable: boolean;
   /** Called with the status returned by a successful unlock or create. */
   onUnlocked: (status: AccountStatus) => void;
 }
 
-export function LockScreen({
-  exists,
-  biometricLabel,
-  biometricAvailable,
-  onUnlocked,
-}: LockScreenProps) {
+export function LockScreen({ exists, onUnlocked }: LockScreenProps) {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -113,9 +104,7 @@ export function LockScreen({
         </h1>
         <p className="text-body text-text-caption-aa mt-2 leading-5 text-pretty">
           {exists
-            ? biometricAvailable
-              ? `Your keys were wiped from memory. Unlock with ${biometricLabel} or your master password.`
-              : 'Your keys were wiped from memory. Unlock with your master password.'
+            ? 'Your keys were wiped from memory. Unlock with your master password.'
             : 'This password is the only way into your vault. It is never stored, never sent anywhere, and cannot be reset — if you lose it, the vault is unreadable.'}
         </p>
 
@@ -179,20 +168,6 @@ export function LockScreen({
           {mismatch ? 'Those do not match.' : (error ?? '')}
         </p>
 
-        {exists && biometricAvailable ? (
-          <button
-            type="button"
-            data-focus-ring
-            disabled
-            // Disabled with the reason in the tooltip rather than in the label: HO-002's
-            // row is one line at 296px, and the explanation wrapped it to two.
-            title={`${biometricLabel} unlock is not available in this build yet`}
-            className="text-control text-text-caption-aa mt-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-full font-semibold"
-          >
-            <Glyph name="biometric" />
-            {`Use ${biometricLabel}`}
-          </button>
-        ) : null}
       </form>
     </div>
   );

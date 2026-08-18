@@ -217,8 +217,6 @@ function Shell() {
       <div className="bg-surface-app text-text-primary relative h-full w-full overflow-hidden">
         <LockScreen
           exists={account.state !== 'uninitialised'}
-          biometricLabel={account.biometricLabel}
-          biometricAvailable={account.biometricAvailable}
           onUnlocked={(next) => {
             // The queries were created while locked and every one of them failed.
             // Clearing makes them refetch against an open vault instead of serving
