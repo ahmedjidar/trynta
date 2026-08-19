@@ -539,6 +539,33 @@ mod tests {
         );
     }
 
+    /// The product's own mark is not a brand in the third-party set.
+    ///
+    /// `public/icons/` is 3,952 marks belonging to other companies, keyed by the
+    /// domain they are resolved from. Trynta's own mark lives under
+    /// `public/trynta/brand/` and is rendered by a component, never by a lookup. If it
+    /// ever entered this map, an item would show the Trynta logo — claiming the user
+    /// has an account with us — and the tile would be reached through
+    /// `/icons/trynta.svg`, which is the wrong directory entirely.
+    #[test]
+    fn the_products_own_mark_is_not_in_the_brand_map() {
+        let map = map();
+        for entry in map
+            .domains
+            .values()
+            .chain(map.hosts.values())
+            .chain(map.cards.values())
+        {
+            assert!(
+                !entry.key.starts_with("trynta"),
+                "{} is our own mark and must not be a bundled brand icon",
+                entry.key
+            );
+        }
+        assert!(lookup("trynta.dev").is_none());
+        assert!(lookup("trynta.com").is_none());
+    }
+
     #[test]
     fn tones_stay_inside_the_token_ramp() {
         for identity in ["a", "example.com", "", "zzzzzzzzzzzz", "🙂"] {

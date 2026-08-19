@@ -534,3 +534,22 @@
   width: 62%;
   height: 62%;
 }
+
+/* ── The Trynta mark ─────────────────────────────────────────────────────────
+ *
+ * Two supplied variants and nothing else: the soft light blue-violet on dark, the
+ * dark blue-black on light. The mark takes `currentColor`, so choosing between them
+ * is choosing a colour here and never touching the artwork.
+ *
+ * `--accent` in the dark theme is exactly the violet variant's #9DA5F5, so the dark
+ * case is a token reference rather than a repeat of the value. Light uses
+ * `--text-primary`, which is the near-black the light theme already draws text in and
+ * is the closest the token layer has to the supplied dark variant — the alternative
+ * was introducing a hex here, which is what §3 exists to prevent. */
+.brand-mark {
+  color: var(--accent);
+}
+
+[data-theme='light'] .brand-mark {
+  color: var(--text-primary);
+}

@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="public/trynta/brand/trynta-mark-violet.svg" alt="Trynta" width="132" />
+
 # Trynta
 
 **A password manager built for credentials that belong to more than one person.**

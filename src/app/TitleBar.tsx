@@ -19,6 +19,7 @@
  */
 
 import { cn } from '../lib/cn';
+import { BrandMark } from '../components/BrandMark';
 import { Glyph } from '../components/Glyph';
 import type { GlyphName } from '../components/Glyph';
 import { WindowControls } from './WindowControls';
@@ -104,8 +105,12 @@ export function TitleBar({ onOpenPalette, onLock, modifierKey, os }: TitleBarPro
           macOS && 'ml-[68px]',
         )}
       >
-        <span className="bg-accent text-badge-sm text-text-on-accent shadow-accent-glow flex h-[18px] w-[18px] items-center justify-center rounded-xs font-extrabold">
-          K
+        {/* The mark, not a letter on a coloured square. The square was a stand-in
+            from before there was a mark, and it read as a placeholder because it
+            was one. Drawn rather than rastered: at 18px a downscaled PNG of two
+            thin rings is mush. */}
+        <span className="brand-mark flex items-center">
+          <BrandMark size={22} />
         </span>
         Trynta
       </div>

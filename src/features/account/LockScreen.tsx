@@ -31,6 +31,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 
+import { BrandMark } from '../../components/BrandMark';
 import { Button } from '../../components/Button';
 import { IpcError } from '../../ipc';
 import { accountCreate, accountUnlock, accountUnlockBiometric, biometricReady } from '../../ipc';
@@ -118,8 +119,11 @@ export function LockScreen({ exists, onUnlocked }: LockScreenProps) {
       aria-labelledby="lock-title"
     >
       <form className="w-[296px] text-center" onSubmit={submit}>
-        <div className="bg-accent text-tile-lock text-text-on-accent shadow-accent-glow-lg mx-auto flex h-[60px] w-[60px] items-center justify-center rounded-2xl font-extrabold">
-          K
+        {/* The mark stands on its own here rather than sitting on a coloured tile:
+            the lock screen is the one surface with nothing else on it, and a badge
+            around a logo is what you do when the logo is a letter. */}
+        <div className="brand-mark mx-auto flex h-[60px] items-center justify-center">
+          <BrandMark size={92} />
         </div>
         <h1 className="text-title tracking-title mt-5 font-bold" id="lock-title">
           {exists ? 'Vault locked' : 'Create your vault'}
