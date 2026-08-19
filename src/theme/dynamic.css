@@ -388,3 +388,13 @@
 [data-theme='light'] .tile[data-chip='light'] {
   background: var(--surface-raised);
 }
+
+/* The selected colour in a vault swatch picker.
+ *
+ * A ring rather than a border: a border would resize the dot and make the row jump
+ * as the selection moves along it. */
+[data-selected='true'].swatch {
+  box-shadow:
+    0 0 0 2px var(--surface-panel),
+    0 0 0 3.5px var(--accent);
+}

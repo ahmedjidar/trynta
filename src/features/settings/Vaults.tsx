@@ -24,7 +24,7 @@
 import { useState } from 'react';
 
 import { Button } from '../../components/Button';
-import { CopyAction, Chip, Input } from '../../components/Bits';
+import { CopyAction, Input } from '../../components/Bits';
 import { GroupedList, GroupedRow, SectionLabel } from '../../components/GroupedList';
 import { IpcError, vaultAdd, vaultDelete, vaultRename, vaultSetColor } from '../../ipc';
 import type { VaultSummaryDto } from '../../ipc';
@@ -193,25 +193,27 @@ export function Vaults({ vaults, onChanged, onDone, onFailed, onBack }: VaultsPr
             <span className="text-caption text-text-muted w-[92px] shrink-0 font-bold uppercase">
               Colour
             </span>
-            <div className="flex flex-1 gap-1.5" role="radiogroup" aria-label="Vault colour">
+            <div className="flex flex-1 gap-2" role="radiogroup" aria-label="Vault colour">
               {ACCENTS.map((token, index) => (
-                <Chip
+                <button
                   key={token}
+                  type="button"
                   role="radio"
                   aria-checked={accent === token}
                   aria-label={`Colour ${String(index + 1)}`}
-                  selected={accent === token}
-                  className="h-[26px] w-[26px] justify-center p-0"
+                  data-focus-ring
+                  className="duration-quick shrink-0 rounded-full p-1 transition-colors"
+                  data-selected={accent === token ? 'true' : undefined}
                   onClick={() => {
                     setAccent(token);
                   }}
                 >
                   <span
-                    className="swatch h-3 w-3 rounded-xs"
+                    className="swatch block h-3.5 w-3.5 shrink-0 rounded-full"
                     data-accent={token}
                     aria-hidden="true"
                   />
-                </Chip>
+                </button>
               ))}
             </div>
           </GroupedRow>
@@ -225,7 +227,7 @@ export function Vaults({ vaults, onChanged, onDone, onFailed, onBack }: VaultsPr
             return (
               <GroupedRow key={vault.id} className="h-auto min-h-[60px] flex-wrap gap-2 py-2.5">
                 <span
-                  className="swatch h-2.5 w-2.5 shrink-0 rounded-xs"
+                  className="swatch block h-2.5 w-2.5 shrink-0 rounded-full"
                   data-accent={vault.colorToken}
                   aria-hidden="true"
                 />
@@ -270,7 +272,7 @@ export function Vaults({ vaults, onChanged, onDone, onFailed, onBack }: VaultsPr
                       }}
                     >
                       <span
-                        className="swatch h-3 w-3 rounded-xs"
+                        className="swatch block h-3.5 w-3.5 shrink-0 rounded-full"
                         data-accent={token}
                         data-selected={vault.colorToken === token ? 'true' : undefined}
                         aria-hidden="true"
