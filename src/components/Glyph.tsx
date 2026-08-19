@@ -23,6 +23,7 @@
 
 import {
   Activity,
+  AlertTriangle,
   Check,
   ChevronRight,
   ChevronsUpDown,
@@ -79,6 +80,7 @@ const GLYPHS = {
   card: CreditCard,
   identity: User,
   favorite: Star,
+  warning: AlertTriangle,
   windowMinimise: Minus,
   windowMaximise: Maximize2,
   windowRestore: Minimize2,

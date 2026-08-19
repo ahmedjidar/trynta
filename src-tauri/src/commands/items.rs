@@ -265,20 +265,93 @@ pub fn item_upsert(state: State<'_, AppState>, draft: ItemDraftInput) -> Result<
     Ok(id)
 }
 
-/// Soft-delete an item.
+/// Soft-delete an item, behind two confirmations that are checked **here**.
+///
+/// Deleting is the one destructive thing a user can do to their own data from the
+/// item pane, and an unlocked vault sitting on an unattended desk is the threat it
+/// has to survive. So it takes two things that a passer-by does not have: the master
+/// password, and the item's own title typed out.
+///
+/// Both are verified in Rust rather than in the webview. A confirmation the frontend
+/// checks is a confirmation anyone who can call the command skips, which makes it a
+/// speed bump rather than a gate — and this command is reachable from the IPC surface
+/// whether or not a dialog was ever drawn.
+///
+/// The password goes through the store's own unlock path, so the comparison is the
+/// same constant-time one the lock screen uses and a wrong attempt is seen by the
+/// backoff counter. The resulting session is dropped immediately; proving presence
+/// does not replace the keys already held.
+///
+/// The title is compared trimmed and case-insensitively. The point of typing it is
+/// that the user has to look at *which* item they are about to destroy and name it —
+/// which "GitHub" against "github" satisfies just as well, while a rejection on case
+/// only teaches people to copy and paste, defeating the exercise entirely.
+///
+/// The delete is a soft delete, as it always was: the row keeps a `deleted_at` and
+/// `item_restore` puts it back. That is not a reason to make this cheaper to call —
+/// nothing in the UI surfaces deleted items yet, so from where the user stands this
+/// is permanent.
 ///
 /// # Errors
 ///
-/// [`AppError::Locked`], [`AppError::NotFound`], [`AppError::Storage`] or
+/// [`AppError::Locked`] if the vault is locked; [`AppError::WrongPassword`] if the
+/// master password does not verify; [`AppError::Invalid`] if the typed title does not
+/// match the item's; [`AppError::NotFound`], [`AppError::Storage`] or
 /// [`AppError::Crypto`].
 #[tauri::command]
-pub fn item_delete(state: State<'_, AppState>, id: Uuid) -> Result<(), AppError> {
+pub fn item_delete(
+    state: State<'_, AppState>,
+    id: Uuid,
+    master_password: String,
+    confirm_title: String,
+) -> Result<(), AppError> {
+    if state.session.state() != crate::session::VaultState::Unlocked {
+        return Err(AppError::Locked);
+    }
+
+    // Read the title first, so a delete against a missing id fails as NotFound
+    // rather than burning a password attempt on an item that was never there.
+    let meta = state
+        .session
+        .with_session(|s| s.item_meta(id).map_err(AppError::from))?;
+
+    let file = state.session.file()?;
+    match file.unlock(&master_password) {
+        Ok(session) => {
+            drop(session.into_keys());
+            state.session.note_reauth();
+        }
+        Err(e) => return Err(e.into()),
+    }
+
+    if !title_confirms(&confirm_title, &meta.title) {
+        return Err(AppError::Invalid);
+    }
+
     state
         .session
         .with_session(|s| s.item_delete(id).map_err(AppError::from))?;
     state.session.build_index()?;
     state.session.touch();
     Ok(())
+}
+
+/// Whether the typed title confirms the item's.
+///
+/// Trimmed and case-insensitive. The point of typing the name is that the user has
+/// to look at *which* item they are destroying and name it, which "GitHub" against
+/// "github" satisfies as well as an exact match — while rejecting on case only
+/// teaches people to copy and paste the name, which defeats the exercise.
+///
+/// Split out from [`item_delete`] because it is the part with edge cases, and the
+/// part a future refactor could get subtly wrong without anything failing loudly.
+fn title_confirms(typed: &str, actual: &str) -> bool {
+    let typed = typed.trim();
+    // An empty title cannot be confirmed by an empty box. Titles are trimmed and
+    // rejected empty on write, so this is defence against a vault that predates
+    // that rule rather than a reachable state — and getting it wrong would mean a
+    // one-click delete on exactly the items whose name gives least warning.
+    !typed.is_empty() && typed.eq_ignore_ascii_case(actual.trim())
 }
 
 /// Restore a soft-deleted item.
@@ -378,4 +451,40 @@ pub fn item_activity(
         .session
         .with_session(|s| s.item_activity(id, limit).map_err(AppError::from))?;
     Ok(events.into_iter().map(ActivityEventDto::from).collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::title_confirms;
+
+    #[test]
+    fn the_exact_title_confirms() {
+        assert!(title_confirms("Northline Bank", "Northline Bank"));
+    }
+
+    #[test]
+    fn surrounding_whitespace_and_case_do_not_matter() {
+        // Typing it back proves the user read which item they are on. Neither of
+        // these is evidence they did not.
+        assert!(title_confirms("  northline bank  ", "Northline Bank"));
+        assert!(title_confirms("NORTHLINE BANK", "Northline Bank"));
+        assert!(title_confirms("Northline Bank", "  Northline Bank "));
+    }
+
+    #[test]
+    fn a_different_title_does_not_confirm() {
+        assert!(!title_confirms("Northline", "Northline Bank"));
+        assert!(!title_confirms("Northline Bank 2", "Northline Bank"));
+        assert!(!title_confirms("NorthlineBank", "Northline Bank"));
+    }
+
+    #[test]
+    fn an_empty_box_never_confirms() {
+        // Including against an empty title, which would otherwise make the
+        // confirmation a formality on precisely the items that need it most.
+        assert!(!title_confirms("", "Northline Bank"));
+        assert!(!title_confirms("   ", "Northline Bank"));
+        assert!(!title_confirms("", ""));
+        assert!(!title_confirms("  ", "  "));
+    }
 }

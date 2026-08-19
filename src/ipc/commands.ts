@@ -360,12 +360,25 @@ export function itemUpsert(draft: ItemDraftInput): Promise<string> {
 /**
  * Soft-delete an item. Recoverable with {@link itemRestore} for 30 days.
  *
- * @throws {IpcError} `locked`, `notFound`.
+ * Takes the master password and the item's own title typed back. Both are verified
+ * in Rust, not here: a confirmation the webview checks is one that anyone calling
+ * the command skips. The title comparison is trimmed and case-insensitive.
+ *
+ * @param id - The item to delete.
+ * @param masterPassword - Proves the person deleting owns the vault.
+ * @param confirmTitle - The item's title, typed back. Proves they know which item.
+ *
+ * @throws {IpcError} `locked`, `wrongPassword`, `invalid` if the title does not
+ * match, `notFound`.
  *
  * @beta
  */
-export function itemDelete(id: string): Promise<void> {
-  return callVoid('item_delete', { id });
+export function itemDelete(
+  id: string,
+  masterPassword: string,
+  confirmTitle: string,
+): Promise<void> {
+  return callVoid('item_delete', { id, masterPassword, confirmTitle });
 }
 
 /**

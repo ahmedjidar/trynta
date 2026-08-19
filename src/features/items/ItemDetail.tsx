@@ -34,6 +34,7 @@ import type { Dispatch, SetStateAction } from 'react';
 
 import { Button } from '../../components/Button';
 import { CopyAction, Input } from '../../components/Bits';
+import { DeleteItemPrompt } from './DeleteItemPrompt';
 import {
   Card,
   FieldLabel,
@@ -156,6 +157,7 @@ export function ItemDetail({
   const [totpEdit, setTotpEdit] = useState<TotpConfigInput | null | undefined>(undefined);
   const [saving, setSaving] = useState(false);
   const [iconBusy, setIconBusy] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   /**
    * The action a `reauthRequired` interrupted, held so it can be run again.
    *
@@ -628,8 +630,47 @@ export function ItemDetail({
               </p>
             )}
           </Card>
+
+          {/* Deliberately here and not beside Edit. A destructive action one pixel
+            from the most-used button in the pane is a misclick waiting to happen,
+            and this one is at the end of everything the item has, where someone
+            arrives having already read it. */}
+          <div className="border-hairline mt-6 flex items-center justify-between gap-4 border-t pt-5">
+            <p className="text-caption text-text-muted max-w-[52ch] leading-relaxed">
+              Deleting asks for your master password and for you to type the item&rsquo;s name.
+              Everything in it goes — password, one-time code, custom fields and notes.
+            </p>
+            <CopyAction
+              className="h-[30px] shrink-0 rounded-md px-[11px]"
+              data-tone="danger"
+              disabled={editing || saving}
+              onClick={() => {
+                setDeleting(true);
+              }}
+            >
+              Delete item
+            </CopyAction>
+          </div>
         </div>
       </section>
+
+      {deleting ? (
+        <DeleteItemPrompt
+          id={detail.id}
+          title={summary.title}
+          onCancel={() => {
+            setDeleting(false);
+          }}
+          onDeleted={() => {
+            setDeleting(false);
+            // Clear the selection first. The item is gone, and leaving it selected
+            // would leave the pane querying an id the list no longer returns.
+            select(null);
+            onEdited();
+            onCopied(`Deleted ${summary.title}`);
+          }}
+        />
+      ) : null}
     </>
   );
 }
