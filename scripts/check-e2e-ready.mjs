@@ -49,12 +49,12 @@ function webview2Version() {
 
 const checks = [];
 
-const binary = process.env.KEYRING_E2E_BINARY ?? join(ROOT, 'target', 'debug', 'keyring.exe');
+const binary = process.env.TRYNTA_E2E_BINARY ?? join(ROOT, 'target', 'debug', 'keyring.exe');
 checks.push({
   name: 'app binary',
   ok: existsSync(binary),
   detail: binary,
-  fix: 'cargo build   (or set KEYRING_E2E_BINARY to a release build)',
+  fix: 'cargo build   (or set TRYNTA_E2E_BINARY to a release build)',
 });
 
 checks.push({

@@ -8,7 +8,7 @@
 //!
 //! The threat is narrow and worth stating exactly. A theme is a bag of CSS custom
 //! properties supplied by someone else. If any value can reach the network, then
-//! importing a theme tells a third party that you opened Keyring, from which IP,
+//! importing a theme tells a third party that you opened Trynta, from which IP,
 //! and when — the one thing §7 says the product must never do.
 //!
 //! ## Why an allow-list, not a `url()` blocklist
@@ -146,7 +146,7 @@ struct RawTheme {
 #[non_exhaustive]
 pub enum ThemeError {
     /// The document was not the expected JSON shape.
-    #[error("that file is not a Keyring theme")]
+    #[error("that file is not a Trynta theme")]
     Malformed,
 
     /// The document is larger than [`MAX_THEME_BYTES`].

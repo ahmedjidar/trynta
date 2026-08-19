@@ -1,6 +1,6 @@
 # Third-party notices
 
-Every asset bundled with Keyring, its source and its licence. ADD-001 requires that each bundled
+Every asset bundled with Trynta, its source and its licence. ADD-001 requires that each bundled
 icon traces to a documented source here; this file also covers the wordlist and the two-factor
 directory, which carry their own terms.
 
@@ -20,7 +20,7 @@ Software dependencies are covered separately by `cargo deny check licenses` and 
 
 Service logos are the trademarks of their respective owners and are used solely to identify those
 services within the interface. Their presence implies no affiliation with or endorsement by those
-companies. Icons are bundled with the application and **never fetched at runtime**, so using Keyring
+companies. Icons are bundled with the application and **never fetched at runtime**, so using Trynta
 does not disclose which services you have accounts with — the whole reason ADD-001 removed the
 favicon layer.
 
@@ -80,7 +80,7 @@ Two things worth being precise about rather than papering over:
   41 share-alike and copyleft entries (18 CC-BY-SA, 19 GPL/AGPL, 3 MPL-2.0, 1 LGPL-3.0) if the
   answer is unclear. `MANIFEST.md` carries this as an open item.
 - **A trademark is not a licence.** Every mark here remains its owner's, whatever the file's licence
-  says. Keyring uses them nominatively, to name a service the user already has an account with.
+  says. Trynta uses them nominatively, to name a service the user already has an account with.
 
 ### Deliberately excluded
 
@@ -165,7 +165,7 @@ that reasoning. So the list was written for this product. Nothing in it is copie
 **What an entry claims.** That the service accepts a time-based one-time code from a standard
 authenticator app, on a normal consumer or developer account, without a paid upgrade. It does _not_
 claim SMS, email codes, push approval, a hardware key, or a vendor's own app. Several of those are
-stronger than TOTP — but they are not something Keyring can hold, and "add a one-time code" is only
+stronger than TOTP — but they are not something Trynta can hold, and "add a one-time code" is only
 actionable advice when a TOTP app is actually accepted. Apple, Steam, Netflix and most retail banks
 are absent for exactly this reason.
 

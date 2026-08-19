@@ -2,14 +2,14 @@
 //!
 //! Separate from `platform_windows.rs` because these tests **raise a Hello
 //! consent prompt** and block until someone answers it. They are opt-in via
-//! `KEYRING_TEST_HELLO=1` rather than `#[ignore]`, so a CI runner without an
+//! `TRYNTA_TEST_HELLO=1` rather than `#[ignore]`, so a CI runner without an
 //! enrolment does not silently report them as passing — the frozen suite's rule
 //! about never `#[ignore]`ing applies in spirit here too.
 //!
 //! Run them with:
 //!
 //! ```text
-//! KEYRING_TEST_HELLO=1 cargo test -p keyring --test platform_hello_enrolled -- --test-threads=1
+//! TRYNTA_TEST_HELLO=1 cargo test -p keyring --test platform_hello_enrolled -- --test-threads=1
 //! ```
 //!
 //! `--test-threads=1` matters: two concurrent prompts race for the same consent
@@ -33,13 +33,13 @@ use keyring_lib::platform::{BiometricError, Biometrics};
 
 /// Credential name used by these tests. Distinct from the app's, so a failed run
 /// cannot invalidate a real user's enrolment on a developer machine.
-const LABEL: &str = "keyring-test-hello-enrolled";
+const LABEL: &str = "trynta-test-hello-enrolled";
 
 /// A secret with no structure a signature could accidentally reproduce.
 const SECRET: &[u8] = b"HELLO-ENROLLED-SECRET-8Xr3Qm5Vd9Lp2Kt";
 
 fn opted_in() -> bool {
-    std::env::var("KEYRING_TEST_HELLO").is_ok_and(|v| v == "1")
+    std::env::var("TRYNTA_TEST_HELLO").is_ok_and(|v| v == "1")
 }
 
 /// Skip loudly rather than quietly, so a log records that nothing ran.
@@ -47,7 +47,7 @@ fn skip(what: &str) -> bool {
     if opted_in() {
         return false;
     }
-    println!("SKIPPED {what}: set KEYRING_TEST_HELLO=1 to run (raises a Hello prompt)");
+    println!("SKIPPED {what}: set TRYNTA_TEST_HELLO=1 to run (raises a Hello prompt)");
     true
 }
 
@@ -65,7 +65,7 @@ fn hello_is_available_when_enrolled() {
     let (_dir, hello) = hello();
     assert!(
         hello.is_available(),
-        "KEYRING_TEST_HELLO=1 was set but KeyCredentialManager reports Hello unavailable"
+        "TRYNTA_TEST_HELLO=1 was set but KeyCredentialManager reports Hello unavailable"
     );
 }
 
@@ -146,7 +146,7 @@ fn a_wrap_does_not_open_under_a_different_credential() {
     let store = DpapiStore::with_root(dir.path().to_path_buf());
     let hello = WindowsHello::with_store(store);
 
-    let other = "keyring-test-hello-enrolled-other";
+    let other = "trynta-test-hello-enrolled-other";
     let _ = hello.revoke(LABEL);
     let _ = hello.revoke(other);
 

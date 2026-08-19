@@ -238,9 +238,9 @@ export function SecurityReport({ report, items, onCheckNow, canCheck }: Security
             cheaper than letting someone infer a capability that is not there. */}
         <p className="text-caption text-text-muted mt-6 max-w-[68ch] leading-relaxed">
           A breach count says how many times this exact password appears in leaked data — not which
-          breach it came from, or when. Keyring asks using the first five characters of a hash and
+          breach it came from, or when. Trynta asks using the first five characters of a hash and
           never sends the password, the account name or the site. Finding out <em>which</em> breach
-          would mean sending your email address to someone else, which Keyring does not do.
+          would mean sending your email address to someone else, which Trynta does not do.
         </p>
       </div>
     </section>

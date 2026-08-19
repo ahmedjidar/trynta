@@ -1,4 +1,4 @@
-//! `.keyringbackup` v1 — **format only**.
+//! `.tryntabak` v1 — **format only**.
 //!
 //! ADD-003 §④: the byte layout is frozen here, in run 1, while the format work is
 //! fresh. Export and restore logic land in run 2 and must not appear in this
@@ -47,7 +47,7 @@ use crate::kdf::KdfParams;
 use crate::keys::{Key32, Muk};
 use crate::manifest::ManifestEntry;
 
-/// Magic bytes at the start of every `.keyringbackup` file.
+/// Magic bytes at the start of every `.tryntabak` file.
 pub const MAGIC: [u8; 8] = *b"KEYRINGB";
 
 /// The backup container format this build writes and understands.
@@ -130,7 +130,7 @@ pub fn backup_leaf_hash(ciphertext: &[u8]) -> [u8; 32] {
     crate::manifest::leaf_hash(ciphertext)
 }
 
-/// A parsed `.keyringbackup` v1 header.
+/// A parsed `.tryntabak` v1 header.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BackupHeader {
     /// Container format version.

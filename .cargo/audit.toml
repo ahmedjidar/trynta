@@ -20,7 +20,7 @@
 [advisories]
 ignore = [
     # ── gtk-rs GTK3 bindings, unmaintained ───────────────────────────────────
-    # Linux-only. Keyring ships macOS and Windows only (SPEC-V1 §8), and
+    # Linux-only. Trynta ships macOS and Windows only (SPEC-V1 §8), and
     # `cargo tree -i gtk` returns nothing for our targets — these crates are in
     # Cargo.lock but never compiled into a binary we distribute. cargo-audit
     # reads the lockfile without target filtering, which is why they appear at
@@ -39,7 +39,7 @@ ignore = [
 
     # ── glib, unsound ────────────────────────────────────────────────────────
     # Unsoundness in glib::VariantStrIter. Same Linux-only GTK path as above:
-    # not compiled on macOS or Windows, and nothing in Keyring calls it.
+    # not compiled on macOS or Windows, and nothing in Trynta calls it.
     "RUSTSEC-2024-0429",
 
     # ── proc-macro-error, unmaintained ───────────────────────────────────────

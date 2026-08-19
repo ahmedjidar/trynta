@@ -204,7 +204,7 @@ export function LockScreen({ exists, onUnlocked }: LockScreenProps) {
                   // separating them would say which attempt got furthest.
                   setError(
                     failure instanceof IpcError && failure.error.kind === 'invalidState'
-                      ? 'Use your master password this time — Keyring asks for it every couple of weeks.'
+                      ? 'Use your master password this time — Trynta asks for it every couple of weeks.'
                       : 'Windows Hello did not confirm. Use your master password.',
                   );
                 },

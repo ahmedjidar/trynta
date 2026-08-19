@@ -40,15 +40,15 @@ use keyring_lib::platform::secure_store::SecureStore;
 use keyring_lib::platform::{BiometricError, BiometricKind, Biometrics};
 
 /// A value that is obviously ours if it turns up somewhere it should not.
-const SENTINEL: &str = "KEYRING-PLATFORM-TEST-4Kq7Zx";
+const SENTINEL: &str = "TRYNTA-PLATFORM-TEST-4Kq7Zx";
 
 /// Keychain service names used only by this file.
 ///
 /// The Keychain has no temporary-directory equivalent, so isolation is by service
 /// name. Anything left behind after a failure is findable with
-/// `security find-generic-password -s app.keyring.desktop.test`.
-const TEST_SERVICE: &str = "app.keyring.desktop.test";
-const TEST_BIOMETRIC_SERVICE: &str = "app.keyring.desktop.test.biometric";
+/// `security find-generic-password -s dev.trynta.desktop.test`.
+const TEST_SERVICE: &str = "dev.trynta.desktop.test";
+const TEST_BIOMETRIC_SERVICE: &str = "dev.trynta.desktop.test.biometric";
 
 /// The clipboard is one global OS resource, so these tests cannot run in
 /// parallel with each other — a second test's write invalidates the first's
@@ -278,7 +278,7 @@ fn unwrapping_without_an_enrolment_is_invalidated_not_a_panic() {
     let touch_id = TouchId::with_service(TEST_BIOMETRIC_SERVICE);
 
     let err = touch_id
-        .unwrap_secret("keyring-test-no-such-enrolment")
+        .unwrap_secret("trynta-test-no-such-enrolment")
         .expect_err("there is no enrolment");
     assert_eq!(
         err,
@@ -294,10 +294,10 @@ fn revoking_a_missing_enrolment_is_success() {
     // success, or re-enrolling after adding a fingerprint fails.
     let touch_id = TouchId::with_service(TEST_BIOMETRIC_SERVICE);
     touch_id
-        .revoke("keyring-test-never-existed")
+        .revoke("trynta-test-never-existed")
         .expect("revoking a missing enrolment is success");
     touch_id
-        .revoke("keyring-test-never-existed")
+        .revoke("trynta-test-never-existed")
         .expect("and it stays success when repeated");
 }
 

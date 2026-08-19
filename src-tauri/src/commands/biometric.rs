@@ -50,7 +50,7 @@ use keyring_store::AppStateKey;
 ///
 /// One vault, one entry. A second vault would need a second label, which is a V2
 /// problem and not one to guess at now.
-const LABEL: &str = "keyring.master";
+const LABEL: &str = "trynta.master";
 
 /// Whether biometric unlock is available *and* set up on this device.
 ///

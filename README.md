@@ -1,6 +1,6 @@
 <div align="center">
 
-# Keyring
+# Trynta
 
 **A password manager built for credentials that belong to more than one person.**
 
@@ -21,7 +21,7 @@ moderators rotate a Discord login. A family splits a Netflix subscription. Someb
 password and everyone else is locked out until it gets pasted into a group chat — which is exactly
 where credentials go to die.
 
-Keyring makes co-ownership a first-class primitive. Two users confirm an invite in both
+Trynta makes co-ownership a first-class primitive. Two users confirm an invite in both
 directions, and from then on they genuinely co-own the credential. Both see it. Both can use it.
 Both can change it. Neither one is a guest in the other's vault, and neither depends on the other
 being online.
@@ -100,7 +100,7 @@ pnpm lint && pnpm typecheck
 Service logos in this application are the trademarks of their respective owners and are used
 solely to identify those services within the interface. Their presence implies no affiliation with
 or endorsement by those companies. Logos are bundled with the application and are never fetched at
-runtime, so using Keyring does not disclose which services you have accounts with.
+runtime, so using Trynta does not disclose which services you have accounts with.
 
 ## Security
 

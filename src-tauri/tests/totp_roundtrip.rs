@@ -9,7 +9,7 @@
 //! The verification is against an **independent implementation of RFC 6238 written
 //! in this file**, not against `services::totp`. A round-trip that compares the
 //! product to itself proves the two ends agree and says nothing about whether either
-//! is correct; the point here is that the code Keyring displays is the code the
+//! is correct; the point here is that the code Trynta displays is the code the
 //! user's service is expecting. The reference below is deliberately naive — build
 //! the counter, HMAC it, truncate — so it can be read against the RFC line by line.
 //!
@@ -200,7 +200,7 @@ fn a_sha256_8_digit_60_second_uri_round_trips_and_matches_a_reference() {
         "account label was lost"
     );
 
-    // 4. The code Keyring would display, computed from what came out of the vault.
+    // 4. The code Trynta would display, computed from what came out of the vault.
     let shown = totp::code_at(&to_service(&loaded), AT).expect("code");
 
     // 5. The code the service is expecting, computed independently.

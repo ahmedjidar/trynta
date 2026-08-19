@@ -1,12 +1,12 @@
 //! Where the vault lives on each platform (SPEC-V1 §8).
 //!
 //! ```text
-//!   macOS    ~/Library/Application Support/Keyring
-//!   Windows  %APPDATA%\Keyring
+//!   macOS    ~/Library/Application Support/Trynta
+//!   Windows  %APPDATA%\Trynta
 //! ```
 //!
 //! Not Tauri's `app_data_dir()`, which keys off the bundle identifier and would
-//! give `%APPDATA%\app.keyring.desktop`. §8 names these two paths, and the path
+//! give `%APPDATA%\dev.trynta.desktop`. §8 names these two paths, and the path
 //! a user's vault lives at is not a detail to leave to a helper's convention —
 //! changing it later means either a migration or a lost vault.
 //!
@@ -21,7 +21,7 @@ use thiserror::Error;
 pub const VAULT_FILE: &str = "vault.db";
 
 /// The application directory name (SPEC-V1 §8).
-const APP_DIR: &str = "Keyring";
+const APP_DIR: &str = "Trynta";
 
 /// Why a path could not be resolved.
 ///
@@ -40,7 +40,7 @@ pub enum PathError {
     NotCreatable,
 }
 
-/// The directory Keyring stores data in, created if it does not exist.
+/// The directory Trynta stores data in, created if it does not exist.
 ///
 /// # Errors
 ///
@@ -83,7 +83,7 @@ fn base_dir() -> Result<PathBuf, PathError> {
 
 #[cfg(not(any(windows, target_os = "macos")))]
 fn base_dir() -> Result<PathBuf, PathError> {
-    // Keyring ships macOS and Windows only (SPEC-V1 §8). This exists so the
+    // Trynta ships macOS and Windows only (SPEC-V1 §8). This exists so the
     // workspace still builds on a Linux CI runner, and it fails closed rather
     // than inventing a location.
     Err(PathError::NoDataDir)

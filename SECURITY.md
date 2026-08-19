@@ -1,6 +1,6 @@
 # Security
 
-Keyring is pre-1.0 and not ready for real credentials. Please do not store anything you cannot
+Trynta is pre-1.0 and not ready for real credentials. Please do not store anything you cannot
 afford to lose while that remains true.
 
 ## macOS is unverified — read this before reporting or trusting anything on it

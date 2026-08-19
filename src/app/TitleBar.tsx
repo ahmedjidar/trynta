@@ -107,7 +107,7 @@ export function TitleBar({ onOpenPalette, onLock, modifierKey, os }: TitleBarPro
         <span className="bg-accent text-badge-sm text-text-on-accent shadow-accent-glow flex h-[18px] w-[18px] items-center justify-center rounded-xs font-extrabold">
           K
         </span>
-        Keyring
+        Trynta
       </div>
 
       {/* Also a drag region: this wrapper spans most of the bar, and only the element

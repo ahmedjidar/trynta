@@ -8,7 +8,7 @@ edit in any session. If an instruction here conflicts with a spec in `/specs`, t
 
 ## 1. What this is
 
-**Keyring** — a desktop password manager for **macOS and Windows**, built as a single codebase
+**Trynta** — a desktop password manager for **macOS and Windows**, built as a single codebase
 with full feature parity on both platforms from day one. Local-first, end-to-end encrypted.
 
 Its differentiator is **true multi-owner credentials**: two people can co-own the same login

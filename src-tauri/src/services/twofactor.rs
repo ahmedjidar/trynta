@@ -18,7 +18,7 @@
 //!
 //! An entry means *a standard TOTP app is accepted*. Apple, Steam and most retail
 //! banks are deliberately absent: their second factor is real, often stronger, and
-//! cannot be stored in Keyring. Counting them as "capable" would produce a nag the
+//! cannot be stored in Trynta. Counting them as "capable" would produce a nag the
 //! user can never satisfy and a health score that never reaches 100 for reasons
 //! outside their control.
 //!

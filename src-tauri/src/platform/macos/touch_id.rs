@@ -33,8 +33,8 @@ use security_framework::passwords_options::{AccessControlOptions, PasswordOption
 
 use crate::platform::biometric::{BiometricError, BiometricKind, Biometrics};
 
-/// Keychain service name for every Keyring biometric item.
-const SERVICE: &str = "app.keyring.desktop.biometric";
+/// Keychain service name for every Trynta biometric item.
+const SERVICE: &str = "dev.trynta.desktop.biometric";
 
 /// `errSecUserCanceled` — the user dismissed the Touch ID prompt.
 ///

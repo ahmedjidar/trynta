@@ -69,7 +69,7 @@ impl Platform {
         }
         #[cfg(not(any(windows, target_os = "macos")))]
         {
-            // Keyring ships macOS and Windows only (SPEC-V1 §8). This exists so
+            // Trynta ships macOS and Windows only (SPEC-V1 §8). This exists so
             // the workspace still builds on a Linux CI runner for the
             // supply-chain job, and every call fails closed.
             Self {

@@ -31,11 +31,11 @@ fn clipboard_lock() -> &'static Mutex<()> {
 }
 
 /// A value no other process would put on a clipboard.
-const SENTINEL: &str = "keyring-autoclear-sentinel-9f2a4c7e-do-not-paste";
+const SENTINEL: &str = "trynta-autoclear-sentinel-9f2a4c7e-do-not-paste";
 
 /// Leave the machine's clipboard in a defined state rather than holding a sentinel.
 fn tidy(clipboard: &WindowsClipboard) {
-    let token = clipboard.set_secret("keyring test finished").unwrap_or(0);
+    let token = clipboard.set_secret("trynta test finished").unwrap_or(0);
     let _ = clipboard.clear_if_ours(token);
 }
 

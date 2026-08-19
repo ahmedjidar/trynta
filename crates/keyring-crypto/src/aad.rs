@@ -39,7 +39,7 @@ pub enum Purpose {
     Activity = 4,
     /// HIBP prefix cache or generator history, under `muk.appcache`.
     AppCache = 5,
-    /// A `.keyringbackup` payload.
+    /// A `.tryntabak` payload.
     Backup = 6,
 }
 

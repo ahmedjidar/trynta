@@ -80,7 +80,7 @@ pub fn manifest_root(entries: &mut [ManifestEntry]) -> [u8; 32] {
 
 /// [`manifest_root`] under an explicit domain prefix.
 ///
-/// Exists so the `.keyringbackup` container can commit to the same entry shape
+/// Exists so the `.tryntabak` container can commit to the same entry shape
 /// under its own domain, which stops a vault's `manifest_sig` being replayed
 /// into a backup to vouch for a different set of items.
 #[must_use]

@@ -89,7 +89,7 @@ impl ClipboardGuard {
         // Only one process may hold the clipboard at a time, and `OpenClipboard`
         // fails outright rather than waiting. Any other application touching the
         // clipboard in the same instant makes a copy fail, which the user would
-        // experience as Keyring randomly refusing to copy their password.
+        // experience as Trynta randomly refusing to copy their password.
         // Microsoft's own guidance is to retry; a bounded ~100 ms is far below
         // the 30 ms copy budget's tolerance for the rare contended case and far
         // above the microseconds a normal acquisition takes.

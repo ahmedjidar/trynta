@@ -1,6 +1,6 @@
 [package]
 name = "keyring"
-description = "Keyring — a password manager for credentials that belong to more than one person."
+description = "Trynta — a password manager for credentials that belong to more than one person."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

@@ -85,19 +85,19 @@ function themeRejection(error: unknown): string {
   const named = token ?? 'a token';
   switch (reason) {
     case 'malformed':
-      return 'That file is not a Keyring theme. It needs id, name, mode and tokens.';
+      return 'That file is not a Trynta theme. It needs id, name, mode and tokens.';
     case 'tooLarge':
       return 'That file is too large to be a theme.';
     case 'badIdentity':
       return 'That theme needs a short id and a name.';
     case 'tooManyTokens':
-      return 'That theme defines more tokens than Keyring will apply.';
+      return 'That theme defines more tokens than Trynta will apply.';
     case 'notACustomProperty':
       return `${named} is not a custom property. Keys must start with --.`;
     case 'forbiddenFunction':
       return `${named} uses a function that could fetch. A theme is colours only.`;
     case 'invalidValue':
-      return `${named} has a value Keyring will not apply.`;
+      return `${named} has a value Trynta will not apply.`;
     default:
       // Unreachable while the DTO and this switch agree; a new variant lands here
       // rather than compiling to `undefined`.

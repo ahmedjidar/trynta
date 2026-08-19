@@ -1,4 +1,4 @@
-//! `.keyringbackup` export and restore (SPEC-V1 §7.8, AC15).
+//! `.tryntabak` export and restore (SPEC-V1 §7.8, AC15).
 //!
 //! Run 1 froze the 228-byte header (ADD-003 §④) and deliberately left the body to
 //! run 2. This is the body, and the design decision that shapes everything else is
@@ -392,7 +392,7 @@ fn fixed16(bytes: &[u8]) -> Result<[u8; 16], StoreError> {
 }
 
 impl Session<'_> {
-    /// Write a `.keyringbackup` container (SPEC-V1 §7.8).
+    /// Write a `.tryntabak` container (SPEC-V1 §7.8).
     ///
     /// `passphrase` is **independent of the master password** and gets its own
     /// salt and cost. §7.8 requires that, and the reason is longevity: a backup

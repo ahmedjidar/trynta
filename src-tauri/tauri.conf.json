@@ -1,9 +1,9 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Keyring",
-  "mainBinaryName": "Keyring",
+  "productName": "Trynta",
+  "mainBinaryName": "Trynta",
   "version": "0.1.0",
-  "identifier": "app.keyring.desktop",
+  "identifier": "dev.trynta.desktop",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -16,7 +16,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Keyring",
+        "title": "Trynta",
         "width": 1440,
         "height": 920,
         "minWidth": 940,

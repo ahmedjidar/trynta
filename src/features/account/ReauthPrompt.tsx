@@ -92,10 +92,10 @@ export function ReauthPrompt({ reason, onConfirmed, onCancel, verify }: ReauthPr
         </h2>
         <p className="text-body text-text-secondary mt-2">
           {reason === 'setting'
-            ? 'You asked Keyring to confirm before a secret leaves the vault.'
+            ? 'You asked Trynta to confirm before a secret leaves the vault.'
             : reason === 'enrol'
-              ? 'Keyring stores your master password behind Windows Hello, so it needs it once to set that up.'
-              : 'That is a lot of secrets in a short time, so Keyring is checking it is still you.'}
+              ? 'Trynta stores your master password behind Windows Hello, so it needs it once to set that up.'
+              : 'That is a lot of secrets in a short time, so Trynta is checking it is still you.'}
         </p>
 
         <form

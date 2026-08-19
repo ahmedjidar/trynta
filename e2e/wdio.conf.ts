@@ -36,9 +36,9 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
  * The binary under test.
  *
  * Debug by default: a release build takes minutes and nothing here measures performance.
- * `KEYRING_E2E_BINARY` overrides it, which is what CI uses after `tauri build`.
+ * `TRYNTA_E2E_BINARY` overrides it, which is what CI uses after `tauri build`.
  */
-const BINARY = process.env.KEYRING_E2E_BINARY ?? join(ROOT, 'target', 'debug', 'keyring.exe');
+const BINARY = process.env.TRYNTA_E2E_BINARY ?? join(ROOT, 'target', 'debug', 'keyring.exe');
 
 /** Whether a command resolves on PATH. */
 function onPath(command: string): boolean {
@@ -67,7 +67,7 @@ function requirePrerequisites(): void {
     problems.push(
       [
         `app binary missing at ${BINARY}`,
-        '  Fix: cargo build   (or set KEYRING_E2E_BINARY to a release build)',
+        '  Fix: cargo build   (or set TRYNTA_E2E_BINARY to a release build)',
       ].join('\n'),
     );
   }

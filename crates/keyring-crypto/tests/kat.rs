@@ -109,7 +109,7 @@ fn hkdf_sha256_rfc5869_case_1() {
 
 #[test]
 fn hkdf_sha256_rfc5869_case_3_no_salt_no_info() {
-    // The shape Keyring actually uses: no salt (the IKM is already a uniform
+    // The shape Trynta actually uses: no salt (the IKM is already a uniform
     // 32-byte key) and separation carried entirely by `info`.
     let ikm = hex!("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
     let hk = Hkdf::<Sha256>::new(None, &ikm);

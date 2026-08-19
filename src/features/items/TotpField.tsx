@@ -39,7 +39,7 @@ const REJECTION: Record<TotpRejectionDto, string> = {
   truncatedSecret: 'That setup key is incomplete — it is missing characters from the end.',
   missingSecret: 'That link has no secret in it.',
   notOtpauthUri: 'That is not an otpauth:// setup link. Paste the link, or just the setup key.',
-  counterBased: 'That is a counter-based (HOTP) code. Keyring supports time-based codes.',
+  counterBased: 'That is a counter-based (HOTP) code. Trynta supports time-based codes.',
   unsupportedDigits: 'A one-time code is 6 or 8 digits; that link asks for something else.',
   unsupportedPeriod: 'That link asks for a time step of zero seconds, which cannot work.',
 };

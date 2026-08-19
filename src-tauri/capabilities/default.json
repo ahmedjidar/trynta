@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Minimum permission set for Keyring's single main window. Enumerated explicitly rather than granted through core:default, so every added permission is a visible diff.",
+  "description": "Minimum permission set for Trynta's single main window. Enumerated explicitly rather than granted through core:default, so every added permission is a visible diff.",
   "windows": ["main"],
   "permissions": [
     "core:app:allow-version",

@@ -130,7 +130,7 @@ impl fmt::Display for AppError {
             Self::UpdateFailed => "the update could not be installed",
             Self::LastVaultRemaining => "the last vault cannot be deleted",
             Self::Clipboard => "the clipboard is unavailable",
-            Self::DataDirectory => "Keyring could not find a place to store your vault",
+            Self::DataDirectory => "Trynta could not find a place to store your vault",
             Self::FeatureUnavailable => "that feature is not available in this build",
             Self::Storage => "a storage operation failed",
             Self::Crypto => "a cryptographic operation failed",

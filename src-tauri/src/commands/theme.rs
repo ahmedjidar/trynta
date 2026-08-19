@@ -274,7 +274,7 @@ pub fn theme_export_file(app: tauri::AppHandle, document: String) -> Result<bool
         .dialog()
         .file()
         .set_title("Save the current theme")
-        .set_file_name("keyring-theme.json")
+        .set_file_name("trynta-theme.json")
         .add_filter("Theme", &["json"])
         .blocking_save_file()
     else {

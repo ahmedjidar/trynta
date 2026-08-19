@@ -1,6 +1,6 @@
 # macOS: written, never compiled
 
-Every macOS-specific code path in Keyring, what it is supposed to do, and how to
+Every macOS-specific code path in Trynta, what it is supposed to do, and how to
 verify it on real hardware.
 
 **Status: nothing below has ever been compiled.** Not "lightly tested" — not tested,
@@ -86,7 +86,7 @@ tell you that, so most of this section is manual.
 | B3  | The round trip works at all               | `enrol` then `unwrap_secret` prompts for Touch ID and returns the same bytes                                                | manual — the automated test cannot do this, it would block on a finger                                                   |
 | B4  | **`errSecUserCanceled` is really `-128`** | dismissing the prompt gives `Cancelled`, not `Invalidated`                                                                  | enrol, trigger biometric unlock, press Cancel; if the UI says the enrolment is gone, the constant is wrong               |
 | B5  | No passcode → no item                     | `enrol` fails rather than storing unprotected                                                                               | test account with no login password (hard; skip if impractical and record that)                                          |
-| B6  | The item is `ThisDeviceOnly`              | it does not appear on another Mac with the same iCloud account                                                              | `security find-generic-password -s app.keyring.desktop.biometric` on a second Mac                                        |
+| B6  | The item is `ThisDeviceOnly`              | it does not appear on another Mac with the same iCloud account                                                              | `security find-generic-password -s dev.trynta.desktop.biometric` on a second Mac                                         |
 
 **B4 is the specific uncertainty.** `errSecItemNotFound` (`-25300`) was verified
 against `security-framework-sys 2.17.0`'s own source. `errSecUserCanceled` is
@@ -140,7 +140,7 @@ threat-model entry, not a bug to fix — record it in SECURITY.md.
 
 **D4 has no automated form and is the most likely macOS-only surprise.** Keychain
 access is granted per code-signing identity. Tests pass under `cargo test` and the
-shipped app prompts "Keyring wants to access the keychain" — or fails — because it
+shipped app prompts "Trynta wants to access the keychain" — or fails — because it
 is a different identity. Re-check after any change to signing or entitlements.
 
 There is deliberately no counterpart to Windows'
@@ -152,7 +152,7 @@ supported way to corrupt one item.
 
 | #   | Check                 | Expected                                                                    | How                                                                                            |
 | --- | --------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| E1  | Data directory        | `~/Library/Application Support/Keyring`                                     | `cargo test -p keyring --test platform_macos -- --nocapture`, read `app-support-files-scanned` |
+| E1  | Data directory        | `~/Library/Application Support/Trynta`                                      | `cargo test -p keyring --test platform_macos -- --nocapture`, read `app-support-files-scanned` |
 | E2  | Modifier key          | hints render `Cmd`, never a hardcoded `⌘`                                   | `platform::modifier_key()`; SPEC-V1 §8 forbids the literal in source                           |
 | E3  | Traffic lights        | native, and the window is draggable                                         | manual, run the app                                                                            |
 | E4  | `mlock` equivalent    | `VirtualLock`'s counterpart succeeds, or warns rather than failing silently | check the log on unlock (CLAUDE.md §4.5)                                                       |
@@ -172,7 +172,7 @@ the same path.
 | G1  | Bundle serves the frontend         | The window loads `tauri://localhost`, **not** `http://localhost:1420`   | `pnpm tauri build`, launch the `.app` with no dev server running. A blank window means `custom-protocol` did not reach the macOS build                       |
 | G2  | Manrope loads under WKWebView      | Text renders in Manrope, not the system font                            | in the app, `document.fonts` reports `Manrope … loaded`. Failure is silent — the fallback renders and the layout is ~8% narrow                               |
 | G3  | `font-src 'self'` allows the woff2 | No CSP violation for `/fonts/manrope-*.woff2`                           | Safari Web Inspector attached to the WKWebView; a violation shows in the console. WKWebView and WebView2 differ on how `'self'` resolves for a custom scheme |
-| G4  | woff2 in the `.app`                | `Contents/Resources/…/fonts/manrope-latin.woff2` exists in the bundle   | `find <Keyring.app> -name 'manrope-*.woff2'` after `pnpm tauri build`                                                                                        |
+| G4  | woff2 in the `.app`                | `Contents/Resources/…/fonts/manrope-latin.woff2` exists in the bundle   | `find <Trynta.app> -name 'manrope-*.woff2'` after `pnpm tauri build`                                                                                         |
 | G5  | AC18 under WKWebView               | an injected `<style>` is blocked and `adoptedStyleSheets` still applies | this is verified on WebView2 by `e2e/specs/theme.e2e.ts`; the WKWebView half has no harness — run the two probes by hand in the Web Inspector console        |
 
 ## H — Window chrome
@@ -186,7 +186,7 @@ never been parsed by anything.
 | #   | Check                            | Expected                                                                                                           | How                                                                                                                                                                     |
 | --- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | H1  | Platform config is merged        | The window has native traffic lights and no custom minimise/maximise/close                                         | run the app. Three drawn buttons at the top right means `tauri.macos.conf.json` was not merged and the Windows config applied                                           |
-| H2  | Traffic-light inset              | The lights do not overlap the "Keyring" wordmark                                                                   | visual. `TitleBar` reserves `--pad-traffic-lights` plus a 68px lead-in on macOS; if Apple's inset differs the wordmark needs a different offset                         |
+| H2  | Traffic-light inset              | The lights do not overlap the "Trynta" wordmark                                                                    | visual. `TitleBar` reserves `--pad-traffic-lights` plus a 68px lead-in on macOS; if Apple's inset differs the wordmark needs a different offset                         |
 | H3  | Title bar drags the window       | Press and move on the bar moves the window                                                                         | manual. `useDragRegion` calls `startDragging()`; the Windows path needed this because Tauri's `data-tauri-drag-region` was inert — check whether macOS behaves the same |
 | H4  | Double-click the title bar       | Zooms/unzooms, per the user's "Prefer tabs / double-click to" setting                                              | manual. Ours always calls `toggleMaximize`, which ignores that setting — decide whether that is acceptable on macOS                                                     |
 | H5  | Corner radius                    | The window wears the system radius, and no app-coloured square peeks past it                                       | visual, on a light desktop background. Windows leaves the corner to DWM for the same reason                                                                             |

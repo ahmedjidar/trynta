@@ -1,4 +1,4 @@
-//! Keyring encrypted store — schema, two-phase migrations, item repository.
+//! Trynta encrypted store — schema, two-phase migrations, item repository.
 //!
 //! Depends on `keyring-crypto` and nothing else in the workspace: no Tauri, no
 //! frontend build. That is a deliberate placement (ADD-003 §①) so the acceptance

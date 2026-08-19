@@ -1,4 +1,4 @@
-//! Keyring application shell.
+//! Trynta application shell.
 //!
 //! This crate stays thin by construction: `commands/` orchestrates and never
 //! holds business logic, which lives in `keyring-crypto` and `keyring-store`.

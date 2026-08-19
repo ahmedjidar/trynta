@@ -1,4 +1,4 @@
-//! Pinned vectors for Keyring's *own* on-disk encodings.
+//! Pinned vectors for Trynta's *own* on-disk encodings.
 //!
 //! SPEC-V1 §3.3 and §3.5 warn that two implementations disagreeing about these
 //! bytes cannot read each other's vaults, and the failure mode is "nobody can

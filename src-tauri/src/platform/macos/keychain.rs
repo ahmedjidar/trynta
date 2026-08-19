@@ -5,7 +5,7 @@
 //! `MACOS-UNVERIFIED.md` for what still has to be checked on hardware.
 //!
 //! The counterpart to DPAPI on Windows. Items are `ThisDeviceOnly`, so copying
-//! `~/Library/Application Support/Keyring` to another Mac does not carry
+//! `~/Library/Application Support/Trynta` to another Mac does not carry
 //! anything stored here with it.
 //!
 //! This is *not* where the biometric wrap lives — that goes through
@@ -20,8 +20,8 @@ use security_framework::passwords_options::PasswordOptions;
 
 use crate::platform::secure_store::{SecureStore, SecureStoreError};
 
-/// Keychain service name for non-biometric Keyring items.
-const SERVICE: &str = "app.keyring.desktop";
+/// Keychain service name for non-biometric Trynta items.
+const SERVICE: &str = "dev.trynta.desktop";
 
 /// `errSecItemNotFound`.
 ///

@@ -6,7 +6,7 @@
 //! the far end.
 //!
 //! The specific behaviour under test is the one §7.4 wrote the numbers down for.
-//! Keyring does not ship the bundled 2FA directory yet — its licence is still
+//! Trynta does not ship the bundled 2FA directory yet — its licence is still
 //! unverified in `THIRD-PARTY-NOTICES.md` — so nothing can be reported as
 //! *capable* of a second factor, `2fa_capable` is 0, and the 20-point term
 //! redistributes into 43.75 / 31.25 / 25. Getting that wrong is not a visible bug:
