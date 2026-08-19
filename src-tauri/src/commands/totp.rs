@@ -234,6 +234,13 @@ pub fn item_set_totp(
     let changed = state
         .session
         .with_session(|s| s.item_set_totp(id, config.as_ref()).map_err(AppError::from))?;
+
+    // `has_totp` is an index column — it drives the list badge and the "Has 2FA"
+    // filter — so the same rebuild the icon paths need applies here. Only on a real
+    // change: rebuilding for a no-op write would be a full re-decrypt for nothing.
+    if changed {
+        state.session.build_index()?;
+    }
     state.session.touch();
     Ok(changed)
 }

@@ -106,6 +106,17 @@ pub fn item_set_icon(
             .map_err(AppError::from)
     })?;
 
+    // Rebuild the index, or the change is invisible.
+    //
+    // `items_list` reads the in-memory index built at unlock, not the store, and
+    // `has_custom_icon` is one of its columns — it is what makes `IconDto` resolve to
+    // `custom`. Writing the icon without rebuilding left the list reporting the *old*
+    // icon until the vault was locked and reopened, which is exactly what "it did not
+    // reflect instantly" looked like. Every other write path already does this;
+    // these two were simply missed.
+    state.session.build_index()?;
+    state.session.touch();
+
     Ok(Some(IconUploadDto {
         bytes: u32::try_from(bytes).unwrap_or(u32::MAX),
     }))
@@ -121,6 +132,11 @@ pub fn item_clear_icon(state: State<'_, AppState>, id: Uuid) -> Result<(), AppEr
     state
         .session
         .with_session(|s| s.item_set_custom_icon(id, None).map_err(AppError::from))?;
+
+    // See `item_set_icon`: the index carries `has_custom_icon`, so without this the
+    // list keeps drawing the removed icon until the vault is reopened.
+    state.session.build_index()?;
+    state.session.touch();
     Ok(())
 }
 
