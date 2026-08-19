@@ -93,11 +93,27 @@ export function IdentityTile({
   }
 
   if (icon.kind === 'custom') {
+    // No bytes yet is a normal state, not an error, and it must not render an empty
+    // square. It happens on first paint before the fetch lands, and — the case that
+    // reported this — in the moment after the user removes an icon: Rust has already
+    // dropped the bytes while this row still says `custom`, because the list has not
+    // refetched yet. Falling back to the default mark means the tile shows what the
+    // item is about to look like anyway.
+    if (customSrc === undefined) {
+      return (
+        <span
+          className={cn('tile', className)}
+          data-size={size}
+          data-tone="fallback"
+          aria-hidden="true"
+        >
+          <FallbackMark />
+        </span>
+      );
+    }
     return (
       <span className={cn('tile', className)} data-size={size} data-tone="0" aria-hidden="true">
-        {customSrc === undefined ? null : (
-          <img className="tile__icon" src={customSrc} alt="" decoding="async" />
-        )}
+        <img className="tile__icon" src={customSrc} alt="" decoding="async" />
       </span>
     );
   }

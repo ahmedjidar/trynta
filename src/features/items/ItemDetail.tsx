@@ -166,7 +166,9 @@ export function ItemDetail({
   const [pending, setPending] = useState<{ reason: ReauthReason; retry: () => void } | null>(null);
 
   const isCustomIcon = summary.icon.kind === 'custom';
-  const customSrc = useItemIcon(detail.id, isCustomIcon);
+  // `detail.revision` rather than `summary.revision`: the detail is refetched by the
+  // same invalidation and is the value Rust wrote, so it cannot lag the icon it keys.
+  const customSrc = useItemIcon(detail.id, isCustomIcon, detail.revision);
   const resolvedTheme = useThemeStore((s) => s.resolved);
 
   /**

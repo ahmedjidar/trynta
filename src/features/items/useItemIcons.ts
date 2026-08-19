@@ -36,10 +36,21 @@ const LOCAL = {
  * @param items - The rows being rendered. Only the custom ones are fetched.
  */
 export function useItemIcons(items: readonly ItemSummaryDto[]): IconSources {
-  const ids = items.filter((i) => i.icon.kind === 'custom').map((i) => i.id);
+  const custom = items.filter((i) => i.icon.kind === 'custom');
+  const ids = custom.map((i) => i.id);
   // Sorted and joined so the key is stable under a re-sort of the list: re-fetching
   // every icon because the user changed the sort order would be pure waste.
-  const key = [...ids].sort().join(',');
+  //
+  // The revision is in the key, and that is the part that matters. Keyed on ids
+  // alone, *replacing* an icon changed nothing about the key — same item, still
+  // custom — so the cached bytes were reused and the new icon did not appear until
+  // something else evicted them. Every icon write bumps the item revision, so this
+  // makes a replacement a different cache entry by construction rather than relying
+  // on an invalidation arriving in the right order.
+  const key = custom
+    .map((i) => `${i.id}@${String(i.revision)}`)
+    .sort()
+    .join(',');
 
   const query = useQuery<IconSources>({
     queryKey: ['item-icons', key],
@@ -61,10 +72,20 @@ export function useItemIcons(items: readonly ItemSummaryDto[]): IconSources {
  *
  * Separate from {@link useItemIcons} because the detail pane renders a 56px tile for one
  * item and should not wait on a batch keyed to the whole list.
+ *
+ * @param revision - The item's current revision. Part of the cache key: every icon
+ * write bumps it, which is what makes replacing an icon fetch the new bytes rather
+ * than reuse the old ones.
  */
-export function useItemIcon(id: string | null, isCustom: boolean): string | undefined {
+export function useItemIcon(
+  id: string | null,
+  isCustom: boolean,
+  revision: number,
+): string | undefined {
   const query = useQuery<string | null>({
-    queryKey: ['item-icon', id ?? ''],
+    // See the note in `useItemIcons`: the revision is what makes a replaced icon a
+    // new cache entry instead of a cache hit on the old bytes.
+    queryKey: ['item-icon', id ?? '', revision],
     queryFn: () => itemIcon(id ?? ''),
     enabled: id !== null && isCustom,
     ...LOCAL,
