@@ -81,6 +81,16 @@ import { useThemeStore } from '../theme/store';
 const queryClient = new QueryClient();
 
 /** Band and label per risk kind, for the detail pane's strength row. */
+/**
+ * Risks that say something about the *password*, and the band each implies.
+ *
+ * `missingTwoFactor` is deliberately absent. It is a fact about the service, not
+ * about the password, and a strong unique password on a site that offers 2FA is
+ * still a strong unique password. Mapping it here would have labelled those items
+ * "Weak" through the fallback below, which is a worse lie than saying nothing.
+ */
+const EMPTY_ITEMS: readonly ItemSummaryDto[] = Object.freeze([]);
+
 const RISK_BANDS: Record<string, { band: number; label: string }> = {
   breached: { band: 1, label: 'Breached' },
   weak: { band: 1, label: 'Weak' },
@@ -420,8 +430,14 @@ function DetailPane({ vaultNames, report, onCopied, onFailed }: DetailPaneProps)
 
   const strength = useMemo(() => {
     if (report === null) return { band: 0, label: 'Not checked' };
-    const risk = report.risks.find((r) => r.itemId === selectedId);
-    if (risk) return RISK_BANDS[risk.kind] ?? { band: 1, label: 'Weak' };
+    // Risks arrive most-severe first, so the first one that describes the password
+    // is the one to show. A kind with no band — today, missing 2FA — is skipped
+    // rather than defaulted, because defaulting is how it would have read 'Weak'.
+    const risk = report.risks.find(
+      (r) => r.itemId === selectedId && RISK_BANDS[r.kind] !== undefined,
+    );
+    const band = risk === undefined ? undefined : RISK_BANDS[risk.kind];
+    if (band !== undefined) return band;
     // Scored and not flagged. §7.4 has no per-item score, so the strongest thing the
     // report supports saying is that nothing flagged it.
     return { band: 4, label: 'Strong' };
@@ -448,6 +464,7 @@ function DetailPane({ vaultNames, report, onCopied, onFailed }: DetailPaneProps)
     <ItemDetail
       summary={summary}
       detail={detail.data}
+      items={items.data ?? EMPTY_ITEMS}
       vaultName={vaultNames[summary.vaultId] ?? ''}
       strength={strength}
       onCopied={onCopied}

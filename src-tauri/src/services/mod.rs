@@ -30,4 +30,5 @@ pub mod settings;
 pub mod strength;
 pub mod theme;
 pub mod totp;
+pub mod twofactor;
 pub mod updater;

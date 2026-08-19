@@ -1243,6 +1243,8 @@ pub enum RiskKindDto {
     Weak,
     /// Shared with at least one other item.
     Reused,
+    /// The service accepts an authenticator app and this item has no code.
+    MissingTwoFactor,
 }
 
 impl From<report::RiskKind> for RiskKindDto {
@@ -1251,6 +1253,7 @@ impl From<report::RiskKind> for RiskKindDto {
             report::RiskKind::Breached => Self::Breached,
             report::RiskKind::Weak => Self::Weak,
             report::RiskKind::Reused => Self::Reused,
+            report::RiskKind::MissingTwoFactor => Self::MissingTwoFactor,
         }
     }
 }

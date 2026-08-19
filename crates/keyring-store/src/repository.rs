@@ -1243,7 +1243,7 @@ pub(crate) fn item_set_totp(
     conn: &Connection,
     muk: &Muk,
     id: Uuid,
-    totp: Option<TotpConfig>,
+    totp: Option<&TotpConfig>,
     now: i64,
 ) -> Result<bool, StoreError> {
     let revision: i64 = conn
@@ -1263,7 +1263,7 @@ pub(crate) fn item_set_totp(
         return Err(StoreError::ItemNotFound);
     };
 
-    let (next_secret, next_params) = match &totp {
+    let (next_secret, next_params) = match totp {
         Some(config) => (
             Some(config.secret.clone()),
             Some(TotpParams::from_config(config)),

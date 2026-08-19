@@ -32,6 +32,10 @@ const SEED: &str = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ";
 /// A fixed instant, so the expected code never depends on the wall clock.
 const AT: u64 = 1_700_000_000;
 
+/// A real 60-second step boundary. `AT` is 20 seconds into one, which is exactly the
+/// sort of thing that makes a countdown assertion pass for the wrong reason.
+const STEP_START: u64 = 1_699_999_980;
+
 // ── the independent reference ───────────────────────────────────────────────
 
 /// RFC 6238 §4, implemented from the document rather than from `services::totp`.
@@ -261,7 +265,6 @@ fn the_countdown_follows_the_configured_period() {
     // A real step boundary, not a round-looking number: 1_700_000_000 is 20 seconds
     // into a 60-second step, which is exactly the sort of thing that makes a
     // countdown assertion pass for the wrong reason.
-    const STEP_START: u64 = 1_699_999_980;
     assert_eq!(STEP_START % 60, 0, "the fixture is not on a step boundary");
 
     let start = totp::code_at(&config, STEP_START).expect("code");

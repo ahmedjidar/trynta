@@ -55,6 +55,10 @@ fn seeded_cache(password: &str, count: u32, now_ms: i64) -> BreachCache {
 
 struct Reviewed {
     rows: Vec<(uuid::Uuid, String, String, bool)>,
+    /// Each row’s URLs, so the 2FA directory can be consulted exactly as the
+    /// product consults it. Held apart from `rows` only to avoid disturbing the
+    /// tuple shape the rest of this file destructures.
+    urls: Vec<Vec<String>>,
     passwords: Vec<Zeroizing<String>>,
 }
 
@@ -63,13 +67,15 @@ impl Reviewed {
         self.rows
             .iter()
             .zip(&self.passwords)
+            .zip(&self.urls)
             .map(
-                |((id, title, subtitle, has_totp), password)| ItemUnderReview {
+                |(((id, title, subtitle, has_totp), password), urls)| ItemUnderReview {
                     id: *id,
                     title,
                     subtitle,
                     password: password.as_str(),
                     has_totp: *has_totp,
+                    urls,
                 },
             )
             .collect()
@@ -86,8 +92,10 @@ fn build_vault(dir: &std::path::Path) -> Reviewed {
         .vault_add("Personal", "vault.accent.1")
         .expect("vault");
 
-    // One login with a TOTP configured. It must still get no 2FA credit, because
-    // "capable" is what the missing directory would have told us and we do not know.
+    // One login with a TOTP configured, on a service the directory does not list.
+    // `acme.test` is not a real service and never will be, so it is not capable —
+    // which is the point: a configured code on an unlisted service still earns no
+    // 2FA credit, because the denominator only counts services that accept one.
     let mut with_totp = ItemDraft::new(
         vault,
         "Acme Corp",
@@ -134,6 +142,7 @@ fn build_vault(dir: &std::path::Path) -> Reviewed {
 
     let mut rows = Vec::new();
     let mut passwords = Vec::new();
+    let mut urls: Vec<Vec<String>> = Vec::new();
     for row in session.index_rows().expect("index") {
         if row.kind != ItemKind::Login {
             continue;
@@ -148,12 +157,17 @@ fn build_vault(dir: &std::path::Path) -> Reviewed {
             row.has_totp,
         ));
         passwords.push(password);
+        urls.push(row.urls.clone());
     }
-    Reviewed { rows, passwords }
+    Reviewed {
+        rows,
+        urls,
+        passwords,
+    }
 }
 
 #[test]
-fn no_directory_means_zero_capable_and_redistributed_weights() {
+fn unlisted_services_are_not_capable_and_the_weights_redistribute() {
     let dir = tempfile::tempdir().expect("tempdir");
     let reviewed = build_vault(dir.path());
     let items = reviewed.as_items();
@@ -174,7 +188,7 @@ fn no_directory_means_zero_capable_and_redistributed_weights() {
     assert_eq!(inputs.reused, 2, "both shops, not one group");
     assert_eq!(
         inputs.two_factor_capable, 0,
-        "no bundled directory ships, so nothing can be reported as capable"
+        "none of these fixture domains is in the bundled directory"
     );
     assert_eq!(
         inputs.two_factor_enabled, 1,
@@ -261,6 +275,7 @@ fn no_directory_means_zero_capable_and_redistributed_weights() {
         RiskKind::Breached => 0,
         RiskKind::Weak => 1,
         RiskKind::Reused => 2,
+        RiskKind::MissingTwoFactor => 3,
     });
     assert_eq!(order, sorted, "risks come back most-urgent first");
 }
@@ -273,4 +288,141 @@ fn an_empty_vault_scores_null_not_zero() {
     assert_eq!(assessment.score.value(), None, "§7.4: null, not 0, not 100");
     assert_eq!(assessment.inputs.two_factor_capable, 0);
     assert!(assessment.risks.is_empty());
+}
+
+/// The directory is wired, so a real service is capable and the 2FA term applies.
+///
+/// This is the assertion that would have failed for the whole of run 2 and run 3:
+/// `two_factor_capable` was hardcoded to zero, so §7.4's redistribution branch ran
+/// for every user and the breakdown the UI displayed was not the formula the score
+/// came from.
+#[test]
+fn a_listed_service_is_capable_and_the_two_factor_term_applies() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let reviewed = build_directory_vault(dir.path());
+    let items = reviewed.as_items();
+
+    let cache = BreachCache::default();
+    let assessment = report::assess_all(&items, &CachedOnly { cache: &cache });
+
+    assert_eq!(
+        assessment.inputs.two_factor_capable, 2,
+        "github and dropbox are listed; the router is not"
+    );
+    assert_eq!(
+        assessment.inputs.two_factor_enabled, 1,
+        "only github has a code"
+    );
+
+    let missing = assessment
+        .risks
+        .iter()
+        .filter(|r| r.kind == RiskKind::MissingTwoFactor)
+        .count();
+    assert_eq!(
+        missing, 1,
+        "exactly one item is on a listed service without a code"
+    );
+
+    let HealthScore::Scored { breakdown, .. } = assessment.score else {
+        panic!("three logins is enough data to score");
+    };
+    assert!(
+        (breakdown.breached.weight - 35.0).abs() < f64::EPSILON,
+        "the 2FA term applies, so breached keeps its 35 — got {}",
+        breakdown.breached.weight
+    );
+    assert!(
+        (breakdown.two_factor.weight - 20.0).abs() < f64::EPSILON,
+        "the 2FA term is worth its full 20 once anything is capable — got {}",
+        breakdown.two_factor.weight
+    );
+}
+
+/// Three logins: one listed with a code, one listed without, one unlisted.
+fn build_directory_vault(dir: &std::path::Path) -> Reviewed {
+    let path = dir.join("vault.db");
+    let file = VaultFile::create(&path, MASTER, KdfParams::floor()).expect("create");
+    let session = file.unlock(MASTER).expect("unlock");
+    let vault = session
+        .vault_add("Personal", "vault.accent.1")
+        .expect("vault");
+
+    session
+        .item_upsert(&ItemDraft::new(
+            vault,
+            "GitHub",
+            ItemBody::Login {
+                username: "alice".into(),
+                password: UNIQUE.into(),
+                urls: vec!["https://github.com/login?next=/x".into()],
+                totp: Some(TotpConfig {
+                    secret: "JBSWY3DPEHPK3PXP".into(),
+                    algorithm: TotpAlgorithm::Sha1,
+                    digits: 6,
+                    period_seconds: 30,
+                    issuer: "GitHub".into(),
+                    account: "alice".into(),
+                }),
+            },
+        ))
+        .expect("upsert");
+
+    for (title, url, password) in [
+        // Listed, no code: this is the missing-2FA case.
+        (
+            "Dropbox",
+            "https://www.dropbox.com/home",
+            "K3-unique-nothing-else-uses-this",
+        ),
+        // Not listed, no code: must not be flagged.
+        (
+            "Router",
+            "https://192.168.1.1",
+            "Q7-also-entirely-unique-here",
+        ),
+    ] {
+        session
+            .item_upsert(&ItemDraft::new(
+                vault,
+                title,
+                ItemBody::Login {
+                    username: "alice".into(),
+                    password: password.into(),
+                    urls: vec![url.into()],
+                    totp: None,
+                },
+            ))
+            .expect("upsert");
+    }
+
+    collect(&session)
+}
+
+/// Read a vault back the way `security_report_run` does.
+fn collect(session: &keyring_store::Session<'_>) -> Reviewed {
+    let mut rows = Vec::new();
+    let mut passwords = Vec::new();
+    let mut urls: Vec<Vec<String>> = Vec::new();
+    for row in session.index_rows().expect("index") {
+        if row.kind != ItemKind::Login {
+            continue;
+        }
+        let password = session
+            .item_secret(row.id, SecretField::Password)
+            .expect("password");
+        rows.push((
+            row.id,
+            row.title.clone(),
+            row.subtitle.clone().unwrap_or_default(),
+            row.has_totp,
+        ));
+        passwords.push(password);
+        urls.push(row.urls.clone());
+    }
+    Reviewed {
+        rows,
+        urls,
+        passwords,
+    }
 }

@@ -144,24 +144,41 @@ exactly 7,776 entries, so the feature fails closed rather than quietly generatin
 passphrases; `pnpm check:wordlist` reports the file as absent today and validates it strictly
 (count, distinctness, lowercase a–z) the moment it lands.
 
-## Two-factor directory — run 3
+## Two-factor directory — run 3, live
 
-Used by the "missing 2FA" check (SPEC-V1 §7.4) to know which services support second factors.
-Bundled, versioned with the app, never fetched.
+Used by the "missing 2FA" check (SPEC-V1 §7.4) to know which services accept an authenticator
+app. Bundled, versioned with the app, **never fetched**.
 
-| Field   | Value                                                                                                |
-| ------- | ---------------------------------------------------------------------------------------------------- |
-| Source  | _to be filled in_                                                                                    |
-| Licence | _**must be verified before shipping.** SPEC-V1 §7.4 makes redistribution permission a precondition._ |
+| Field   | Value                                                                          |
+| ------- | ------------------------------------------------------------------------------ |
+| Source  | Written for this product. `src-tauri/assets/twofactor-directory.tsv`           |
+| Licence | Ours. No third-party data is redistributed, so there is nothing here to clear. |
+| Size    | 188 registrable domains                                                        |
 
-**Not shipped, and not fetched to work around that.** `security_report_run` reports
-`twoFactorCapable = 0` while no directory is bundled, which triggers §7.4's documented
-redistribution — the 20-point 2FA term becomes 0 and the other three weights become
-43.75 / 31.25 / 25. The score is therefore fully defined without the directory, and no item is
-credited or penalised for a second factor we have no basis to claim exists. Guessing capability from
-the domain was considered and rejected: it would flag real items on no evidence.
-`src-tauri/tests/report_two_factor.rs` pins that path with the arithmetic written out, so shipping a
-directory later cannot silently change every score without a failing test.
+**Why it is not the obvious dataset.** The well-known public list — 2fa.directory, formerly
+twofactorauth.org — is a community project whose terms are not unambiguously clear for
+redistribution inside a commercial binary, and whose entries carry no per-entry provenance. §7.4
+makes redistribution permission a precondition, not a preference. ADD-001 spent an entire addendum
+refusing to guess at licences for brand icons; guessing here, for a much smaller prize, would undo
+that reasoning. So the list was written for this product. Nothing in it is copied from that dataset.
+
+**What an entry claims.** That the service accepts a time-based one-time code from a standard
+authenticator app, on a normal consumer or developer account, without a paid upgrade. It does _not_
+claim SMS, email codes, push approval, a hardware key, or a vendor's own app. Several of those are
+stronger than TOTP — but they are not something Keyring can hold, and "add a one-time code" is only
+actionable advice when a TOTP app is actually accepted. Apple, Steam, Netflix and most retail banks
+are absent for exactly this reason.
+
+**It is a floor, not a census.** A service that is missing counts as _not capable_, which is the
+safe direction: the user is never nagged about something that cannot take a code, and the health
+score's 2FA term simply covers fewer items. Accuracy was preferred to reach throughout — a wrong
+entry produces a nag that can never be satisfied — so anything doubtful was left out.
+
+**What changed when it shipped.** Before this, `two_factor_capable` was hardcoded to 0, which
+triggered §7.4's redistribution branch for _every_ vault: the 20-point 2FA term vanished and the
+other three weights silently became 43.75 / 31.25 / 25. The score was well defined, but it was not
+the formula the breakdown displayed. `src-tauri/tests/report_two_factor.rs` now pins both paths —
+listed services keep the 35/25/20/20 weights, unlisted ones still redistribute.
 
 ## Manrope — run 3, live
 

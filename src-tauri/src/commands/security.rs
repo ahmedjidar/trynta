@@ -101,6 +101,7 @@ pub fn security_report_run(state: State<'_, AppState>) -> Result<SecurityReportD
                 subtitle: row.subtitle.as_deref().unwrap_or(""),
                 password: password.as_str(),
                 has_totp: row.has_totp,
+                urls: &row.urls,
             })
             .collect();
 

@@ -47,6 +47,7 @@ import { useThemeStore } from '../../theme/store';
 import { StrengthMeter } from '../../components/StrengthMeter';
 import { TotpRow } from './TotpRow';
 import { TotpEditRow } from './TotpEditRow';
+import { ReusePartners } from './ReusePartners';
 import { useNavigation } from '../../app/navigation';
 import { cn } from '../../lib/cn';
 import {
@@ -108,6 +109,8 @@ function strengthTone(band: number): string {
 }
 
 export interface ItemDetailProps {
+  /** Every visible row, so reuse partners can be named. */
+  items: readonly ItemSummaryDto[];
   /** List-row identity: tile, subtitle, TOTP flag. */
   summary: ItemSummaryDto;
   /** Metadata and secret presence, from `item_get`. */
@@ -127,6 +130,7 @@ export interface ItemDetailProps {
 export function ItemDetail({
   summary,
   detail,
+  items,
   strength,
   vaultName,
   onCopied,
@@ -440,6 +444,10 @@ export function ItemDetail({
                 {strength.label}
               </div>
             </GroupedRow>
+          ) : null}
+
+          {detail.kind === 'login' ? (
+            <ReusePartners itemId={detail.id} items={items} onOpen={select} />
           ) : null}
 
           {editing && detail.kind === 'login' ? (

@@ -233,7 +233,7 @@ pub fn item_set_totp(
 
     let changed = state
         .session
-        .with_session(|s| s.item_set_totp(id, config.clone()).map_err(AppError::from))?;
+        .with_session(|s| s.item_set_totp(id, config.as_ref()).map_err(AppError::from))?;
     state.session.touch();
     Ok(changed)
 }

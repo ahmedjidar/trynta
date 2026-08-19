@@ -924,7 +924,7 @@ impl Session<'_> {
     ///
     /// If an internal lock is poisoned, which can only happen if another thread
     /// panicked while holding it.
-    pub fn item_set_totp(&self, id: Uuid, totp: Option<TotpConfig>) -> Result<bool, StoreError> {
+    pub fn item_set_totp(&self, id: Uuid, totp: Option<&TotpConfig>) -> Result<bool, StoreError> {
         let conn = self.file.conn.lock().expect("connection lock");
         let changed = repository::item_set_totp(&conn, &self.keys.muk, id, totp, now_ms())?;
         if changed {

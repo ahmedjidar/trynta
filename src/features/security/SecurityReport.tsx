@@ -43,6 +43,7 @@ const TAGS = {
   breached: { label: 'Breached', tone: 'danger' },
   weak: { label: 'Weak', tone: 'warning' },
   reused: { label: 'Reused', tone: 'warning' },
+  missingTwoFactor: { label: 'No 2FA', tone: 'info' },
 } as const;
 
 export interface SecurityReportProps {
@@ -77,9 +78,17 @@ export function SecurityReport({ report, items, onCheckNow, canCheck }: Security
       tone: 'accent',
     },
     {
+      label: 'No 2FA',
+      value: String(Math.max(report.twoFactorCapable - report.twoFactorEnabled, 0)),
+      sub: 'The service offers it; this item has no code',
+      tone: 'info',
+    },
+    {
       label: 'Not checked',
       value: String(report.notChecked),
-      sub: 'No breach data for these yet',
+      // Never "safe". §7.4 is explicit, and the distinction is the whole point of
+      // the card existing: an unchecked password is an unknown, not a clean bill.
+      sub: report.notChecked > 0 ? 'Unknown — not the same as safe' : 'Every password was checked',
       tone: 'info',
     },
   ];
@@ -216,6 +225,23 @@ export function SecurityReport({ report, items, onCheckNow, canCheck }: Security
             ))}
           </GroupedList>
         )}
+
+        {/* What the check cannot tell you.
+
+            Every other password manager shows a breach count and lets the user assume
+            it means their account was in a named leak. It does not. The range API is
+            asked about five hex characters of a hash and answers with a count of
+            matching suffixes — it is never told which password, which account, or
+            which service, which is exactly why it is safe to ask. Learning *which*
+            breach would mean sending the account's email address to a third party,
+            and that is a thing this product does not do at any price. Saying so is
+            cheaper than letting someone infer a capability that is not there. */}
+        <p className="text-caption text-text-muted mt-6 max-w-[68ch] leading-relaxed">
+          A breach count says how many times this exact password appears in leaked data — not which
+          breach it came from, or when. Keyring asks using the first five characters of a hash and
+          never sends the password, the account name or the site. Finding out <em>which</em> breach
+          would mean sending your email address to someone else, which Keyring does not do.
+        </p>
       </div>
     </section>
   );
