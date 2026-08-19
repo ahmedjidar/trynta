@@ -39,9 +39,23 @@ function shapeExample(mode: 'dark' | 'light'): string {
   const computed = getComputedStyle(document.documentElement);
   const show = ['--accent', '--surface-app', '--text-primary'];
   const tokens = Object.fromEntries(
-    show.map((name) => [name, computed.getPropertyValue(name).trim()]),
+    show.map((name) => [name, oneLine(computed.getPropertyValue(name))]),
   );
   return JSON.stringify({ id: 'midnight', name: 'Midnight', mode, tokens }, null, 2);
+}
+
+/**
+ * Fold every run of whitespace in a value to a single space.
+ *
+ * The CSSOM hands back values exactly as they were written, and the token layer
+ * writes multi-layer shadows across several indented lines. That is the same value
+ * either way — CSS does not care — but it made the exported file the one file the
+ * importer refused, because a newline was not in the value alphabet. The validator
+ * now folds whitespace too; doing it here as well means the file a user opens reads
+ * as one value per line rather than as a paste of someone's source formatting.
+ */
+function oneLine(value: string): string {
+  return value.replace(/\s+/g, ' ').trim();
 }
 
 /**
@@ -69,7 +83,7 @@ function currentDocument(mode: 'dark' | 'light'): string {
       if (!(rule instanceof CSSStyleRule)) continue;
       for (const property of Array.from(rule.style)) {
         if (!property.startsWith('--')) continue;
-        const value = computed.getPropertyValue(property).trim();
+        const value = oneLine(computed.getPropertyValue(property));
         if (value !== '') tokens[property] = value;
       }
     }

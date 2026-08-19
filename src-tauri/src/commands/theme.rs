@@ -293,14 +293,38 @@ pub fn theme_export_file(app: tauri::AppHandle, document: String) -> Result<bool
 /// and returned `invalid`.
 fn rejection(e: ThemeError) -> AppError {
     use ThemeError as E;
-    let (reason, token) = match e {
-        E::Malformed => (ThemeRejectionDto::Malformed, None),
-        E::TooLarge => (ThemeRejectionDto::TooLarge, None),
-        E::BadIdentity => (ThemeRejectionDto::BadIdentity, None),
-        E::TooManyTokens => (ThemeRejectionDto::TooManyTokens, None),
-        E::NotACustomProperty { name } => (ThemeRejectionDto::NotACustomProperty, Some(name)),
-        E::ForbiddenFunction { name } => (ThemeRejectionDto::ForbiddenFunction, Some(name)),
-        E::InvalidValue { name } => (ThemeRejectionDto::InvalidValue, Some(name)),
+    let (reason, token, found) = match e {
+        E::Malformed => (ThemeRejectionDto::Malformed, None, None),
+        E::TooLarge => (ThemeRejectionDto::TooLarge, None, None),
+        E::BadIdentity => (ThemeRejectionDto::BadIdentity, None, None),
+        E::TooManyTokens => (ThemeRejectionDto::TooManyTokens, None, None),
+        E::NotACustomProperty { name } => (ThemeRejectionDto::NotACustomProperty, Some(name), None),
+        E::ForbiddenFunction { name, found } => (
+            ThemeRejectionDto::ForbiddenFunction,
+            Some(name),
+            Some(format!("{found}()")),
+        ),
+        E::UnknownFunction { name, found } => (
+            ThemeRejectionDto::UnknownFunction,
+            Some(name),
+            Some(format!("{found}()")),
+        ),
+        E::ForbiddenCharacter { name, found } => (
+            ThemeRejectionDto::ForbiddenCharacter,
+            Some(name),
+            Some(found.to_string()),
+        ),
+        E::CommentSequence { name, found } => (
+            ThemeRejectionDto::CommentSequence,
+            Some(name),
+            Some(found.to_owned()),
+        ),
+        E::UnbalancedQuotes { name } => (ThemeRejectionDto::UnbalancedQuotes, Some(name), None),
+        E::ValueLength { name } => (ThemeRejectionDto::ValueLength, Some(name), None),
     };
-    AppError::ThemeRejected { reason, token }
+    AppError::ThemeRejected {
+        reason,
+        token,
+        found,
+    }
 }

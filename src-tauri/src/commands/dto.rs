@@ -625,6 +625,12 @@ impl From<CustomFieldInput> for CustomField {
 /// of string that should not be interpolated into a message that may be rendered or
 /// logged (CLAUDE.md §4.6).
 ///
+/// The companion `found` on [`crate::error::AppError::ThemeRejected`] narrows that to
+/// the smallest thing that identifies the fault — one character, or a function name
+/// the validator has already matched against a fixed list. Neither is a quotation of
+/// the value, and both are what turn "this token is wrong" into "this token is wrong
+/// *here*".
+///
 /// Before this, every rejection arrived as `invalid` — "the input is not valid" — for
 /// a format that had no published shape. Between the two, a theme could be refused
 /// with no way to learn what was wrong with it.
@@ -644,8 +650,16 @@ pub enum ThemeRejectionDto {
     NotACustomProperty,
     /// A value used a function that could reach the network.
     ForbiddenFunction,
-    /// A value did not match the permitted grammar.
-    InvalidValue,
+    /// A value called a function that is not on the allow-list.
+    UnknownFunction,
+    /// A value held a character the grammar does not admit.
+    ForbiddenCharacter,
+    /// A value carried a CSS comment sequence.
+    CommentSequence,
+    /// A value's double quotes did not pair up.
+    UnbalancedQuotes,
+    /// A value was empty, or longer than the limit.
+    ValueLength,
 }
 
 /// TOTP hash algorithm, on the wire.

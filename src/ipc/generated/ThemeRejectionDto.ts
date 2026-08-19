@@ -9,8 +9,14 @@
  * of string that should not be interpolated into a message that may be rendered or
  * logged (CLAUDE.md §4.6).
  *
+ * The companion `found` on [`crate::error::AppError::ThemeRejected`] narrows that to
+ * the smallest thing that identifies the fault — one character, or a function name
+ * the validator has already matched against a fixed list. Neither is a quotation of
+ * the value, and both are what turn "this token is wrong" into "this token is wrong
+ * *here*".
+ *
  * Before this, every rejection arrived as `invalid` — "the input is not valid" — for
  * a format that had no published shape. Between the two, a theme could be refused
  * with no way to learn what was wrong with it.
  */
-export type ThemeRejectionDto = "malformed" | "tooLarge" | "badIdentity" | "tooManyTokens" | "notACustomProperty" | "forbiddenFunction" | "invalidValue";
+export type ThemeRejectionDto = "malformed" | "tooLarge" | "badIdentity" | "tooManyTokens" | "notACustomProperty" | "forbiddenFunction" | "unknownFunction" | "forbiddenCharacter" | "commentSequence" | "unbalancedQuotes" | "valueLength";

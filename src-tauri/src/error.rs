@@ -112,6 +112,14 @@ pub enum AppError {
         reason: ThemeRejectionDto,
         /// The token at fault, when the rule is about one.
         token: Option<String>,
+        /// The smallest thing that identifies the fault: one character, or a
+        /// function name the validator matched against a fixed list.
+        ///
+        /// Naming the token said *where* to look but not *what* to change. This is
+        /// deliberately not the value — it is a single character or an identifier
+        /// already known to the validator, so nothing untrusted is quoted back
+        /// (CLAUDE.md §4.6).
+        found: Option<String>,
     },
 }
 
