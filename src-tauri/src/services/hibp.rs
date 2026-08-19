@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The HIBP range transport — one of exactly three outbound requests (CLAUDE.md §4.7).
 //!
 //! Everything privacy-relevant about a breach check is decided in

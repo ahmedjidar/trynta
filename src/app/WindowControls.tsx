@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Minimise, maximise and close, drawn in the app's own vocabulary.
  *

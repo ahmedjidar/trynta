@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * The tile beside every item: a brand mark, the user's own icon, or a generated shape.
  *

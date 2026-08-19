@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // SPEC-V1 §11 / CLAUDE.md §3: zero hardcoded colour values in the codebase.
 //
 // Raw values are permitted in exactly one place — the handoff-owned token layer.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Password strength (SPEC-V1 §7.4).
 //!
 //! > **Weak** — `zxcvbn`. Weak = offline crack time under 1 day at 10⁴ guesses/s.

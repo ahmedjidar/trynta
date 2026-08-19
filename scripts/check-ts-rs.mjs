@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // ─────────────────────────────────────────────────────────────────────────────
 // CLAUDE.md §5: Rust types are the source of truth across IPC. TS types are
 // generated with `ts-rs` and committed, and CI fails on any diff.

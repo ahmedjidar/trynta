@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! KDF calibration.
 //!
 //! SPEC-V1 §3.2: bidirectional, target 700 ms, accept 400–1200 ms, memory clamped

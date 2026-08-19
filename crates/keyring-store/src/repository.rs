@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Item and vault persistence: the meta/secret split in practice.
 //!
 //! [`split_draft`] is the function that enforces SPEC-V1 §3.4. Every secret

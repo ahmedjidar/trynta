@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Make an element behave like a title bar: press-and-move drags the window, and a
  * double-click maximises or restores it.

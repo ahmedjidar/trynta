@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Vault manifest and header authentication — rollback resistance.
 //!
 //! SPEC-V1 §3.5. The AAD binds a ciphertext to its item and revision, but it does

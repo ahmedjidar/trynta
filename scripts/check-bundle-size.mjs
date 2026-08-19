@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // SPEC-V1 §9: installer 20 MB target, 25 MB hard failure, per platform.
 //
 // Warn at the target, fail at the ceiling. The budget is easy to hold now and

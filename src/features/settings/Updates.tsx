@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Updater surface — SPEC-V1 §7.5, §9.
  *

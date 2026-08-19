@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Application-level commands (SPEC-V1 §6, §8).
 //!
 //! One command, and it exists so that no component ever hardcodes `⌘`. SPEC-V1

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Custom item icons (ADD-001 tier 2).
 //!
 //! Three commands, and the shape of them is the point:

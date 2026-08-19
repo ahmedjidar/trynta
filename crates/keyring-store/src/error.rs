@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Redacting error types for the store.
 //!
 //! CLAUDE.md §4.6: no secret ever reaches an error string. `StoreError` carries

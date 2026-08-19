@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Types that cross the IPC boundary.
 //!
 //! CLAUDE.md §5: Rust types are the source of truth. These derive `ts-rs`, which

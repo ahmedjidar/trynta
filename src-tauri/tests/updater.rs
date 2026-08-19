@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The update channel's configuration invariants (SPEC-V1 §7.7, CLAUDE.md §4.11, §4.12).
 //!
 //! The cadence and the version guard are unit-tested inside

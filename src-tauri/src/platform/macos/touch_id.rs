@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Touch ID, via the Keychain's biometry access control (SPEC-V1 §5.1, §8).
 //!
 //! **UNVERIFIED PLATFORM (ADD-005).** Never compiled. Signatures were read out of

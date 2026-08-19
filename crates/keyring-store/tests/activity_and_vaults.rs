@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Activity records and vault mutations (SPEC-V1 §4.2, §4.3, §7.5).
 //!
 //! The property worth protecting here is the one §4.3 exists for: an activity

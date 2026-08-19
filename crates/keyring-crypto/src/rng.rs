@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The only source of randomness in the product.
 //!
 //! SPEC-V1 §3.2: OS CSPRNG only. Never a seeded or userspace PRNG for anything

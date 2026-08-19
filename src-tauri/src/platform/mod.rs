@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Platform abstraction: biometrics, clipboard, secure storage.
 //!
 //! CLAUDE.md §6: anything platform-specific lives behind a trait here with a

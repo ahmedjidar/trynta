@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Just enough big-integer arithmetic to count a character space exactly.
 //!
 //! SPEC-V1 §7.3 says the generator's entropy must be computed by

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Maintaining and verifying the vault manifest (SPEC-V1 §3.5).
 //!
 //! The root is recomputed linearly on every write. At 10,000 items that is well

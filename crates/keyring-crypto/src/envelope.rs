@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The self-describing envelope every ciphertext is stored in.
 //!
 //! SPEC-V1 §3.3:

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Trynta cryptographic core.
 //!
 //! This crate is deliberately isolated: it depends on nothing else in the

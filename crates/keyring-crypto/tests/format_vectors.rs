@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Pinned vectors for Trynta's *own* on-disk encodings.
 //!
 //! SPEC-V1 §3.3 and §3.5 warn that two implementations disagreeing about these

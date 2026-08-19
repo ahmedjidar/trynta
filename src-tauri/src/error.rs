@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Redacting error types for the application shell.
 //!
 //! CLAUDE.md §4.6: no secret ever reaches a log, a panic message, a `Debug` impl

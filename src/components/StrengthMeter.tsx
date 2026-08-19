@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Four segments that fill **and collapse** left-to-right with a 60ms stagger.
  *

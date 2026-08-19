@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The live one-time code (SPEC-V1 §6, §7.2).
 //!
 //! One command, and the shape of it is the point: `totp_current` returns a

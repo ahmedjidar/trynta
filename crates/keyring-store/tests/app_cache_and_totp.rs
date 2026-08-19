@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The encrypted key/value table, and the TOTP configuration round trip.
 //!
 //! Two things, both about data surviving a write:

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * The one-time code row — components.md §6, SPEC-V1 §7.2.
  *

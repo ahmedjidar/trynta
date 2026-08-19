@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! A user-supplied icon survives save → lock → reopen (ADD-001 tier 2).
 //!
 //! The processing pipeline has its own unit tests; this is about the other half —

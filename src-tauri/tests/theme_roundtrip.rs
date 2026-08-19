@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Everything this app exports as a theme must import again.
 //!
 //! `theme_export` writes out the token layer as it stands in the running document.

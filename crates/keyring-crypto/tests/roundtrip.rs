@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Round-trip property tests.
 //!
 //! CLAUDE.md §8. The interesting cases are the boundaries: empty plaintexts,

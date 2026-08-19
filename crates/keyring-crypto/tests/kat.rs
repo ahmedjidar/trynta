@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Known-answer tests against published vectors.
 //!
 //! CLAUDE.md §8. Every primitive in the key hierarchy is checked against a value

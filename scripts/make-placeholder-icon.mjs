@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Emits a deliberately plain 1024×1024 source PNG for `pnpm tauri icon`.
 //
 // PLACEHOLDER: awaiting handoff app-icon. The application icon is a design

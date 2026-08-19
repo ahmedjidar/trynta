@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! `SQLite` schema and the two-phase migration framework (SPEC-V1 §4.4, §4.6).
 //!
 //! Three different things are called "version" in this system and they must

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Keychain-backed secure store (SPEC-V1 §8).
 //!
 //! **UNVERIFIED PLATFORM (ADD-005).** Never compiled. Every signature below was

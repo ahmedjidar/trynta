@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! A pasted `otpauth://` URI survives save → lock → reopen and still authenticates.
 //!
 //! ADD-004 §④ records a shipped bug: `secret_ct` once held only the seed, so an item

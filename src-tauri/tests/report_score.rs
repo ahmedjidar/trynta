@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The vault health score (SPEC-V1 §7.4, AC13).
 //!
 //! AC13 asks for three things from the score itself: the breakdown adds up, the

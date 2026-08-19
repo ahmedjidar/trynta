@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Key material is unreachable after lock (SPEC-V1 §11, CLAUDE.md §8).
 //!
 //! Run in `--release` as well as debug. Release is where a `Drop` can be elided

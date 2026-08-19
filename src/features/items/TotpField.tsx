@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * The one-time-code editor: paste a QR link or type the setup key.
  *

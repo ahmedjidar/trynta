@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Processing a user-supplied icon (ADD-001 tier 2).
 //!
 //! Everything here runs in Rust and nothing runs in the webview. The webview never sees

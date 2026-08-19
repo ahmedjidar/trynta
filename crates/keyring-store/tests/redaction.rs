@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! No secret-bearing store type may print a secret (CLAUDE.md §4.6, §8).
 //!
 //! `keyring-crypto` has had this test since run 1, but it can only see its own

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The IPC command surface (SPEC-V1 §6).
 //!
 //! CLAUDE.md §5: `commands/` orchestrates and never contains business logic.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * iOS switch: 40×24 track, 20px knob, 2px→18px travel on the design's spring curve.
  *

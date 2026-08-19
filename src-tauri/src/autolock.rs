@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Auto-lock policy (SPEC-V1 §5.2).
 //!
 //! Pure decision logic, deliberately separated from the thing that holds keys:

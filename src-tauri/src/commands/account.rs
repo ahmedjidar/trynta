@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Account-level commands: create, unlock, lock, status (SPEC-V1 §5, §6).
 //!
 //! `account_*` operates on the database and the identity; `vault_*` operates on

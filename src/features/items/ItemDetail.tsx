@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Item detail — SPEC-V1 §7.1, §7.2.
  *

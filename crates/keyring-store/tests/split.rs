@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The meta/secret split (SPEC-V1 §3.4).
 //!
 //! AC02 proves no secret reaches *disk*. This proves the stronger property the

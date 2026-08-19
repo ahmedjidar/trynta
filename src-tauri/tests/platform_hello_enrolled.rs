@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The Windows Hello signing path, end to end (SPEC-V1 §5.1, §11).
 //!
 //! Separate from `platform_windows.rs` because these tests **raise a Hello

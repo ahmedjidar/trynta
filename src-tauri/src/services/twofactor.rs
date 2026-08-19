@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Which services accept an authenticator app (SPEC-V1 §7.4, "Missing 2FA").
 //!
 //! A compiled-in directory keyed by registrable domain, and a single question:

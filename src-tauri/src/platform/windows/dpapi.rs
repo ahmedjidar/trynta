@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! DPAPI-backed secure store (SPEC-V1 §8).
 //!
 //! `CryptProtectData` encrypts under a key derived from the user's login

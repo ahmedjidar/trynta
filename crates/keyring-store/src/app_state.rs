@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! `app_state` — the pre-unlock plaintext carve-out (SPEC-V1 §4.5).
 //!
 //! Theme, biometric-enabled and unlock backoff have to be readable *before* the

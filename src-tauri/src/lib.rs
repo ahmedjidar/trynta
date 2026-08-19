@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Trynta application shell.
 //!
 //! This crate stays thin by construction: `commands/` orchestrates and never

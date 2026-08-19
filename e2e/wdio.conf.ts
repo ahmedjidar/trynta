@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * E2E harness — WebdriverIO against the real Tauri binary (SPEC-V1 §11, AC17b, AC18).
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Pure services: logic that needs neither Tauri nor the store.
 //!
 //! CLAUDE.md §5 puts `generator`, `strength`, `totp`, `breach`, `icons` and

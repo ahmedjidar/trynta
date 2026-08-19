@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Validation of imported themes (SPEC-V1 §7.6, AC19).
 //!
 //! > **An imported theme is untrusted input.** `background: url(https://attacker/…)`

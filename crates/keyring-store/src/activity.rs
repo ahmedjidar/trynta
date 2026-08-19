@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Per-item activity — its own table, never the item payload (SPEC-V1 §4.3).
 //!
 //! Rev 1 of the spec put activity inside the item payload, and §4.3 records why

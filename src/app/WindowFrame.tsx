@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * The window's own surface: the app's background, and the corner behaviour that goes
  * with a frameless window.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The lock/unlock state machine (SPEC-V1 §5).
 //!
 //! ```text

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Backup export and restore (SPEC-V1 §7.8).
 //!
 //! `keyring-store` already owns the format, the manifest signature and the

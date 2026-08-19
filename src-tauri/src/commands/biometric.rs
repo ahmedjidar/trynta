@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Biometric unlock, end to end (SPEC-V1 §5, §7.5; AC06).
 //!
 //! Every piece of this existed and none of it was connected. `platform::biometric`

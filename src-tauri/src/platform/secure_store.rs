@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! OS-backed storage for the biometric key wrap (SPEC-V1 §8).
 //!
 //! Keychain on macOS, DPAPI on Windows. This holds the *wrapped* MUK — never

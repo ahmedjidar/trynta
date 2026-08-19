@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Item list behaviour — SPEC-V1 §7.1, and the accessibility gaps the design lists.
  *

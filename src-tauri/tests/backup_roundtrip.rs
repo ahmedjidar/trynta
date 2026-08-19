@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! `.tryntabak` export and restore (SPEC-V1 §7.8, AC15).
 //!
 //! AC15: *"Backup export → wipe → restore → identical vault."*

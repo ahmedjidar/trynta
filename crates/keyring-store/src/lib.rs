@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Trynta encrypted store — schema, two-phase migrations, item repository.
 //!
 //! Depends on `keyring-crypto` and nothing else in the workspace: no Tauri, no

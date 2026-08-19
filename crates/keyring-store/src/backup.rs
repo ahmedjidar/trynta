@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! `.tryntabak` export and restore (SPEC-V1 §7.8, AC15).
 //!
 //! Run 1 froze the 228-byte header (ADD-003 §④) and deliberately left the body to

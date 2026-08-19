@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! [`VaultFile`] and [`Session`]: opening, unlocking, and the repository.
 //!
 //! The order of operations in [`VaultFile::unlock_with`] is the security-

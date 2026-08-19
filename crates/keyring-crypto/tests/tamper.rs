@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tamper tests.
 //!
 //! CLAUDE.md §8: every ciphertext bit-flip must fail authentication. Not a

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * The mark an item gets when no brand icon and no custom icon apply.
  *

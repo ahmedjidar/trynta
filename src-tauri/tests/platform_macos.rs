@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Real macOS platform behaviour (SPEC-V1 §8, §11).
 //!
 //! **These have never run.** ADD-005 makes Windows the verified platform; this

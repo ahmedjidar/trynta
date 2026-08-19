@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The encrypted settings blob (SPEC-V1 §7.5, §4.4a).
 //!
 //! §7.5: *"Encrypted in the vault, except the §4.5 list."* So there are two

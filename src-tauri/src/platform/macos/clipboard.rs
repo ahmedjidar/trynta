@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! `NSPasteboard` with the concealed-type marker (SPEC-V1 §8).
 //!
 //! **UNVERIFIED PLATFORM (ADD-005).** Nothing in this file has ever been

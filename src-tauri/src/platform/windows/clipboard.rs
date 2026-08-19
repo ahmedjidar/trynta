@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Win32 clipboard with history and Cloud Clipboard exclusion.
 //!
 //! SPEC-V1 §8 singles this out: *"The Windows clipboard-history exclusion is

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Auto-clear actually clears, checked by reading the clipboard back.
 //!
 //! The bug this exists for: `item_copy_field` wrote the secret, stored the ownership

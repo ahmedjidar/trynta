@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Item identity: bundled brand marks, user-supplied icons, and the generated shape
 //! that stands in for the rest (ADD-001).
 //!

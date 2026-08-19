@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // ─────────────────────────────────────────────────────────────────────────────
 // Validate the vendored EFF long wordlist (SPEC-V1 §7.3).
 //

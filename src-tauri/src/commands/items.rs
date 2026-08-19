@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Item commands (SPEC-V1 §6, §7.1, §7.2).
 //!
 //! This is the module the security invariants are actually about, so it is worth

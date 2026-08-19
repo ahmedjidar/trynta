@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! A write that changes a list column must rebuild the index.
 //!
 //! `items_list` does not read the store. It reads the in-memory `SearchIndex` built

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Typed bindings for every Rust command (SPEC-V1 §6).
  *

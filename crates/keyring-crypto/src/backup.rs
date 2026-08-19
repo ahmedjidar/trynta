@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! `.tryntabak` v1 — **format only**.
 //!
 //! ADD-003 §④: the byte layout is frozen here, in run 1, while the format work is

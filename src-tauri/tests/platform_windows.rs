@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Real Windows platform behaviour (SPEC-V1 §8, §11).
 //!
 //! These run against the actual OS, not a mock. `#![cfg(windows)]` rather than

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! RFC 4648 base32 decoding, for TOTP shared secrets.
 //!
 //! Every authenticator on earth hands out its shared secret as base32, so

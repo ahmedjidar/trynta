@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Frozen vectors for the `.tryntabak` v1 header (ADD-003 §④).
 //!
 //! Format only — export and restore are run 2. Freezing the bytes now means run

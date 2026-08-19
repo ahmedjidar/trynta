@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Where the vault lives on each platform (SPEC-V1 §8).
 //!
 //! ```text

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The vault health score and reuse detection (SPEC-V1 §7.4).
 //!
 //! The score is required to be **deterministic, explainable, and shown with its

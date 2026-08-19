@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Settings commands (SPEC-V1 §6, §7.5).
 //!
 //! §7.5: *"Encrypted in the vault, except the §4.5 list."* So a settings read spans two

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Shared overlay chrome: blurred scrim, click-outside to dismiss, spring entry.
  *

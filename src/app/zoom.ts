@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Interface scale — `Ctrl`/`Cmd` with `+`, `-` and `0`.
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * What a theme file has to look like, and a way to get one to edit.
  *

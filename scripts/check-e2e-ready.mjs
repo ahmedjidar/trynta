@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Whether the E2E harness can run, and exactly what is missing if it cannot.
 //
 // The harness drives the real Tauri binary through `tauri-driver`, which on Windows

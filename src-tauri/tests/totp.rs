@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! TOTP against RFC 6238's published vectors (SPEC-V1 §4.1, §7.2, AC11).
 //!
 //! AC11: *"TOTP matches a reference implementation for SHA1/256/512 and 6/8

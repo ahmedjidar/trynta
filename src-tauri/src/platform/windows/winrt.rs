@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Blocking waits on `WinRT` async operations.
 //!
 //! The `windows` crate re-exports the four `WinRT` async types but keeps the

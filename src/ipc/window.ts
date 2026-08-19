@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * The window itself: revealing it, and the controls that replace the OS titlebar.
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Security-report commands (SPEC-V1 §6, §7.4).
 //!
 //! This module reads every login's password, which makes it the second-largest

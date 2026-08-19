@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // ADD-002 Q1 / ADD-003 §②: the crypto path resolves exactly one generation.
 //
 // `deny.toml` enforces single-version across the workspace, but it has to

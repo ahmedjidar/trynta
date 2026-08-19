@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // CLAUDE.md §4.7 / ADD-001 / SPEC-V1 §11 AC14: exactly three outbound requests exist
 // in this product, and adding a fourth is a spec change.
 //

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The canonical 43-byte associated-data encoding.
 //!
 //! SPEC-V1 §3.3: fixed order, fixed width, big-endian, no separators. Written

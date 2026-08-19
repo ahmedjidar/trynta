@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Theme commands (SPEC-V1 §6, §7.6).
 //!
 //! Three things live here and the split between them is the whole design:

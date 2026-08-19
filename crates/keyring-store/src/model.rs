@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The item and vault domain model (SPEC-V1 §4.1, §4.2).
 //!
 //! The split that matters is [`ItemMetaPayload`] vs [`ItemSecretPayload`]: they

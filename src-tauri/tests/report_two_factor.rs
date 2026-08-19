@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The report over a real vault, with no 2FA directory (SPEC-V1 §7.4, AC13, AC14).
 //!
 //! `report_score.rs` checks the arithmetic against hand-built [`HealthInputs`].
