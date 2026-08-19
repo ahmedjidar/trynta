@@ -192,6 +192,27 @@ never been parsed by anything.
 | H5  | Corner radius                    | The window wears the system radius, and no app-coloured square peeks past it                                       | visual, on a light desktop background. Windows leaves the corner to DWM for the same reason                                                                             |
 | H6  | `isMaximized` on a zoomed window | The restore/maximise glyph is not rendered on macOS at all, so nothing to check — but `WindowFrame` still reads it | it drives the frame's hairline; a wrong answer there is cosmetic, not functional                                                                                        |
 
+## J — Hide from screen capture
+
+`settings_set` and the startup hook both call Tauri's `set_content_protected`. On
+Windows that is `SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)` and is verified; on
+macOS it is `NSWindow.sharingType = .none`, which no build of this has ever reached.
+
+The two platforms fail differently, and that is the reason this section exists.
+`WDA_EXCLUDEFROMCAPTURE` hands the compositor a blank region, so a recorder gets black.
+`sharingType` is advisory to _screen sharing_ and has historically not covered every
+capture path — `screencapture`, ScreenCaptureKit and QuickTime have each behaved
+differently across releases. A setting whose label says "hide from screen capture" and
+which only hides from some of them is worse than one that says what it does, so the
+answer to J2 decides whether the macOS copy needs to change.
+
+| #   | Check                           | Expected                                                                                                         | How                                                                                                                            |
+| --- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| J1  | The call reaches the window     | Toggling the setting does not log `could not change the window's capture protection`                             | turn it on in Settings, then read the app's `tracing` output. Failure is deliberately non-fatal, so the log is the only signal |
+| J2  | It covers the capture paths     | `⌘⇧4`, `screencapture -x`, QuickTime screen recording and a Zoom/Teams share all show a blank or excluded window | do all four with the setting on. Record which, if any, still show the vault — this is the finding that decides the copy        |
+| J3  | It survives a relaunch          | The window is protected before the lock screen appears, not after unlock                                         | enable it, quit, relaunch, and capture the **lock screen**. The flag lives in `app_state` precisely so this works pre-unlock   |
+| J4  | Turning it off really turns off | The window is capturable again without a relaunch                                                                | toggle off, capture again. `WDA_NONE` is immediate on Windows; check macOS does not need the window recreated                  |
+
 ## I — Interface scale
 
 | #   | Check                      | Expected                                                 | How                                                                                                                                                             |
