@@ -45,6 +45,7 @@ import type { SecretFieldDto } from './generated/SecretFieldDto';
 import type { SecurityReportDto } from './generated/SecurityReportDto';
 import type { SettingsDto } from './generated/SettingsDto';
 import type { SettingsPatch } from './generated/SettingsPatch';
+import type { TotpConfigInput } from './generated/TotpConfigInput';
 import type { VaultStateDto } from './generated/VaultStateDto';
 import type { VaultSummaryDto } from './generated/VaultSummaryDto';
 
@@ -606,6 +607,50 @@ export function generatorHistoryClear(): Promise<void> {
 }
 
 // ── TOTP (SPEC-V1 §7.2) ─────────────────────────────────────────────────────
+
+/**
+ * Read a one-time-code setup the user pasted, as a URI or a bare secret.
+ *
+ * Accepts both things services hand out and calls "the code": the
+ * `otpauth://totp/...` URI behind a QR image, and the bare base32 string sites
+ * print when they offer no QR at all. Which one it is is detected, not asked.
+ *
+ * Parsing is in Rust so the parameters that reach storage are the ones the URI
+ * carried. Dropping `algorithm=SHA256` in a TypeScript parser would store SHA-1
+ * and generate codes that never work — a bug ADD-004 §④ records having shipped
+ * once already.
+ *
+ * The returned object is ready to hand straight to {@link itemUpsert} as
+ * `body.totp`.
+ *
+ * @param input - An `otpauth://` URI or a base32 secret, as pasted.
+ * @throws {IpcError} `totpRejected`, carrying a {@link TotpRejectionDto} saying
+ * which rule failed. The input is never echoed back in the error: it is a shared
+ * secret.
+ *
+ * @beta
+ */
+export function totpParse(input: string): Promise<TotpConfigInput> {
+  return call<TotpConfigInput>('totp_parse', { input });
+}
+
+/**
+ * Attach, replace or remove an item's one-time-code setup.
+ *
+ * Pass `null` to remove one; nothing else about the item changes. Separate from
+ * {@link itemEditMeta} because the seed belongs in `secret_ct`, and separate from
+ * {@link itemUpsert} because the detail view does not hold the password.
+ *
+ * @returns Whether anything changed. Writing the same configuration twice does not
+ * burn a revision.
+ * @throws {IpcError} `notFound` if the item is absent or is not a login. Also
+ * `locked`, `storage`.
+ *
+ * @beta
+ */
+export function itemSetTotp(id: string, totp: TotpConfigInput | null): Promise<boolean> {
+  return call<boolean>('item_set_totp', { id, totp });
+}
 
 /**
  * The current one-time code for an item, with its countdown.

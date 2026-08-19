@@ -630,6 +630,36 @@ pub enum TotpAlgorithmDto {
     Sha512,
 }
 
+/// Why a pasted one-time-code setup was refused (SPEC-V1 §4.1).
+///
+/// A closed enum rather than a message string, for two reasons that pull the same
+/// way. The obvious one: the thing being validated **is a shared secret**, and an
+/// error that quoted its input would put a TOTP seed into every log and error path
+/// that touches it (CLAUDE.md §4.6). The less obvious one: "the input is not
+/// valid" is useless to someone holding a QR code they cannot scan. *Which* rule
+/// failed is exactly what they need, and it is not sensitive.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub enum TotpRejectionDto {
+    /// Characters outside the RFC 4648 base32 alphabet.
+    NotBase32,
+    /// Valid base32, but it decoded to nothing.
+    EmptySecret,
+    /// Valid base32 characters that do not form whole bytes.
+    TruncatedSecret,
+    /// An `otpauth://` URI with no `secret` parameter.
+    MissingSecret,
+    /// Looked like a URI but was not `otpauth://totp/...`.
+    NotOtpauthUri,
+    /// `otpauth://hotp/` — counter-based, which this product does not implement.
+    CounterBased,
+    /// `digits` was neither 6 nor 8.
+    UnsupportedDigits,
+    /// `period` was zero.
+    UnsupportedPeriod,
+}
+
 impl From<TotpAlgorithmDto> for TotpAlgorithm {
     fn from(a: TotpAlgorithmDto) -> Self {
         match a {

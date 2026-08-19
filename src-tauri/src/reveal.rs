@@ -52,6 +52,8 @@ pub struct RevealLimiter {
     at: VecDeque<i64>,
     /// Set when the limit is hit, cleared by a successful re-auth.
     reauth_pending: bool,
+    /// Set by a confirmation and cleared by the reveal that spends it.
+    fresh_reauth: bool,
 }
 
 impl RevealLimiter {
@@ -61,6 +63,7 @@ impl RevealLimiter {
         Self {
             at: VecDeque::new(),
             reauth_pending: false,
+            fresh_reauth: false,
         }
     }
 
@@ -93,12 +96,25 @@ impl RevealLimiter {
     pub fn reauthenticated(&mut self) {
         self.at.clear();
         self.reauth_pending = false;
+        self.fresh_reauth = true;
+    }
+
+    /// Consume the "a re-authentication just happened" flag.
+    ///
+    /// Returns `true` at most once per confirmation. This is what makes
+    /// `require_master_on_reveal` mean what it says: with the setting on, a reveal
+    /// spends a confirmation, so the next one asks again. Without a consume step the
+    /// flag would stay true and one password entry would unlock an unlimited walk of
+    /// the vault, which is the exact opposite of what the user switched on.
+    pub fn take_fresh_reauth(&mut self) -> bool {
+        std::mem::take(&mut self.fresh_reauth)
     }
 
     /// Forget everything. Called on lock.
     pub fn reset(&mut self) {
         self.at.clear();
         self.reauth_pending = false;
+        self.fresh_reauth = false;
     }
 
     /// Drop timestamps that have fallen out of the window.
@@ -119,5 +135,38 @@ pub const fn window_ms() -> i64 {
     #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
     {
         WINDOW.as_millis() as i64
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RevealLimiter;
+
+    #[test]
+    fn a_confirmation_is_spent_by_one_reveal() {
+        let mut limiter = RevealLimiter::new();
+        // Nothing has been confirmed yet, so strict mode has nothing to spend.
+        assert!(!limiter.take_fresh_reauth());
+
+        limiter.reauthenticated();
+        assert!(
+            limiter.take_fresh_reauth(),
+            "the confirmation was not available to the reveal that followed it"
+        );
+        assert!(
+            !limiter.take_fresh_reauth(),
+            "one confirmation authorised a second reveal"
+        );
+    }
+
+    #[test]
+    fn locking_discards_an_unspent_confirmation() {
+        let mut limiter = RevealLimiter::new();
+        limiter.reauthenticated();
+        limiter.reset();
+        assert!(
+            !limiter.take_fresh_reauth(),
+            "a confirmation survived the vault being locked"
+        );
     }
 }

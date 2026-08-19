@@ -36,7 +36,14 @@ import { SegmentedControl } from '../../components/SegmentedControl';
 import type { Segment } from '../../components/SegmentedControl';
 import { StrengthMeter } from '../../components/StrengthMeter';
 import { generatorPassword, itemUpsert, passwordStrength } from '../../ipc';
-import type { ItemBodyInput, ItemKindDto, StrengthDto, VaultSummaryDto } from '../../ipc';
+import type {
+  ItemBodyInput,
+  ItemKindDto,
+  StrengthDto,
+  TotpConfigInput,
+  VaultSummaryDto,
+} from '../../ipc';
+import { TotpField } from './TotpField';
 
 /** The four kinds the segmented control offers, in the design's order and glyphs. */
 const KINDS: readonly Segment<ItemKindDto>[] = [
@@ -138,6 +145,10 @@ export function NewItemSheet({
   const [kind, setKind] = useState<ItemKindDto>('login');
   const [name, setName] = useState('');
   const [fields, setFields] = useState<Partial<Record<FieldKey, string>>>(EMPTY_FIELDS);
+  // Held apart from `fields`, which is a flat string map: a TOTP configuration is
+  // six values that must travel together, and flattening it here is exactly how the
+  // parameters got separated from their seed in the first place (ADD-004 §④).
+  const [totp, setTotp] = useState<TotpConfigInput | null>(null);
   const [notes, setNotes] = useState('');
   const [vaultId, setVaultId] = useState(defaultVaultId ?? '');
   const [strength, setStrength] = useState<StrengthDto | null>(null);
@@ -207,7 +218,7 @@ export function NewItemSheet({
       tags: [],
       favorite: false,
       customFields: [],
-      body: bodyFor(kind, fields),
+      body: bodyFor(kind, fields, totp),
     }).then(
       () => {
         setSaving(false);
@@ -286,6 +297,8 @@ export function NewItemSheet({
                 ) : null}
               </GroupedRow>
             ))}
+
+            {kind === 'login' ? <TotpField value={totp} onChange={setTotp} /> : null}
 
             {kind === 'login' ? (
               <GroupedRow className="h-11">
@@ -371,7 +384,11 @@ function strengthTone(band: number): string {
 }
 
 /** Build the discriminated body the command expects from the flat field state. */
-function bodyFor(kind: ItemKindDto, f: Partial<Record<FieldKey, string>>): ItemBodyInput {
+function bodyFor(
+  kind: ItemKindDto,
+  f: Partial<Record<FieldKey, string>>,
+  totp: TotpConfigInput | null,
+): ItemBodyInput {
   switch (kind) {
     case 'login':
       return {
@@ -379,7 +396,7 @@ function bodyFor(kind: ItemKindDto, f: Partial<Record<FieldKey, string>>): ItemB
         username: f.username ?? '',
         password: f.password ?? '',
         urls: (f.website ?? '').trim() === '' ? [] : [(f.website ?? '').trim()],
-        totp: null,
+        totp,
       };
     case 'secureNote':
       return { kind: 'secureNote' };

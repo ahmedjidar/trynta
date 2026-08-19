@@ -1228,6 +1228,68 @@ pub(crate) fn item_set_custom_icon(
     Ok(true)
 }
 
+/// Attach, replace or remove an item's TOTP configuration.
+///
+/// Split across both envelopes, because a TOTP configuration is: the seed and its
+/// parameters go into `secret_ct`, and `has_totp` — which the list and the search
+/// index read, and which is not a secret — lives in `meta_ct`. Writing one without
+/// the other is how an item ends up with a badge and no code, or a code the list
+/// does not know about.
+///
+/// Only logins carry one. A card with a TOTP configuration is not a thing the
+/// model can express, so this reports `ItemNotFound` rather than silently writing
+/// a seed no reader would ever look for.
+pub(crate) fn item_set_totp(
+    conn: &Connection,
+    muk: &Muk,
+    id: Uuid,
+    totp: Option<TotpConfig>,
+    now: i64,
+) -> Result<bool, StoreError> {
+    let revision: i64 = conn
+        .query_row(
+            "SELECT revision FROM items WHERE id = ?1 AND deleted_at IS NULL",
+            [uuid_bytes(id).as_slice()],
+            |r| r.get(0),
+        )
+        .optional()?
+        .ok_or(StoreError::ItemNotFound)?;
+
+    let (item_key, key_id) = item_key(conn, muk, id)?;
+    let mut meta = read_meta_payload(conn, &item_key, id, key_id, revision.unsigned_abs())?;
+    let mut secret = read_secret(conn, &item_key, id, key_id, revision.unsigned_abs())?;
+
+    let ItemBodyMeta::Login { has_totp, .. } = &mut meta.body else {
+        return Err(StoreError::ItemNotFound);
+    };
+
+    let (next_secret, next_params) = match &totp {
+        Some(config) => (
+            Some(config.secret.clone()),
+            Some(TotpParams::from_config(config)),
+        ),
+        None => (None, None),
+    };
+    if secret.totp_secret == next_secret && secret.totp_params == next_params {
+        return Ok(false);
+    }
+
+    *has_totp = totp.is_some();
+    secret.totp_secret = next_secret;
+    secret.totp_params = next_params;
+
+    let next = revision.saturating_add(1);
+    let (meta_ct, secret_ct) =
+        seal_payloads(&item_key, id, key_id, next.unsigned_abs(), &meta, &secret)?;
+
+    conn.execute(
+        "UPDATE items SET meta_ct = ?1, secret_ct = ?2, revision = ?3, updated_at = ?4 \
+         WHERE id = ?5",
+        rusqlite::params![meta_ct, secret_ct, next, now, uuid_bytes(id).as_slice()],
+    )?;
+    Ok(true)
+}
+
 /// Decrypt exactly one secret field.
 pub(crate) fn item_secret(
     conn: &Connection,

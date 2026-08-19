@@ -324,6 +324,11 @@ impl SessionManager {
         self.lock_inner().reveals.reauthenticated();
     }
 
+    /// Consume a pending confirmation, for `require_master_on_reveal`.
+    pub fn take_fresh_reauth(&self) -> bool {
+        self.lock_inner().reveals.take_fresh_reauth()
+    }
+
     /// Remember that we put `token` on the clipboard.
     pub fn note_clipboard_write(&self, token: u64) {
         self.lock_inner().clipboard_token = Some(token);

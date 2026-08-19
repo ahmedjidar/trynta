@@ -44,6 +44,7 @@ export {
   itemCopyField,
   itemIcon,
   itemSetIcon,
+  itemSetTotp,
   itemDelete,
   itemEditMeta,
   itemGet,
@@ -66,6 +67,7 @@ export {
   themeList,
   themeSet,
   totpCurrent,
+  totpParse,
   updateCheck,
   updateChecksSetEnabled,
   updateInstall,
@@ -121,6 +123,7 @@ export type { ThemeModeDto } from './generated/ThemeModeDto';
 export type { ThemeVariantDto } from './generated/ThemeVariantDto';
 export type { TotpAlgorithmDto } from './generated/TotpAlgorithmDto';
 export type { TotpConfigInput } from './generated/TotpConfigInput';
+export type { TotpRejectionDto } from './generated/TotpRejectionDto';
 export type { UpdateCheckDto } from './generated/UpdateCheckDto';
 export type { UpdateInfoDto } from './generated/UpdateInfoDto';
 export type { UpdateStatusDto } from './generated/UpdateStatusDto';

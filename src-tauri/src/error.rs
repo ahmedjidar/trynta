@@ -13,6 +13,7 @@ use std::fmt;
 
 use keyring_store::{StoreError, UnlockError};
 
+use crate::commands::dto::TotpRejectionDto;
 use crate::session::SessionError;
 
 /// An error crossing the IPC boundary.
@@ -92,6 +93,15 @@ pub enum AppError {
     UpdateFailed,
     /// The input did not validate.
     Invalid,
+    /// A one-time-code setup was refused, and which rule it broke.
+    ///
+    /// Separate from [`Self::Invalid`] because the value being validated is a
+    /// shared secret: the reason is a closed enum so the UI can be specific
+    /// without the input ever reaching an error string (SPEC-V1 §4.1).
+    TotpRejected {
+        /// Which rule the input broke.
+        reason: TotpRejectionDto,
+    },
 }
 
 impl fmt::Display for AppError {
@@ -115,6 +125,7 @@ impl fmt::Display for AppError {
             Self::Crypto => "a cryptographic operation failed",
             Self::Biometric => "biometric unlock is unavailable",
             Self::Invalid => "the input is not valid",
+            Self::TotpRejected { .. } => "that one-time-code setup could not be read",
         };
         f.write_str(s)
     }

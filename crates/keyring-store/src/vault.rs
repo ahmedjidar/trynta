@@ -910,6 +910,29 @@ impl Session<'_> {
         Ok(changed)
     }
 
+    /// Attach, replace or remove an item's TOTP configuration (SPEC-V1 §4.1).
+    ///
+    /// Returns whether anything changed; writing the same configuration twice does
+    /// not burn a revision. Only a login can hold one.
+    ///
+    /// # Errors
+    ///
+    /// [`StoreError::ItemNotFound`] if the item is absent or is not a login,
+    /// [`StoreError::Database`], or [`StoreError::Crypto`].
+    ///
+    /// # Panics
+    ///
+    /// If an internal lock is poisoned, which can only happen if another thread
+    /// panicked while holding it.
+    pub fn item_set_totp(&self, id: Uuid, totp: Option<TotpConfig>) -> Result<bool, StoreError> {
+        let conn = self.file.conn.lock().expect("connection lock");
+        let changed = repository::item_set_totp(&conn, &self.keys.muk, id, totp, now_ms())?;
+        if changed {
+            self.reseal(&conn)?;
+        }
+        Ok(changed)
+    }
+
     /// The user's own icon for one item, if it has one (ADD-001).
     ///
     /// Reads and decrypts that item's `meta_ct` alone. The search index carries only a

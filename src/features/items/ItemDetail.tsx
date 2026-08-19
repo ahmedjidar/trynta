@@ -46,6 +46,7 @@ import { useItemIcon } from './useItemIcons';
 import { useThemeStore } from '../../theme/store';
 import { StrengthMeter } from '../../components/StrengthMeter';
 import { TotpRow } from './TotpRow';
+import { TotpEditRow } from './TotpEditRow';
 import { useNavigation } from '../../app/navigation';
 import { cn } from '../../lib/cn';
 import {
@@ -54,6 +55,7 @@ import {
   itemEditMeta,
   itemRevealField,
   itemSetIcon,
+  itemSetTotp,
 } from '../../ipc';
 import type {
   ItemDetailDto,
@@ -62,6 +64,7 @@ import type {
   MetaEditsInput,
   SecretFieldDto,
   SecretPresence,
+  TotpConfigInput,
 } from '../../ipc';
 
 /** Masked to a fixed width: the stored length is not a hint worth giving away. */
@@ -136,6 +139,10 @@ export function ItemDetail({
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Record<string, string>>({});
+  // `undefined` means the one-time code was not touched; `null` means remove it.
+  // Three states, because "leave it alone" and "delete it" are different intents and
+  // a two-state model would silently pick one of them.
+  const [totpEdit, setTotpEdit] = useState<TotpConfigInput | null | undefined>(undefined);
   const [saving, setSaving] = useState(false);
   const [iconBusy, setIconBusy] = useState(false);
 
@@ -204,6 +211,7 @@ export function ItemDetail({
       if (editing) {
         setEditing(false);
         setDraft({});
+        setTotpEdit(undefined);
         return;
       }
       select(null);
@@ -262,26 +270,37 @@ export function ItemDetail({
     const notes = draft.Notes;
     if (notes !== undefined && notes !== detail.notes) edits.notes = notes;
 
-    if (Object.keys(edits).length === 0) {
+    const totpChanged = totpEdit !== undefined;
+    if (Object.keys(edits).length === 0 && !totpChanged) {
       setEditing(false);
       setDraft({});
       return;
     }
 
+    // The one-time code lives in the secret envelope and the rest is metadata, so
+    // saving both is two commands. Metadata goes first: if the second write fails
+    // the user is told, and the pending TOTP change is kept so a retry re-sends
+    // only what has not landed rather than reapplying an edit that already did.
+    const metaWrite =
+      Object.keys(edits).length === 0 ? Promise.resolve(false) : itemEditMeta(detail.id, edits);
+
     setSaving(true);
-    itemEditMeta(detail.id, edits).then(
-      () => {
-        setSaving(false);
-        setEditing(false);
-        setDraft({});
-        onEdited();
-        onCopied('Changes saved');
-      },
-      () => {
-        setSaving(false);
-        onFailed('Could not save the changes');
-      },
-    );
+    metaWrite
+      .then(() => (totpChanged ? itemSetTotp(detail.id, totpEdit ?? null) : Promise.resolve(false)))
+      .then(
+        () => {
+          setSaving(false);
+          setEditing(false);
+          setDraft({});
+          setTotpEdit(undefined);
+          onEdited();
+          onCopied('Changes saved');
+        },
+        () => {
+          setSaving(false);
+          onFailed('Could not save the changes');
+        },
+      );
   }
 
   /**
@@ -423,7 +442,13 @@ export function ItemDetail({
             </GroupedRow>
           ) : null}
 
-          {rows.totp ? (
+          {editing && detail.kind === 'login' ? (
+            <TotpEditRow
+              configured={rows.totp !== undefined}
+              pending={totpEdit}
+              onChange={setTotpEdit}
+            />
+          ) : rows.totp ? (
             <TotpRow
               itemId={detail.id}
               title={detail.title}

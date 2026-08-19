@@ -32,7 +32,7 @@
 #![allow(clippy::needless_pass_by_value)]
 
 use keyring_store::{AppCacheKey, AppStateKey};
-use tauri::State;
+use tauri::{AppHandle, Manager as _, State};
 
 use crate::commands::dto::{DensityDto, SettingsDto, SettingsPatch};
 use crate::commands::AppState;
@@ -135,6 +135,7 @@ pub fn settings_get(state: State<'_, AppState>) -> Result<SettingsDto, AppError>
 /// cannot work.
 #[tauri::command]
 pub fn settings_set(
+    app: AppHandle,
     state: State<'_, AppState>,
     patch: SettingsPatch,
 ) -> Result<SettingsDto, AppError> {
@@ -190,9 +191,8 @@ pub fn settings_set(
             .session
             .file()?
             .state_set(AppStateKey::ContentProtectionEnabled, &value.to_string())?;
-        // ADD-002 Q11: "Toggle it at runtime, not config-only." Applying it to the live
-        // window is a run-3 platform task; the preference is stored either way so the
-        // next launch honours it.
+        // ADD-002 Q11: "Toggle it at runtime, not config-only."
+        apply_content_protection(&app, value);
     }
     if let Some(value) = patch.update_checks_enabled {
         state.session.file()?.state_set(
@@ -202,4 +202,85 @@ pub fn settings_set(
     }
 
     settings_get(state)
+}
+
+/// Apply "hide from screen capture" to the live window (ADD-002 Q11).
+///
+/// Tauri's `set_content_protected` is the platform call: on Windows it is
+/// `SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)`, which makes the compositor
+/// hand a blank region to any capture path — including the ones a user cannot see,
+/// like a screen recorder started by something else.
+///
+/// **This is applied, not merely stored.** The setting existed as a persisted flag
+/// that nothing ever read, which is the worst possible shape for a security
+/// control: the switch was on, the window was captured anyway, and the UI said it
+/// was protected. A toggle that does nothing is worse than no toggle.
+///
+/// Failure is logged and swallowed rather than propagated. The window handle can
+/// legitimately be gone — mid-shutdown, or on a platform build without the
+/// affinity API — and refusing to save an otherwise valid settings change because
+/// a decoration could not be applied would be the wrong trade. The UI reads the
+/// stored value back, so it never claims success on its own.
+///
+/// **UNVERIFIED on macOS**: `set_content_protected` maps to `NSWindow`'s
+/// `sharingType = .none` there, and no build of this has run on Apple hardware.
+/// See MACOS-UNVERIFIED.md.
+pub fn apply_content_protection(app: &AppHandle, enabled: bool) {
+    let Some(window) = app.get_webview_window("main") else {
+        tracing::debug!("no main window while applying content protection");
+        return;
+    };
+    if let Err(error) = window.set_content_protected(enabled) {
+        // The error carries a window-system message, never anything from the vault.
+        tracing::warn!(%error, "could not change the window's capture protection");
+    }
+}
+
+/// Whether capture protection was switched on, read before any unlock.
+///
+/// Opens the vault file if it is not already attached, because at startup nothing
+/// has. Only `app_state` is touched, which is plaintext and exhaustively
+/// enumerated (SPEC-V1 §4.5) — no key material is involved and no unlock happens.
+///
+/// Every failure means "off": a missing vault on first run, an unreadable file, a
+/// value that does not parse. Failing closed here would mean a first-run window
+/// that is invisible to the user's own screenshots with no way to have asked for
+/// it, which is not a safer default, just a stranger one.
+#[must_use]
+pub fn content_protection_at_startup(state: &AppState) -> bool {
+    if let Ok(file) = state.session.file() {
+        return read_protection_flag(&file);
+    }
+    if !state.vault_path.exists() {
+        return false;
+    }
+    let Ok(file) = keyring_store::VaultFile::open(&state.vault_path) else {
+        return false;
+    };
+    let file = std::sync::Arc::new(file);
+    state.session.attach(std::sync::Arc::clone(&file));
+    read_protection_flag(&file)
+}
+
+/// The stored flag, defaulting to off.
+fn read_protection_flag(file: &keyring_store::VaultFile) -> bool {
+    file.state_get(AppStateKey::ContentProtectionEnabled)
+        .ok()
+        .flatten()
+        .and_then(|raw| raw.trim().parse::<bool>().ok())
+        .unwrap_or(false)
+}
+
+/// Whether the user asked for each reveal to be confirmed (SPEC-V1 §7.5).
+///
+/// Read from the encrypted settings blob on every reveal rather than cached. A
+/// cache would be one more thing to invalidate when the setting changes, and a
+/// stale `false` here is a security control that silently stopped working — the
+/// failure this function exists to fix.
+///
+/// # Errors
+///
+/// [`AppError::Locked`] if the vault is not open, or a storage error.
+pub fn reveal_requires_master(state: &State<'_, AppState>) -> Result<bool, AppError> {
+    Ok(load(state)?.require_master_on_reveal)
 }

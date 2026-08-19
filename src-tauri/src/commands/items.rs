@@ -120,6 +120,22 @@ pub fn item_reveal_field(
     id: Uuid,
     field: SecretFieldDto,
 ) -> Result<String, AppError> {
+    // Two gates, and they are different rules.
+    //
+    // The rolling limit (§6) exists to notice a *walk* of the vault: twenty reveals
+    // in a minute is not how anyone uses a password manager, so it asks once and
+    // then lets the user carry on.
+    //
+    // `require_master_on_reveal` (§7.5) is the user saying they want each reveal
+    // confirmed. It has to consume the confirmation, or one password entry would
+    // authorise every reveal that followed it and the setting would be decoration —
+    // which is what it was: the flag was stored, shown in settings, and never read.
+    if crate::commands::settings::reveal_requires_master(&state)?
+        && !state.session.take_fresh_reauth()
+    {
+        return Err(AppError::ReauthRequired);
+    }
+
     if state.session.check_reveal() == Gate::ReauthRequired {
         return Err(AppError::ReauthRequired);
     }

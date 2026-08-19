@@ -28,6 +28,7 @@ use crate::autolock::SystemClock;
 use crate::commands::AppState;
 use crate::platform::Platform;
 use crate::session::SessionManager;
+use tauri::Manager as _;
 
 /// Build and run the Tauri application.
 ///
@@ -55,6 +56,19 @@ pub fn run() {
         // download or an install on its own.
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppState::new(session, vault_path))
+        // "Hide from screen capture" has to survive a restart, and the flag lives in
+        // `app_state`, which is readable before unlock precisely so decisions like this
+        // one can be made while the vault is still closed (SPEC-V1 §4.5). Reading it here
+        // means the window is protected from the moment it appears rather than from the
+        // moment the user unlocks — the setting says "hide the app", not "hide the vault".
+        .setup(|app| {
+            let state = app.state::<AppState>();
+            let enabled = commands::settings::content_protection_at_startup(&state);
+            if enabled {
+                commands::settings::apply_content_protection(app.handle(), true);
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::account::account_status,
             commands::account::account_state,
@@ -92,6 +106,8 @@ pub fn run() {
             commands::generator::generator_history_copy,
             commands::generator::generator_history_clear,
             commands::totp::totp_current,
+            commands::totp::totp_parse,
+            commands::totp::item_set_totp,
             commands::security::security_report_run,
             commands::security::security_breach_check,
             commands::app::app_platform_info,
