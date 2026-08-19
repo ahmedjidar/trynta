@@ -56,6 +56,15 @@ export interface ThemeState {
   setMode: (mode: ThemeMode) => Promise<void>;
   /** Activate an imported theme, or `null` for the built-in palette. */
   setTheme: (id: string | null) => Promise<void>;
+  /**
+   * Drop the imported themes and go back to the built-in palette.
+   *
+   * Called on lock. The values came out of the encrypted settings blob, and §4.9's
+   * "lock is real" does not have an exception for the ones that happen to be
+   * colours: after a lock the webview should hold no more than the lock screen
+   * needs, which is the mode and nothing else.
+   */
+  forget: () => void;
   /** Re-read after unlock, when imported themes become available. */
   refresh: () => Promise<void>;
 }
@@ -131,6 +140,10 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
     const mode = catalogue.mode;
     const resolved = resolveTheme(mode);
     applyTheme(resolved);
+    // Before the first `applyImported`, which is the only moment the built-in values
+    // are certainly the ones on the root. The settings list draws a "Built-in" swatch
+    // from this; read live it would show whichever theme is active.
+    loader.noteBuiltIn();
     applyImported(catalogue.imported, catalogue.activeId);
 
     set({
@@ -168,18 +181,26 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   },
 
   setTheme: async (id) => {
+    // Captured before the optimistic set, or it reads back the id we just wrote and
+    // "restore the previous selection" restores the one that failed.
+    const previous = get().activeId;
     applyImported(get().imported, id);
     set({ activeId: id });
     try {
       await themeSet(id, get().mode);
     } catch {
       // The write failed, so the stored selection still names the old theme. Put
-      // the applied CSS back in agreement with it rather than leaving the two
-      // disagreeing — the opposite of `setMode`, because here the mismatch would
-      // persist visibly instead of resetting on the next launch.
-      const previous = get().activeId;
+      // the applied CSS *and* the store back in agreement with it rather than
+      // leaving them disagreeing — the opposite of `setMode`, because here the
+      // mismatch would persist visibly instead of resetting on the next launch.
       applyImported(get().imported, previous);
+      set({ activeId: previous });
     }
+  },
+
+  forget: () => {
+    applyImported([], null);
+    set({ imported: [], activeId: null });
   },
 
   refresh: async () => {

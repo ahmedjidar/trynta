@@ -49,6 +49,7 @@ import {
   themeImportFile,
 } from '../../ipc';
 import { ReauthPrompt } from '../account/ReauthPrompt';
+import { ImportedThemes } from './ImportedThemes';
 import { ThemeFormat } from './ThemeFormat';
 import type { SettingsDto, SettingsPatch } from '../../ipc';
 
@@ -76,13 +77,22 @@ const MODES: readonly { id: ThemeMode; name: string }[] = [
  * flatten every case to "the input is not valid", for a format that had no published
  * shape. Naming the token is the difference between a file someone can fix and a file
  * they delete.
+ *
+ * Naming the token alone turned out not to be enough. "`--font-sans` has a value
+ * Trynta will not apply" tells you where to look and nothing about what to change,
+ * and the answer was a single double quote. So each message carries all three parts:
+ * which token, what was found, and what is allowed instead.
  */
 function themeRejection(error: unknown): string {
   if (!(error instanceof IpcError) || error.error.kind !== 'themeRejected') {
     return 'That theme could not be read.';
   }
-  const { reason, token } = error.error;
+  const { reason, token, found } = error.error;
   const named = token ?? 'a token';
+  // Every message below says the same three things, because a rejection that leaves
+  // any of them out sends the user back to guessing: which token, what was found in
+  // it, and what is allowed instead.
+  const at = found === null ? '' : ` (found ${found})`;
   switch (reason) {
     case 'malformed':
       return 'That file is not a Trynta theme. It needs id, name, mode and tokens.';
@@ -93,11 +103,19 @@ function themeRejection(error: unknown): string {
     case 'tooManyTokens':
       return 'That theme defines more tokens than Trynta will apply.';
     case 'notACustomProperty':
-      return `${named} is not a custom property. Keys must start with --.`;
+      return `${named} is not a custom property. Keys must start with -- and use lowercase letters, digits and dashes.`;
     case 'forbiddenFunction':
-      return `${named} uses a function that could fetch. A theme is colours only.`;
-    case 'invalidValue':
-      return `${named} has a value Trynta will not apply.`;
+      return `${named} uses a function that could fetch${at}. A theme is colours, sizes and easings only — nothing that reaches the network.`;
+    case 'unknownFunction':
+      return `${named} calls a function Trynta will not run${at}. Allowed: colour functions, var(), calc(), min(), max(), clamp(), cubic-bezier() and the filter functions.`;
+    case 'forbiddenCharacter':
+      return `${named} contains ${found === null ? 'a character' : `"${found}"`}, which a value may not. Allowed: letters, digits, spaces, # % . , - + * / ( ) _ and quotes.`;
+    case 'commentSequence':
+      return `${named} contains ${found ?? 'a comment'}. A theme value may not carry a CSS comment.`;
+    case 'unbalancedQuotes':
+      return `${named} has an unclosed quote. Quotes are for font family names and must come in pairs.`;
+    case 'valueLength':
+      return `${named} is empty or longer than 256 characters.`;
     default:
       // Unreachable while the DTO and this switch agree; a new variant lands here
       // rather than compiling to `undefined`.
@@ -342,7 +360,7 @@ export function Settings({
                   description={
                     importedThemes.length === 0
                       ? 'A theme is a set of colour values in a JSON file. It is validated in Rust before anything is applied — a theme cannot fetch, and cannot contain url().'
-                      : `${String(importedThemes.length)} imported. Pick one from the Theme row above.`
+                      : `${String(importedThemes.length)} imported. Pick one from the list below.`
                   }
                 />
                 <span className="text-control shrink-0 tabular-nums">
@@ -377,6 +395,7 @@ export function Settings({
                 </Button>
               </GroupedRow>
             </GroupedList>
+            <ImportedThemes onFailed={onFailed} onDone={onCopied} />
             <ThemeFormat onFailed={onFailed} onDone={onCopied} />
           </section>
 

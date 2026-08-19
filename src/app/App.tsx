@@ -117,6 +117,8 @@ export function App() {
 
 function Shell() {
   const hydrate = useThemeStore((s) => s.hydrate);
+  const refreshThemes = useThemeStore((s) => s.refresh);
+  const forgetThemes = useThemeStore((s) => s.forget);
   const surface = useNavigation((s) => s.surface);
   const clearCache = useClearCache();
 
@@ -170,6 +172,17 @@ function Shell() {
   }, [hydrate]);
 
   useEffect(() => {
+    // Imported themes live in the encrypted settings blob, so `theme_list` returns
+    // none of them while the vault is locked — and `hydrate` runs at mount, which is
+    // always before unlock. Without this the catalogue stayed empty for the whole
+    // session: settings counted the themes correctly, because that count comes from
+    // `settings_get`, and the picker had nothing in it. Two sources disagreeing is
+    // what made it read as "importing does nothing".
+    if (!unlocked) return;
+    void refreshThemes();
+  }, [unlocked, refreshThemes]);
+
+  useEffect(() => {
     // Ctrl/Cmd with +, - and 0. Bound before first paint so the starting level is
     // applied in the same frame the shell mounts, rather than as a visible resize.
     return bindZoomShortcuts();
@@ -193,11 +206,16 @@ function Shell() {
     // dropped costs one refetch, and a cache we kept after a successful lock is a
     // §4.9 violation. Order for the worse failure.
     clearCache();
+    // Imported themes are decrypted user data too, and they live in a zustand store
+    // that `clearCache` — which only knows about the query client — does not reach.
+    // Colours are not passwords, but §4.9 is about what the webview still holds after
+    // a lock, and it should not be a list of the user's themes by name.
+    forgetThemes();
     setSettings(null);
     accountLock().then(setAccount, () => {
       setToast('Could not lock');
     });
-  }, [clearCache]);
+  }, [clearCache, forgetThemes]);
 
   useEffect(() => {
     // §7.1 and §7.9's two global shortcuts. `metaKey || ctrlKey` rather than a platform
