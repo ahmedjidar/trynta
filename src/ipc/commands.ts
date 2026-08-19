@@ -822,6 +822,25 @@ export function themeSet(id: string | null, mode: ThemeModeDto): Promise<void> {
 export function themeImport(document: string): Promise<ThemeDto> {
   return call<ThemeDto>('theme_import', { document });
 }
+/**
+ * Choose a theme file and import it.
+ *
+ * The picker, the read and the validation all happen in Rust: the webview holds no
+ * filesystem permission, which is why this exists alongside {@link themeImport}
+ * rather than the frontend reading a file and passing the text.
+ *
+ * Importing does not activate — call {@link themeSet} for that.
+ *
+ * Resolves to `null` when the dialog is cancelled, which is not an error.
+ *
+ * @throws {IpcError} `invalid` if the document is refused, which includes every
+ * spelling of `url()`; `locked`; `storage`.
+ *
+ * @beta
+ */
+export function themeImportFile(): Promise<ThemeDto | null> {
+  return call<ThemeDto | null>('theme_import_file');
+}
 
 /**
  * Remove an imported theme, clearing the selection if it was active.

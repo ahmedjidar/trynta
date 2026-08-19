@@ -64,6 +64,7 @@ export {
   vaultSetColor,
   themeDelete,
   themeImport,
+  themeImportFile,
   themeList,
   themeSet,
   totpCurrent,

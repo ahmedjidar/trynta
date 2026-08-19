@@ -67,8 +67,20 @@ export function IdentityTile({
     // mark. Never a recoloured version of one file — ADD-001: *"Never recolour a tier-1
     // mark to fit a theme."*
     const key = icon.themed && theme !== undefined ? `${icon.key}-${theme}` : icon.key;
+    // A mark whose every ink is too dark to read on the dark tile gets a light chip
+    // behind it instead of being recoloured — ADD-001 forbids recolouring, and a
+    // recoloured brand mark is the wrong mark. Only marks the build flagged, so the
+    // ones that already read on dark are untouched. A themed pair is never flagged:
+    // the brand has already answered this question themselves.
+    const chip = icon.darkInk ? 'light' : undefined;
     return (
-      <span className={cn('tile', className)} data-size={size} data-tone="0" aria-hidden="true">
+      <span
+        className={cn('tile', className)}
+        data-size={size}
+        data-tone="0"
+        data-chip={chip}
+        aria-hidden="true"
+      >
         <img
           className="tile__icon"
           src={`/icons/${key}.svg`}

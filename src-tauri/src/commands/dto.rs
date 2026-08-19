@@ -1571,6 +1571,11 @@ pub enum IconDto {
         key: String,
         /// Whether `<key>-light.svg` / `<key>-dark.svg` exist for theme selection.
         themed: bool,
+        /// Whether every ink in the mark is too dark to read on the dark tile, so
+        /// the tile should put a light chip behind it rather than recolour it —
+        /// ADD-001 forbids recolouring, and a recoloured brand mark is the wrong
+        /// mark.
+        dark_ink: bool,
     },
     /// The user's own icon. Fetch the bytes with `item_icon`.
     Custom,
@@ -1589,7 +1594,15 @@ pub enum IconDto {
 impl From<icons::Icon> for IconDto {
     fn from(icon: icons::Icon) -> Self {
         match icon {
-            icons::Icon::Bundled { key, themed } => Self::Bundled { key, themed },
+            icons::Icon::Bundled {
+                key,
+                themed,
+                dark_ink,
+            } => Self::Bundled {
+                key,
+                themed,
+                dark_ink,
+            },
             icons::Icon::Custom => Self::Custom,
             icons::Icon::Shape { seed, tone } => Self::Shape { seed, tone },
         }

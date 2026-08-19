@@ -364,3 +364,27 @@
 .slider {
   accent-color: var(--accent);
 }
+
+/* ── Brand marks that cannot read on a dark tile ─────────────────────────────
+ *
+ * A brand mark is drawn for the background its owner publishes it on, which is
+ * almost always white. Roughly a fifth of the bundled set is therefore black or
+ * near-black ink, which vanishes on `--surface-raised` in the dark theme.
+ *
+ * ADD-001 forbids recolouring a tier-1 mark, and is right to — a recoloured brand
+ * mark is the wrong mark. So what changes is what sits *behind* it. `dark_ink` is
+ * computed per file at build time, so only the marks that need this get it:
+ * Spotify's green and Netflix's red read fine on dark and are left alone, because
+ * a white square behind them would be worse than the problem.
+ *
+ * The base theme is dark (see tokens.css), so the chip is the default and the light
+ * theme turns it off — in light, `--surface-raised` was already the right answer.
+ *
+ * Both values are token references. No colour is introduced here. */
+.tile[data-chip='light'] {
+  background: var(--surface-knob);
+}
+
+[data-theme='light'] .tile[data-chip='light'] {
+  background: var(--surface-raised);
+}

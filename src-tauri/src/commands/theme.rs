@@ -37,6 +37,7 @@ use crate::commands::AppState;
 use crate::error::AppError;
 use crate::services::settings::Settings;
 use crate::services::theme;
+use tauri_plugin_dialog::DialogExt as _;
 
 /// Read the settings blob. Requires an unlocked vault.
 fn load_settings(state: &State<'_, AppState>) -> Result<Settings, AppError> {
@@ -193,3 +194,55 @@ pub fn theme_delete(state: State<'_, AppState>, id: String) -> Result<(), AppErr
     }
     Ok(())
 }
+
+/// Choose a theme file and import it.
+///
+/// The webview holds no filesystem permission — deliberately, and it stays that
+/// way — so the picker, the read and the size check are all here, exactly as they
+/// are for a custom icon. `theme_import` still takes a document string and remains
+/// the only path validation runs through; this adds a way to *get* a document
+/// without handing the frontend a file API it should not have.
+///
+/// Returns `None` when the dialog is cancelled, which is not an error.
+///
+/// # Errors
+///
+/// [`AppError::Locked`], [`AppError::Storage`] if the file cannot be read, or
+/// [`AppError::Invalid`] if the document is refused by the validator — which
+/// includes every spelling of `url()` (SPEC-V1 §7.6).
+#[tauri::command]
+pub fn theme_import_file(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<Option<ThemeDto>, AppError> {
+    let Some(chosen) = app
+        .dialog()
+        .file()
+        .set_title("Choose a theme")
+        .add_filter("Theme", &["json"])
+        .blocking_pick_file()
+    else {
+        return Ok(None);
+    };
+    let Ok(path) = chosen.into_path() else {
+        return Err(AppError::Storage);
+    };
+
+    // A theme is a small document of token values. Refusing on length before reading
+    // keeps a large file from becoming an allocation, the same way the icon path does.
+    let length = std::fs::metadata(&path)
+        .map_err(|_| AppError::Storage)?
+        .len();
+    if length > MAX_THEME_BYTES {
+        return Err(AppError::Invalid);
+    }
+
+    let document = std::fs::read_to_string(&path).map_err(|_| AppError::Storage)?;
+    theme_import(state, document).map(Some)
+}
+
+/// Largest theme document accepted, before reading.
+///
+/// A theme is a couple of hundred token values; 256 KB is far beyond any real one
+/// and small enough that refusing costs nothing.
+const MAX_THEME_BYTES: u64 = 256 * 1024;

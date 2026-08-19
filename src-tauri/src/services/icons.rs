@@ -69,6 +69,13 @@ struct Entry {
     key: String,
     /// Whether `<key>-light.svg` and `<key>-dark.svg` also exist.
     themed: bool,
+    /// Whether every ink in the mark is too dark to read on the dark tile.
+    ///
+    /// Computed at build time, because it is a property of the file and the file
+    /// does not change at runtime. Roughly a fifth of the set is in this position:
+    /// a brand mark is drawn for the background its owner publishes it on, which
+    /// is usually white, so a black wordmark on a near-black tile is invisible.
+    dark_ink: bool,
 }
 
 /// The parsed map, built once on first use.
@@ -101,9 +108,15 @@ fn map() -> &'static IconMap {
                 // degrade to generated shapes, not stop the app from opening a vault.
                 continue;
             };
+            // Columns after `variant` are licence, brand_hex, dark_ink. A row
+            // written by an older build simply has no eighth field, and `false` is
+            // the right reading of "this build did not know": the tile renders as
+            // it always did rather than growing a chip nobody asked for.
+            let dark_ink = parts.nth(2).is_some_and(|flag| flag.trim() == "1");
             let entry = Entry {
                 key: key.to_owned(),
                 themed: variant == "color+theme",
+                dark_ink,
             };
             match kind {
                 "host" => {
@@ -141,6 +154,8 @@ pub enum Icon {
         key: String,
         /// Whether `<key>-light.svg` / `<key>-dark.svg` exist for theme selection.
         themed: bool,
+        /// Whether the mark needs a light chip behind it in the dark theme.
+        dark_ink: bool,
     },
     /// The user's own icon, stored encrypted in the item. Fetched by item id.
     Custom,
@@ -290,6 +305,7 @@ pub fn resolve(urls: &[String], title: &str, has_custom: bool) -> Icon {
             return Icon::Bundled {
                 key: entry.key.clone(),
                 themed: entry.themed,
+                dark_ink: entry.dark_ink,
             };
         }
         if let Some(domain) = registrable_domain(raw) {
@@ -297,6 +313,7 @@ pub fn resolve(urls: &[String], title: &str, has_custom: bool) -> Icon {
                 return Icon::Bundled {
                     key: entry.key.clone(),
                     themed: entry.themed,
+                    dark_ink: entry.dark_ink,
                 };
             }
         }
@@ -328,6 +345,7 @@ pub fn resolve_card(brand: &str, has_custom: bool) -> Icon {
         return Icon::Bundled {
             key: entry.key.clone(),
             themed: entry.themed,
+            dark_ink: entry.dark_ink,
         };
     }
     Icon::Shape {

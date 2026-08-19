@@ -50,6 +50,7 @@ import {
 } from '../features/security/useSecurity';
 import { Backup } from '../features/settings/Backup';
 import { Settings } from '../features/settings/Settings';
+import { Vaults } from '../features/settings/Vaults';
 import { Updates } from '../features/settings/Updates';
 import { ItemDetail } from '../features/items/ItemDetail';
 import { ItemList } from '../features/items/ItemList';
@@ -69,7 +70,13 @@ import {
   revealWindow,
   settingsGet,
 } from '../ipc';
-import type { AccountStatus, ItemSummaryDto, SecurityReportDto, SettingsDto } from '../ipc';
+import type {
+  AccountStatus,
+  ItemSummaryDto,
+  SecurityReportDto,
+  SettingsDto,
+  VaultSummaryDto,
+} from '../ipc';
 import { useThemeStore } from '../theme/store';
 
 /**
@@ -90,6 +97,7 @@ const queryClient = new QueryClient();
  * "Weak" through the fallback below, which is a worse lie than saying nothing.
  */
 const EMPTY_ITEMS: readonly ItemSummaryDto[] = Object.freeze([]);
+const EMPTY_VAULTS: readonly VaultSummaryDto[] = Object.freeze([]);
 
 const RISK_BANDS: Record<string, { band: number; label: string }> = {
   breached: { band: 1, label: 'Breached' },
@@ -545,7 +553,11 @@ function SettingsPane({
   onVaultReplaced,
 }: SettingsPaneProps) {
   const [failed, setFailed] = useState(false);
-  const [sub, setSub] = useState<'none' | 'updates' | 'backup'>('none');
+  // Read here rather than threaded from the shell: vault management is the only
+  // thing on this surface that needs the list, and it is already cached.
+  const vaultQuery = useVaults();
+  const clearCache = useClearCache();
+  const [sub, setSub] = useState<'none' | 'updates' | 'backup' | 'vaults'>('none');
 
   useEffect(() => {
     if (settings !== null) return;
@@ -564,6 +576,20 @@ function SettingsPane({
 
   if (!settings) {
     return <section className="bg-surface-panel min-w-0 flex-1" aria-label="Settings" />;
+  }
+
+  if (sub === 'vaults') {
+    return (
+      <Vaults
+        vaults={vaultQuery.data ?? EMPTY_VAULTS}
+        onChanged={clearCache}
+        onDone={onCopied}
+        onFailed={onFailed}
+        onBack={() => {
+          setSub('none');
+        }}
+      />
+    );
   }
 
   if (sub === 'backup') {
@@ -598,6 +624,9 @@ function SettingsPane({
         onCopied('Saved');
       }}
       onFailed={onFailed}
+      onVaults={() => {
+        setSub('vaults');
+      }}
       onBackup={() => {
         setSub('backup');
       }}

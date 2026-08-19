@@ -16,7 +16,14 @@ key: string,
 /**
  * Whether `<key>-light.svg` / `<key>-dark.svg` exist for theme selection.
  */
-themed: boolean, } | { "kind": "custom" } | { "kind": "shape", 
+themed: boolean, 
+/**
+ * Whether every ink in the mark is too dark to read on the dark tile, so
+ * the tile should put a light chip behind it rather than recolour it —
+ * ADD-001 forbids recolouring, and a recoloured brand mark is the wrong
+ * mark.
+ */
+darkInk: boolean, } | { "kind": "custom" } | { "kind": "shape", 
 /**
  * Stable for a given identity, forever.
  */

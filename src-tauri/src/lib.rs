@@ -116,6 +116,7 @@ pub fn run() {
             commands::theme::theme_list,
             commands::theme::theme_set,
             commands::theme::theme_import,
+            commands::theme::theme_import_file,
             commands::theme::theme_delete,
             commands::updates::update_check,
             commands::updates::update_install,

@@ -39,7 +39,8 @@ import { Switch } from '../../components/Switch';
 import { Glyph } from '../../components/Glyph';
 import { useThemeStore } from '../../theme/store';
 import type { ThemeMode } from '../../theme/mode';
-import { settingsSet } from '../../ipc';
+import { Button } from '../../components/Button';
+import { settingsGet, settingsSet, themeImportFile } from '../../ipc';
 import type { SettingsDto, SettingsPatch } from '../../ipc';
 
 /** Clipboard intervals offered, in seconds. §7.5's default is 30. */
@@ -65,17 +66,28 @@ export interface SettingsProps {
   /** Called after a successful write, with what was actually stored. */
   onSaved: (next: SettingsDto) => void;
   onFailed: (message: string) => void;
+  /** Open vault management. */
+  onVaults: () => void;
   /** Open the backup/restore surface. */
   onBackup: () => void;
   /** Open the updater surface. */
   onUpdates: () => void;
 }
 
-export function Settings({ settings, onSaved, onFailed, onBackup, onUpdates }: SettingsProps) {
+export function Settings({
+  settings,
+  onSaved,
+  onFailed,
+  onVaults,
+  onBackup,
+  onUpdates,
+}: SettingsProps) {
   const mode = useThemeStore((s) => s.mode);
   const setMode = useThemeStore((s) => s.setMode);
   const importedThemes = useThemeStore((s) => s.imported);
+  const refreshThemes = useThemeStore((s) => s.refresh);
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const patch = useCallback(
     (next: SettingsPatch) => {
@@ -241,13 +253,40 @@ export function Settings({ settings, onSaved, onFailed, onBackup, onUpdates }: S
                 name="Imported themes"
                 description={
                   importedThemes.length === 0
-                    ? 'A theme is a set of colour values. Imported themes are validated in Rust before anything is applied.'
-                    : `${String(importedThemes.length)} imported.`
+                    ? 'A theme is a set of colour values in a JSON file. It is validated in Rust before anything is applied — a theme cannot fetch, and cannot contain url().'
+                    : `${String(importedThemes.length)} imported. Pick one from the Theme row above.`
                 }
               />
               <span className="text-control shrink-0 tabular-nums">
                 {settings.importedThemeCount}
               </span>
+              {/* The picker, the read and the validation are all in Rust. The webview
+                  holds no filesystem permission and this is not the place to give it
+                  one — the same reasoning as the custom-icon upload. */}
+              <Button
+                variant="outline"
+                disabled={importing}
+                onClick={() => {
+                  setImporting(true);
+                  themeImportFile().then(
+                    (theme) => {
+                      setImporting(false);
+                      // `null` is a cancelled dialog, which is not an event.
+                      if (theme === null) return;
+                      void refreshThemes();
+                      settingsGet().then(onSaved, () => {
+                        /* the count is cosmetic; the theme is already stored */
+                      });
+                    },
+                    () => {
+                      setImporting(false);
+                      onFailed('That theme was refused. Themes are colour values only.');
+                    },
+                  );
+                }}
+              >
+                {importing ? 'Reading…' : 'Import a theme'}
+              </Button>
             </GroupedRow>
           </GroupedList>
         </section>
@@ -267,6 +306,25 @@ export function Settings({ settings, onSaved, onFailed, onBackup, onUpdates }: S
         </section>
 
         <section className="mt-7">
+          <SectionLabel>Vaults</SectionLabel>
+          <GroupedList className="mt-2">
+            <GroupedRow
+              interactive
+              className="min-h-[60px] py-2.5"
+              onClick={onVaults}
+              role="button"
+              tabIndex={0}
+              data-focus-ring
+              aria-label="Vaults"
+            >
+              <RowText
+                name="Manage vaults"
+                description="Create, rename, recolour or remove a vault. There is no limit."
+              />
+              <Glyph name="next" size={16} />
+            </GroupedRow>
+          </GroupedList>
+
           <SectionLabel>Privacy and data</SectionLabel>
           <GroupedList className="mt-2">
             <GroupedRow
