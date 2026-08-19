@@ -33,7 +33,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 
 import { Button } from '../../components/Button';
 import { IpcError } from '../../ipc';
-import { accountCreate, accountUnlock } from '../../ipc';
+import { accountCreate, accountUnlock, accountUnlockBiometric, biometricReady } from '../../ipc';
 import type { AccountStatus } from '../../ipc';
 
 export interface LockScreenProps {
@@ -44,6 +44,28 @@ export interface LockScreenProps {
 }
 
 export function LockScreen({ exists, onUnlocked }: LockScreenProps) {
+  // Asked, not assumed. The button is only worth drawing when the device has a
+  // biometric *and* this vault has been enrolled — either half missing means it
+  // cannot work, and an unlock button that cannot unlock is worse than none.
+  const [helloReady, setHelloReady] = useState(false);
+  const [helloBusy, setHelloBusy] = useState(false);
+
+  useEffect(() => {
+    if (!exists) return;
+    let live = true;
+    biometricReady().then(
+      (ready) => {
+        if (live) setHelloReady(ready);
+      },
+      () => {
+        // Fail closed: no button rather than one that might not work.
+        if (live) setHelloReady(false);
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [exists]);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -156,6 +178,42 @@ export function LockScreen({ exists, onUnlocked }: LockScreenProps) {
         >
           {busy ? (exists ? 'Unlocking…' : 'Creating…') : exists ? 'Unlock' : 'Create vault'}
         </Button>
+
+        {/* Only when the device has a biometric and this vault has been enrolled.
+            The design drew a Touch ID row unconditionally and an earlier commit
+            removed it for being a promise the build could not keep; this is that
+            promise, kept, and it disappears again the moment either half is false. */}
+        {helloReady ? (
+          <Button
+            type="button"
+            block
+            variant="outline"
+            disabled={busy || helloBusy}
+            className="text-body mt-2 h-10 rounded-full"
+            onClick={() => {
+              setHelloBusy(true);
+              accountUnlockBiometric().then(
+                (status) => {
+                  setHelloBusy(false);
+                  onUnlocked(status);
+                },
+                (failure: unknown) => {
+                  setHelloBusy(false);
+                  // One sentence for every cause. Cancelled, no match and an
+                  // invalidated enrolment all mean "use your password", and
+                  // separating them would say which attempt got furthest.
+                  setError(
+                    failure instanceof IpcError && failure.error.kind === 'invalidState'
+                      ? 'Use your master password this time — Keyring asks for it every couple of weeks.'
+                      : 'Windows Hello did not confirm. Use your master password.',
+                  );
+                },
+              );
+            }}
+          >
+            {helloBusy ? 'Waiting for Windows Hello…' : 'Unlock with Windows Hello'}
+          </Button>
+        ) : null}
 
         {/* One live region for both, so a screen reader announces whichever applies
             without the two competing. Reserves its line so the button does not move

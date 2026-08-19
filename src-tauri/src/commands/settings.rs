@@ -41,7 +41,7 @@ use crate::services::settings::{Density, Settings};
 use crate::services::updater;
 
 /// Read the encrypted blob. Requires an unlocked vault.
-fn load(state: &State<'_, AppState>) -> Result<Settings, AppError> {
+pub(crate) fn load(state: &State<'_, AppState>) -> Result<Settings, AppError> {
     state.session.with_session(|session| {
         let mut settings = session
             .app_cache_get(AppCacheKey::Settings)?

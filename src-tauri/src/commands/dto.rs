@@ -617,6 +617,37 @@ impl From<CustomFieldInput> for CustomField {
     }
 }
 
+/// Why a theme document was refused (SPEC-V1 §7.6).
+///
+/// A closed enum plus the offending token's **name**, never its value. The name is
+/// something the user wrote in a file they chose and is what they need in order to
+/// fix it; the value is untrusted input from that same file and is exactly the kind
+/// of string that should not be interpolated into a message that may be rendered or
+/// logged (CLAUDE.md §4.6).
+///
+/// Before this, every rejection arrived as `invalid` — "the input is not valid" — for
+/// a format that had no published shape. Between the two, a theme could be refused
+/// with no way to learn what was wrong with it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub enum ThemeRejectionDto {
+    /// Not the expected JSON shape at all.
+    Malformed,
+    /// Larger than the accepted size.
+    TooLarge,
+    /// `id` or `name` was empty, over-long, or not a safe identifier.
+    BadIdentity,
+    /// More tokens than a theme may define.
+    TooManyTokens,
+    /// A key was not a `--custom-property` name.
+    NotACustomProperty,
+    /// A value used a function that could reach the network.
+    ForbiddenFunction,
+    /// A value did not match the permitted grammar.
+    InvalidValue,
+}
+
 /// TOTP hash algorithm, on the wire.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[ts(export, export_to = "../../src/ipc/generated/")]

@@ -27,7 +27,7 @@
  */
 
 import { cn } from '../lib/cn';
-import { GeneratedMark } from './GeneratedMark';
+import { FallbackMark } from './FallbackMark';
 import type { IconDto } from '../ipc';
 
 export interface IdentityTileProps {
@@ -106,11 +106,11 @@ export function IdentityTile({
     <span
       className={cn('tile', className)}
       data-size={size}
-      data-tone={icon.tone}
+      data-tone="fallback"
       aria-hidden="true"
       title={title}
     >
-      <GeneratedMark seed={icon.seed} />
+      <FallbackMark />
     </span>
   );
 }

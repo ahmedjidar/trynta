@@ -35,7 +35,7 @@ export function GroupedRow({ className, interactive, ...props }: GroupedRowProps
     <div
       className={cn(
         'bg-surface-raised flex items-center gap-4 px-4',
-        interactive && 'duration-quick hover:bg-surface-hover cursor-pointer transition-colors',
+        interactive && 'duration-hover hover:bg-surface-hover cursor-pointer transition-colors',
         className,
       )}
       {...props}

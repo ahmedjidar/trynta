@@ -160,10 +160,17 @@ pub fn item_reveal_field(
 /// macOS concealed type, and on Windows the three clipboard-history exclusion
 /// formats without which auto-clear is theatre (SPEC-V1 §8).
 ///
-/// Not rate limited: a copy does not put the value on screen, and the clipboard
-/// holds one value at a time, so twenty copies leave the same single secret
-/// exposed as one. The reveal limit exists to notice a walk of the vault through
-/// the *readable* path.
+/// **Not** rate limited by the rolling reveal window, and that is still right: a
+/// copy does not put the value on screen, the clipboard holds one value at a time,
+/// so twenty copies leave the same single secret exposed as one. That limit exists
+/// to notice a walk of the vault through the *readable* path.
+///
+/// It **is** gated by `require_master_on_reveal`, and that gap was a real hole. The
+/// setting is about a secret leaving the vault on demand, and a copy is exactly
+/// that — the value lands on the system clipboard, readable by anything. Gating the
+/// reveal and not the copy left the control looking like a lock while the door next
+/// to it stood open, which is worse than not having it: the user believes they are
+/// protected.
 ///
 /// # Errors
 ///
@@ -175,6 +182,15 @@ pub fn item_copy_field(
     id: Uuid,
     field: SecretFieldDto,
 ) -> Result<(), AppError> {
+    // The same gate as `item_reveal_field`, spending the same confirmation. Two
+    // separate allowances would let a user confirm once and then both reveal *and*
+    // copy, which is two secrets out of the vault for one password entry.
+    if crate::commands::settings::reveal_requires_master(&state)?
+        && !state.session.take_fresh_reauth()
+    {
+        return Err(AppError::ReauthRequired);
+    }
+
     let value = state
         .session
         .with_session(|s| s.item_copy_field(id, field.into()).map_err(AppError::from))?;
@@ -184,8 +200,41 @@ pub fn item_copy_field(
     // tell our own write apart from something the user copied since, and leave
     // theirs alone.
     state.session.note_clipboard_write(token);
+    schedule_clipboard_clear(&state, token);
     state.session.touch();
     Ok(())
+}
+
+/// Start the clipboard auto-clear countdown for a write we just made.
+///
+/// **This did not exist.** `item_copy_field` wrote the secret, remembered the token so
+/// a clear *could* tell its own write apart from the user's, and then nothing ever
+/// called the clear. The setting was on by default, said "copied secrets are wiped
+/// after 30 seconds", and wiped nothing — the value stayed on the system clipboard
+/// until something else replaced it.
+///
+/// A thread rather than an async task: it needs one sleep and one call, the platform
+/// clipboard is blocking anyway, and reaching for a Tokio timer would mean making
+/// `tokio` a direct dependency for this (CLAUDE.md §2). The thread exits when it fires.
+///
+/// Superseded timers are harmless by construction — `clear_clipboard_token` compares
+/// the token before doing anything, so an earlier copy's timer cannot wipe a later
+/// copy's value.
+pub(crate) fn schedule_clipboard_clear(state: &State<'_, AppState>, token: u64) {
+    let Ok(settings) = crate::commands::settings::load(state) else {
+        // Settings live in the vault. If they cannot be read the vault is locking or
+        // locked, and lock clears the clipboard itself.
+        return;
+    };
+    if !settings.clear_clipboard {
+        return;
+    }
+    let seconds = settings.clipboard_seconds;
+    let session = std::sync::Arc::clone(&state.session);
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(u64::from(seconds)));
+        session.clear_clipboard_token(token);
+    });
 }
 
 /// Create or update an item.

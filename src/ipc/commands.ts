@@ -606,6 +606,68 @@ export function generatorHistoryClear(): Promise<void> {
   return callVoid('generator_history_clear');
 }
 
+// ── Biometric unlock (SPEC-V1 §5, §7.5) ─────────────────────────────────────
+
+/**
+ * Whether biometric unlock is available on this device *and* set up for this vault.
+ *
+ * Both halves, because either one alone means the button cannot work: no hardware is
+ * a fact about the machine, no enrolment is a fact about this vault. Safe to call
+ * while locked — it is what the lock screen asks before offering the option.
+ *
+ * @throws {IpcError} `storage`.
+ *
+ * @beta
+ */
+export function biometricReady(): Promise<boolean> {
+  return call<boolean>('biometric_ready');
+}
+
+/**
+ * Turn biometric unlock on.
+ *
+ * Takes the master password because there is no moment when the app is holding it
+ * and could enrol silently — it is used once at unlock and dropped. Rust verifies it
+ * opens the vault before storing anything: enrolling an unverified string would
+ * produce a biometric unlock that fails forever on a biometric that works fine.
+ *
+ * @param masterPassword - The master password, as typed.
+ * @throws {IpcError} `wrongPassword`, `biometric` if the platform refuses, `storage`.
+ *
+ * @beta
+ */
+export function biometricEnable(masterPassword: string): Promise<void> {
+  return callVoid('biometric_enable', { masterPassword });
+}
+
+/**
+ * Turn biometric unlock off and destroy the stored secret.
+ *
+ * @throws {IpcError} `biometric` if the platform refuses to revoke, `storage`.
+ *
+ * @beta
+ */
+export function biometricDisable(): Promise<void> {
+  return callVoid('biometric_disable');
+}
+
+/**
+ * Unlock with the platform biometric.
+ *
+ * Raises the platform prompt — Windows Hello here. Failure is one error for every
+ * cause: cancelled, no match, and enrolment invalidated all mean *use your password*,
+ * and distinguishing them would tell an attacker which attempt got furthest.
+ *
+ * @throws {IpcError} `biometric` for any failure of the prompt, `invalidState` when
+ * §5.1's fourteen-day master-password unlock is due, `wrongPassword` if the stored
+ * secret no longer opens the vault.
+ *
+ * @beta
+ */
+export function accountUnlockBiometric(): Promise<AccountStatus> {
+  return call<AccountStatus>('account_unlock_biometric');
+}
+
 // ── TOTP (SPEC-V1 §7.2) ─────────────────────────────────────────────────────
 
 /**
@@ -666,6 +728,27 @@ export function itemSetTotp(id: string, totp: TotpConfigInput | null): Promise<b
  */
 export function totpCurrent(id: string): Promise<TotpCodeDto> {
   return call<TotpCodeDto>('totp_current', { id });
+}
+
+/**
+ * Put an item's current one-time code on the clipboard.
+ *
+ * The *code*, not the seed. Copying the seed and calling it the code — which is what
+ * `itemCopyField(id, { field: 'totpSecret' })` does — puts a base32 string on the
+ * clipboard that fails every verification prompt it is pasted into. The seed stays
+ * reachable through the ordinary reveal path, which is where someone moving to
+ * another authenticator would look for it.
+ *
+ * Written by Rust with the platform's secrecy markers and the same auto-clear as any
+ * other copy; the plaintext never enters the webview.
+ *
+ * @throws {IpcError} `notFound` if the item has no configuration. Also `locked`,
+ * `clipboard`.
+ *
+ * @beta
+ */
+export function totpCopyCurrent(id: string): Promise<void> {
+  return callVoid('totp_copy_current', { id });
 }
 
 // ── Security report (SPEC-V1 §7.4) ──────────────────────────────────────────
@@ -840,6 +923,24 @@ export function themeImport(document: string): Promise<ThemeDto> {
  */
 export function themeImportFile(): Promise<ThemeDto | null> {
   return call<ThemeDto | null>('theme_import_file');
+}
+
+/**
+ * Save a theme document to a file the user picks.
+ *
+ * The caller builds the document from the tokens resolved on `:root`; this writes it.
+ * Rust owns the dialog and the write because the webview holds no filesystem
+ * permission — the same reasoning as the icon upload and the theme import.
+ *
+ * @param document - The JSON to write.
+ * @returns Whether a file was written. `false` means the dialog was cancelled, which
+ * is not an error.
+ * @throws {IpcError} `storage` if the file cannot be written.
+ *
+ * @beta
+ */
+export function themeExportFile(document: string): Promise<boolean> {
+  return call<boolean>('theme_export_file', { document });
 }
 
 /**

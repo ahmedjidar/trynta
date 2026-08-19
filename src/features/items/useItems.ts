@@ -115,6 +115,31 @@ export function useItemDetail(id: string | null) {
  * Called on lock. `clear()` rather than `invalidateQueries`: invalidation marks data
  * stale and keeps it, which is the opposite of what §4.9 requires.
  */
+/**
+ * Refetch everything, without emptying the screen first.
+ *
+ * The difference from {@link useClearCache} is what happens *during* the refetch.
+ * `clear()` removes the cached data, so every component reading it renders its
+ * empty state for a frame or two — the detail pane finds no summary for the
+ * selected id, decides nothing is selected, and shows "Select an item". Favouriting
+ * an item made the pane you were looking at blink out and come back, and an icon
+ * change did the same.
+ *
+ * `invalidateQueries` marks the data stale and refetches while continuing to serve
+ * the previous value, so the pane stays put and the new value replaces the old one
+ * when it lands. That is what every edit wants.
+ *
+ * `clear()` is still right where the data is genuinely gone — a lock, or a restore
+ * that rewrote the vault file underneath us — and {@link useClearCache} remains for
+ * those.
+ */
+export function useRefresh() {
+  const client = useQueryClient();
+  return useCallback(() => {
+    void client.invalidateQueries();
+  }, [client]);
+}
+
 export function useClearCache() {
   const client = useQueryClient();
   return useCallback(() => {

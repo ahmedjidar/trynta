@@ -41,6 +41,19 @@ export interface NavigationState {
   setSort: (sort: SortOrderDto) => void;
   setSearch: (search: string) => void;
   select: (id: string | null) => void;
+  /**
+   * Show one item, whatever the list is currently filtered to.
+   *
+   * `select()` alone sets the id and nothing else, which is fine from inside the
+   * list — the row you clicked is on screen by definition. From anywhere else it is
+   * a trap: the security report and the command palette both draw from the whole
+   * vault, so selecting a risk while the list was showing one vault, or a search, or
+   * the Weak filter, left the detail pane on "Select an item to see its details".
+   * The item was selected; it just was not in the list.
+   *
+   * So this clears the things that could hide it, then selects.
+   */
+  revealItem: (id: string) => void;
 }
 
 export const useNavigation = create<NavigationState>((set) => ({
@@ -81,6 +94,15 @@ export const useNavigation = create<NavigationState>((set) => ({
   },
   select: (id) => {
     set({ selectedId: id });
+  },
+  revealItem: (id) => {
+    set({
+      surface: 'vault',
+      source: { source: 'all' },
+      filters: NO_FILTERS,
+      search: '',
+      selectedId: id,
+    });
   },
 }));
 

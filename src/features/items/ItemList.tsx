@@ -175,7 +175,7 @@ export function ItemList({ items, risks, vaultNames, onCopy, onNew, modifierKey 
         <button
           type="button"
           data-focus-ring
-          className="text-micro text-text-secondary duration-quick hover:bg-surface-hover hover:text-text-primary flex h-6 items-center gap-1 rounded-full px-2 font-semibold transition-colors"
+          className="text-micro text-text-secondary duration-hover hover:bg-surface-hover hover:text-text-primary flex h-6 items-center gap-1 rounded-full px-2 font-semibold transition-colors"
           onClick={() => {
             const at = SORTS.findIndex((s) => s.value === sort);
             const next = SORTS[(at + 1) % SORTS.length];
@@ -309,7 +309,7 @@ function ItemRow({ item, risk, selected, iconSources, theme, onSelect }: ItemRow
         // `item-row` is what the windowing effect measures a real row's height from: the
         // token cannot be read back through `getComputedStyle`, which resolves a custom
         // property to its specified value rather than to pixels.
-        'item-row duration-quick flex h-[var(--row-h)] shrink-0 cursor-pointer items-center gap-3 rounded-lg px-3 transition-colors',
+        'item-row duration-hover flex h-[var(--row-h)] shrink-0 cursor-pointer items-center gap-3 rounded-lg px-3 transition-colors',
         selected ? 'bg-surface-selected' : 'hover:bg-surface-hover',
       )}
     >

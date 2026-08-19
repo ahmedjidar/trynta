@@ -32,11 +32,13 @@
 use keyring_store::{AppCacheKey, AppStateKey};
 use tauri::State;
 
+use crate::commands::dto::ThemeRejectionDto;
 use crate::commands::dto::{ThemeCatalogDto, ThemeDto, ThemeModeDto};
 use crate::commands::AppState;
 use crate::error::AppError;
 use crate::services::settings::Settings;
 use crate::services::theme;
+use crate::services::theme::ThemeError;
 use tauri_plugin_dialog::DialogExt as _;
 
 /// Read the settings blob. Requires an unlocked vault.
@@ -70,6 +72,7 @@ fn save_settings(state: &State<'_, AppState>, settings: &Settings) -> Result<(),
 ///
 /// [`AppError::NoVault`] if no vault file exists yet — there is nowhere for a
 /// selection to live before then. [`AppError::Storage`] if `app_state` is unreadable.
+
 #[tauri::command]
 pub fn theme_list(state: State<'_, AppState>) -> Result<ThemeCatalogDto, AppError> {
     let file = state.session.file()?;
@@ -145,8 +148,9 @@ pub fn theme_set(
 ///
 /// # Errors
 ///
-/// [`AppError::Invalid`] if validation refuses the document — including every
-/// spelling of `url()`, which is the specific attack §7.6 names.
+/// [`AppError::ThemeRejected`] if validation refuses the document — including every
+/// spelling of `url()`, which is the specific attack §7.6 names. It carries which rule
+/// failed and, where the rule is about one, the offending token’s name.
 /// [`AppError::LastVaultRemaining`] is reused for "no room": see the note on the
 /// error mapping below. [`AppError::Locked`] if the vault is locked.
 #[tauri::command]
@@ -155,7 +159,7 @@ pub fn theme_import(state: State<'_, AppState>, document: String) -> Result<Them
     // deliberately does not carry the validator's message: it names the offending
     // token, which is attacker-supplied text, and CLAUDE.md §4.6 keeps that out of
     // anything renderable.
-    let validated = theme::validate(&document).map_err(|_| AppError::Invalid)?;
+    let validated = theme::validate(&document).map_err(rejection)?;
 
     let mut settings = load_settings(&state)?;
     if settings.upsert_theme(&validated, &document).is_err() {
@@ -246,3 +250,57 @@ pub fn theme_import_file(
 /// A theme is a couple of hundred token values; 256 KB is far beyond any real one
 /// and small enough that refusing costs nothing.
 const MAX_THEME_BYTES: u64 = 256 * 1024;
+
+/// Save a theme document to a file the user picks.
+///
+/// The document is built by the frontend from the tokens actually resolved on
+/// `:root`, which is the only place those values exist — they are CSS, not Rust. So
+/// this is a save dialog and a write, and deliberately nothing else: it does not
+/// invent the content and it does not validate it, because what it writes is what the
+/// app is currently rendering and is a starting point for editing, not an import.
+///
+/// It exists because "here is the JSON shape" is not enough to author against. A file
+/// with every token already in it, at values known to work, turns writing a theme
+/// into editing one.
+///
+/// Returns `None` when the dialog is cancelled, which is not an error.
+///
+/// # Errors
+///
+/// [`AppError::Storage`] if the file cannot be written.
+#[tauri::command]
+pub fn theme_export_file(app: tauri::AppHandle, document: String) -> Result<bool, AppError> {
+    let Some(chosen) = app
+        .dialog()
+        .file()
+        .set_title("Save the current theme")
+        .set_file_name("keyring-theme.json")
+        .add_filter("Theme", &["json"])
+        .blocking_save_file()
+    else {
+        return Ok(false);
+    };
+    let Ok(path) = chosen.into_path() else {
+        return Err(AppError::Storage);
+    };
+    std::fs::write(&path, document).map_err(|_| AppError::Storage)?;
+    Ok(true)
+}
+
+/// Turn a validator refusal into something the user can act on.
+///
+/// The validator has always known which token was wrong; the command threw that away
+/// and returned `invalid`.
+fn rejection(e: ThemeError) -> AppError {
+    use ThemeError as E;
+    let (reason, token) = match e {
+        E::Malformed => (ThemeRejectionDto::Malformed, None),
+        E::TooLarge => (ThemeRejectionDto::TooLarge, None),
+        E::BadIdentity => (ThemeRejectionDto::BadIdentity, None),
+        E::TooManyTokens => (ThemeRejectionDto::TooManyTokens, None),
+        E::NotACustomProperty { name } => (ThemeRejectionDto::NotACustomProperty, Some(name)),
+        E::ForbiddenFunction { name } => (ThemeRejectionDto::ForbiddenFunction, Some(name)),
+        E::InvalidValue { name } => (ThemeRejectionDto::InvalidValue, Some(name)),
+    };
+    AppError::ThemeRejected { reason, token }
+}

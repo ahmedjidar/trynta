@@ -23,6 +23,10 @@ export {
 
 export {
   accountCreate,
+  accountUnlockBiometric,
+  biometricDisable,
+  biometricEnable,
+  biometricReady,
   accountExists,
   accountLock,
   accountReauth,
@@ -64,9 +68,11 @@ export {
   vaultSetColor,
   themeDelete,
   themeImport,
+  themeExportFile,
   themeImportFile,
   themeList,
   themeSet,
+  totpCopyCurrent,
   totpCurrent,
   totpParse,
   updateCheck,
@@ -122,6 +128,7 @@ export type { ThemeCatalogDto } from './generated/ThemeCatalogDto';
 export type { ThemeDto } from './generated/ThemeDto';
 export type { ThemeModeDto } from './generated/ThemeModeDto';
 export type { ThemeVariantDto } from './generated/ThemeVariantDto';
+export type { ThemeRejectionDto } from './generated/ThemeRejectionDto';
 export type { TotpAlgorithmDto } from './generated/TotpAlgorithmDto';
 export type { TotpConfigInput } from './generated/TotpConfigInput';
 export type { TotpRejectionDto } from './generated/TotpRejectionDto';

@@ -41,21 +41,25 @@ import {
   GroupedRow,
   SectionLabel,
 } from '../../components/GroupedList';
+import { Glyph } from '../../components/Glyph';
 import { IdentityTile } from '../../components/IdentityTile';
 import { useItemIcon } from './useItemIcons';
 import { useThemeStore } from '../../theme/store';
 import { StrengthMeter } from '../../components/StrengthMeter';
 import { TotpRow } from './TotpRow';
 import { TotpEditRow } from './TotpEditRow';
+import { ReauthPrompt } from '../account/ReauthPrompt';
 import { ReusePartners } from './ReusePartners';
 import { useNavigation } from '../../app/navigation';
 import { cn } from '../../lib/cn';
 import {
+  IpcError,
   itemClearIcon,
   itemCopyField,
   itemEditMeta,
   itemRevealField,
   itemSetIcon,
+  itemToggleFavorite,
   itemSetTotp,
 } from '../../ipc';
 import type {
@@ -67,6 +71,9 @@ import type {
   SecretPresence,
   TotpConfigInput,
 } from '../../ipc';
+
+/** Which of the two gates raised the prompt, for the sentence it shows. */
+type ReauthReason = 'setting' | 'limit';
 
 /** Masked to a fixed width: the stored length is not a hint worth giving away. */
 const MASK = '•'.repeat(16);
@@ -149,6 +156,14 @@ export function ItemDetail({
   const [totpEdit, setTotpEdit] = useState<TotpConfigInput | null | undefined>(undefined);
   const [saving, setSaving] = useState(false);
   const [iconBusy, setIconBusy] = useState(false);
+  /**
+   * The action a `reauthRequired` interrupted, held so it can be run again.
+   *
+   * Held rather than merely remembered-as-a-flag: the user was doing something
+   * specific, and a prompt that unblocks without finishing the job makes them find
+   * their place again.
+   */
+  const [pending, setPending] = useState<{ reason: ReauthReason; retry: () => void } | null>(null);
 
   const isCustomIcon = summary.icon.kind === 'custom';
   const customSrc = useItemIcon(detail.id, isCustomIcon);
@@ -226,20 +241,46 @@ export function ItemDetail({
     };
   }, [select, editing]);
 
+  /**
+   * Route a failure: `reauthRequired` raises the prompt, anything else is a toast.
+   *
+   * The two reasons read differently to a user — a setting they switched on versus a
+   * limit they ran into — and `AppError` does not distinguish them, so the caller
+   * says which it expects. Getting it wrong only changes a sentence.
+   */
+  const handleSecretFailure = useCallback(
+    (error: unknown, reason: ReauthReason, retry: () => void, fallback: string) => {
+      if (error instanceof IpcError && error.error.kind === 'reauthRequired') {
+        setPending({ reason, retry });
+        return;
+      }
+      onFailed(fallback);
+    },
+    [onFailed],
+  );
+
   const copy = useCallback(
     (field: SecretFieldDto, what: string) => {
-      // Rust reads, decrypts and writes the OS clipboard. The plaintext never enters the
-      // webview (CLAUDE.md §4.3).
-      itemCopyField(detail.id, field).then(
-        () => {
-          onCopied(`${what} copied`);
-        },
-        () => {
-          onFailed('Could not copy');
-        },
-      );
+      // Rust reads, decrypts and writes the OS clipboard. The plaintext never enters
+      // the webview (CLAUDE.md §4.3).
+      //
+      // Gated identically to reveal. A copy puts the secret on the system clipboard,
+      // where anything can read it, so "require the master password to reveal" has to
+      // cover it — gating one and not the other left the control looking like a lock
+      // beside an open door.
+      const run = () => {
+        itemCopyField(detail.id, field).then(
+          () => {
+            onCopied(`${what} copied`);
+          },
+          (error: unknown) => {
+            handleSecretFailure(error, 'setting', run, 'Could not copy');
+          },
+        );
+      };
+      run();
     },
-    [detail.id, onCopied, onFailed],
+    [detail.id, onCopied, handleSecretFailure],
   );
 
   const toggleReveal = useCallback(
@@ -249,18 +290,23 @@ export function ItemDetail({
         setHeld(null);
         return;
       }
-      itemRevealField(detail.id, field).then(
-        (value) => {
-          setHeld({ itemId: detail.id, key, value });
-        },
-        () => {
-          // The rolling reveal limit asks for re-auth rather than rejecting (§6). The
-          // message never names the value.
-          onFailed('Confirm your master password to reveal');
-        },
-      );
+      const run = () => {
+        itemRevealField(detail.id, field).then(
+          (value) => {
+            setHeld({ itemId: detail.id, key, value });
+          },
+          (error: unknown) => {
+            // Both the rolling limit (§6) and the "require the master password"
+            // setting (§7.5) arrive here as `reauthRequired`. Neither is a rejection:
+            // the user confirms and the reveal happens. A toast saying "confirm your
+            // master password" with nothing to confirm *into* was the whole bug.
+            handleSecretFailure(error, 'setting', run, 'That could not be revealed.');
+          },
+        );
+      };
+      run();
     },
-    [detail.id, revealed, onFailed],
+    [detail.id, revealed, handleSecretFailure],
   );
 
   function save() {
@@ -340,190 +386,249 @@ export function ItemDetail({
   const subtitle = [summary.subtitle, vaultName].filter((part) => part).join(' · ');
 
   return (
-    <section
-      data-scroll-pane
-      className="bg-surface-panel animate-pane-in min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
-      aria-label="Item detail"
-    >
-      <div className="mx-auto w-full max-w-[var(--measure-pane-wide)] px-8 pt-8 pb-12">
-        <header className="flex items-center gap-4">
-          <IdentityTile
-            icon={summary.icon}
-            size={56}
-            title={summary.title}
-            customSrc={customSrc}
-            theme={resolvedTheme}
-          />
-          <div className="min-w-0 flex-1">
+    <>
+      {pending === null ? null : (
+        <ReauthPrompt
+          reason={pending.reason}
+          onConfirmed={() => {
+            const { retry } = pending;
+            setPending(null);
+            retry();
+          }}
+          onCancel={() => {
+            setPending(null);
+          }}
+        />
+      )}
+      <section
+        data-scroll-pane
+        className="bg-surface-panel animate-pane-in min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
+        aria-label="Item detail"
+      >
+        <div className="mx-auto w-full max-w-[var(--measure-pane-wide)] px-8 pt-8 pb-12">
+          <header className="flex items-center gap-4">
+            {/* In edit mode the tile *is* the control.
+
+              It used to be a "Use my own icon" button under the title, which pushed
+              the name field up and made the title column taller than the 56px tile
+              beside it — the header grew a step every time the user pressed Edit.
+              The affordance is on the thing it acts on instead, and it is only there
+              while editing, so nothing invites a click that would not be an edit. */}
             {editing ? (
-              <Input
-                aria-label="Title"
-                className="text-body-lg h-9 w-full font-semibold"
-                value={draft.Title ?? detail.title}
+              <button
+                type="button"
+                className="tile-edit relative shrink-0 rounded-xl"
+                data-focus-ring
+                disabled={iconBusy}
+                onClick={pickIcon}
+                title={isCustomIcon ? 'Change this icon' : 'Use your own icon'}
+                aria-label={isCustomIcon ? 'Change this icon' : 'Use your own icon'}
+              >
+                <IdentityTile
+                  icon={summary.icon}
+                  size={56}
+                  title={summary.title}
+                  customSrc={customSrc}
+                  theme={resolvedTheme}
+                />
+                <span className="tile-edit__veil" aria-hidden="true">
+                  <Glyph name="generate" size={16} />
+                </span>
+              </button>
+            ) : (
+              <IdentityTile
+                icon={summary.icon}
+                size={56}
+                title={summary.title}
+                customSrc={customSrc}
+                theme={resolvedTheme}
+              />
+            )}
+            <div className="min-w-0 flex-1">
+              {editing ? (
+                <Input
+                  aria-label="Title"
+                  className="text-body-lg h-9 w-full font-semibold"
+                  value={draft.Title ?? detail.title}
+                  onChange={(event) => {
+                    setDraft((prev) => ({ ...prev, Title: event.target.value }));
+                  }}
+                />
+              ) : (
+                <h1 className="text-display tracking-display truncate font-bold">{detail.title}</h1>
+              )}
+              <p className="text-body text-text-muted mt-0.5 truncate">{subtitle}</p>
+
+              {/* Only the destructive half is left as text. Setting an icon is the
+                tile; removing one is rare enough that it should be named, and it
+                cannot be a second click on the same target. */}
+              {editing && isCustomIcon ? (
+                <CopyAction className="mt-2" onClick={clearIcon} disabled={iconBusy}>
+                  Remove icon
+                </CopyAction>
+              ) : null}
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {/* Favourites existed as a sidebar section with no way to put anything
+                in it. A star on the item is the shortest path between the two. */}
+              <button
+                type="button"
+                data-focus-ring
+                className="favourite-toggle duration-hover flex h-9 w-9 items-center justify-center rounded-lg transition-colors"
+                aria-pressed={summary.isFavorite}
+                aria-label={summary.isFavorite ? 'Remove from favourites' : 'Add to favourites'}
+                title={summary.isFavorite ? 'Remove from favourites' : 'Add to favourites'}
+                data-on={summary.isFavorite ? 'true' : undefined}
+                onClick={() => {
+                  itemToggleFavorite(detail.id).then(
+                    () => {
+                      onEdited();
+                    },
+                    () => {
+                      onFailed('That could not be changed.');
+                    },
+                  );
+                }}
+              >
+                <Glyph name="favorite" size={16} />
+              </button>
+              <Button
+                variant="outline"
+                disabled={saving}
+                onClick={() => {
+                  if (editing) save();
+                  else setEditing(true);
+                }}
+              >
+                {editing ? (saving ? 'Saving…' : 'Done') : 'Edit'}
+              </Button>
+              {primary && canCopyPrimary ? (
+                <Button
+                  onClick={() => {
+                    copy(primary.field, SECRET_LABELS[primary.field.field] ?? 'Value');
+                  }}
+                >
+                  {primary.label}
+                </Button>
+              ) : null}
+            </div>
+          </header>
+
+          <GroupedList className="mt-6">
+            {rows.leading.map((field) => (
+              <FieldRow
+                key={field.label}
+                field={field}
+                editing={editing}
+                draft={draft}
+                setDraft={setDraft}
+                onCopied={onCopied}
+                onFailed={onFailed}
+              />
+            ))}
+
+            {rows.password ? (
+              <SecretRow
+                secret={rows.password}
+                revealedKey={revealed?.key ?? null}
+                revealedValue={revealed?.value ?? ''}
+                onToggle={toggleReveal}
+                onCopy={copy}
+              />
+            ) : null}
+
+            {rows.password ? (
+              <GroupedRow className="h-12">
+                <FieldLabel>Strength</FieldLabel>
+                <StrengthMeter score={strength.band} label={strength.label} />
+                <div
+                  className="text-chip min-w-[68px] shrink-0 text-right font-bold whitespace-nowrap"
+                  data-tone={strengthTone(strength.band)}
+                >
+                  {strength.label}
+                </div>
+              </GroupedRow>
+            ) : null}
+
+            {detail.kind === 'login' ? (
+              <ReusePartners itemId={detail.id} items={items} onOpen={select} />
+            ) : null}
+
+            {editing && detail.kind === 'login' ? (
+              <TotpEditRow
+                configured={rows.totp !== undefined}
+                pending={totpEdit}
+                onChange={setTotpEdit}
+              />
+            ) : rows.totp ? (
+              <TotpRow
+                itemId={detail.id}
+                title={detail.title}
+                onCopied={onCopied}
+                onFailed={onFailed}
+              />
+            ) : null}
+
+            {rows.others.map((secret) => (
+              <SecretRow
+                key={fieldKey(secret.field)}
+                secret={secret}
+                revealedKey={revealed?.key ?? null}
+                revealedValue={revealed?.value ?? ''}
+                onToggle={toggleReveal}
+                onCopy={copy}
+              />
+            ))}
+
+            {rows.trailing.map((field) => (
+              <FieldRow
+                key={field.label}
+                field={field}
+                editing={editing}
+                draft={draft}
+                setDraft={setDraft}
+                onCopied={onCopied}
+                onFailed={onFailed}
+              />
+            ))}
+          </GroupedList>
+
+          <div className="mt-4 grid grid-cols-2 gap-4">
+            {/* The design pairs Activity with "Shared with". Sharing is SPEC-V2, so Activity
+              spans the grid rather than leaving an empty cell or an invented neighbour. */}
+            <Card className="col-span-2 min-h-24">
+              <SectionLabel className="h-auto">Activity</SectionLabel>
+              <div className="text-caption text-text-secondary mt-3 flex flex-col gap-1.5">
+                <div>Created {new Date(detail.createdAt).toLocaleDateString()}</div>
+                <div>Revision {detail.revision}</div>
+              </div>
+            </Card>
+          </div>
+
+          <Card className="mt-4">
+            <SectionLabel className="h-auto">Notes</SectionLabel>
+            {editing ? (
+              <textarea
+                aria-label="Notes"
+                rows={3}
+                className="border-strong bg-surface-panel text-body text-text-primary mt-3 w-full resize-none rounded-md border px-2.5 py-2 leading-[18px] outline-none"
+                value={draft.Notes ?? detail.notes}
                 onChange={(event) => {
-                  setDraft((prev) => ({ ...prev, Title: event.target.value }));
+                  setDraft((prev) => ({ ...prev, Notes: event.target.value }));
                 }}
               />
             ) : (
-              <h1 className="text-display tracking-display truncate font-bold">{detail.title}</h1>
+              <p
+                className="text-body text-text-secondary mt-3 leading-5 text-pretty whitespace-pre-wrap"
+                data-selectable
+              >
+                {detail.notes === '' ? 'No notes yet.' : detail.notes}
+              </p>
             )}
-            <p className="text-body text-text-muted mt-0.5 truncate">{subtitle}</p>
-
-            {/* The icon controls live in edit mode rather than behind a hover on the
-                tile: an affordance nobody can see is an affordance nobody uses, and
-                attaching an icon is an edit. Nothing here is required — almost every
-                item resolves to a bundled brand mark on its own. */}
-            {editing ? (
-              <div className="mt-2 flex items-center gap-2">
-                <CopyAction onClick={pickIcon} disabled={iconBusy}>
-                  {isCustomIcon ? 'Change icon' : 'Use my own icon'}
-                </CopyAction>
-                {isCustomIcon ? (
-                  <CopyAction onClick={clearIcon} disabled={iconBusy}>
-                    Remove
-                  </CopyAction>
-                ) : null}
-                <span className="text-chip text-text-muted">SVG, PNG, JPEG, WebP or ICO</span>
-              </div>
-            ) : null}
-          </div>
-          <div className="flex shrink-0 gap-2">
-            <Button
-              variant="outline"
-              disabled={saving}
-              onClick={() => {
-                if (editing) save();
-                else setEditing(true);
-              }}
-            >
-              {editing ? (saving ? 'Saving…' : 'Done') : 'Edit'}
-            </Button>
-            {primary && canCopyPrimary ? (
-              <Button
-                onClick={() => {
-                  copy(primary.field, SECRET_LABELS[primary.field.field] ?? 'Value');
-                }}
-              >
-                {primary.label}
-              </Button>
-            ) : null}
-          </div>
-        </header>
-
-        <GroupedList className="mt-6">
-          {rows.leading.map((field) => (
-            <FieldRow
-              key={field.label}
-              field={field}
-              editing={editing}
-              draft={draft}
-              setDraft={setDraft}
-              onCopied={onCopied}
-              onFailed={onFailed}
-            />
-          ))}
-
-          {rows.password ? (
-            <SecretRow
-              secret={rows.password}
-              revealedKey={revealed?.key ?? null}
-              revealedValue={revealed?.value ?? ''}
-              onToggle={toggleReveal}
-              onCopy={copy}
-            />
-          ) : null}
-
-          {rows.password ? (
-            <GroupedRow className="h-12">
-              <FieldLabel>Strength</FieldLabel>
-              <StrengthMeter score={strength.band} label={strength.label} />
-              <div
-                className="text-chip min-w-[68px] shrink-0 text-right font-bold whitespace-nowrap"
-                data-tone={strengthTone(strength.band)}
-              >
-                {strength.label}
-              </div>
-            </GroupedRow>
-          ) : null}
-
-          {detail.kind === 'login' ? (
-            <ReusePartners itemId={detail.id} items={items} onOpen={select} />
-          ) : null}
-
-          {editing && detail.kind === 'login' ? (
-            <TotpEditRow
-              configured={rows.totp !== undefined}
-              pending={totpEdit}
-              onChange={setTotpEdit}
-            />
-          ) : rows.totp ? (
-            <TotpRow
-              itemId={detail.id}
-              title={detail.title}
-              onCopied={onCopied}
-              onFailed={onFailed}
-            />
-          ) : null}
-
-          {rows.others.map((secret) => (
-            <SecretRow
-              key={fieldKey(secret.field)}
-              secret={secret}
-              revealedKey={revealed?.key ?? null}
-              revealedValue={revealed?.value ?? ''}
-              onToggle={toggleReveal}
-              onCopy={copy}
-            />
-          ))}
-
-          {rows.trailing.map((field) => (
-            <FieldRow
-              key={field.label}
-              field={field}
-              editing={editing}
-              draft={draft}
-              setDraft={setDraft}
-              onCopied={onCopied}
-              onFailed={onFailed}
-            />
-          ))}
-        </GroupedList>
-
-        <div className="mt-4 grid grid-cols-2 gap-4">
-          {/* The design pairs Activity with "Shared with". Sharing is SPEC-V2, so Activity
-              spans the grid rather than leaving an empty cell or an invented neighbour. */}
-          <Card className="col-span-2 min-h-24">
-            <SectionLabel className="h-auto">Activity</SectionLabel>
-            <div className="text-caption text-text-secondary mt-3 flex flex-col gap-1.5">
-              <div>Created {new Date(detail.createdAt).toLocaleDateString()}</div>
-              <div>Revision {detail.revision}</div>
-            </div>
           </Card>
         </div>
-
-        <Card className="mt-4">
-          <SectionLabel className="h-auto">Notes</SectionLabel>
-          {editing ? (
-            <textarea
-              aria-label="Notes"
-              rows={3}
-              className="border-strong bg-surface-panel text-body text-text-primary mt-3 w-full resize-none rounded-md border px-2.5 py-2 leading-[18px] outline-none"
-              value={draft.Notes ?? detail.notes}
-              onChange={(event) => {
-                setDraft((prev) => ({ ...prev, Notes: event.target.value }));
-              }}
-            />
-          ) : (
-            <p
-              className="text-body text-text-secondary mt-3 leading-5 text-pretty whitespace-pre-wrap"
-              data-selectable
-            >
-              {detail.notes === '' ? 'No notes yet.' : detail.notes}
-            </p>
-          )}
-        </Card>
-      </div>
-    </section>
+      </section>
+    </>
   );
 }
 

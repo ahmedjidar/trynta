@@ -196,7 +196,7 @@ export function Sidebar({ vaults, counts, riskCount }: SidebarProps) {
                   tabIndex={selected ? 0 : -1}
                   data-focus-ring
                   className={cn(
-                    'text-body duration-quick flex h-[30px] w-full items-center gap-2.5 rounded-sm px-2 transition-colors',
+                    'text-body duration-hover flex h-[30px] w-full items-center gap-2.5 rounded-sm px-2 transition-colors',
                     selected
                       ? 'bg-surface-selected text-text-primary font-semibold'
                       : 'text-text-secondary hover:bg-surface-hover cursor-pointer font-medium',

@@ -237,3 +237,43 @@ pub fn item_set_totp(
     state.session.touch();
     Ok(changed)
 }
+
+/// Put the *current code* on the clipboard, in Rust.
+///
+/// The detail row's Copy button used `item_copy_field(TotpSecret)`, which copies the
+/// **base32 seed** — while the toast said "Code copied". Pasting that into a
+/// verification prompt fails, and the user has no way to tell why: the thing on their
+/// clipboard looks like a credential, because it is one, just not the one they asked
+/// for. The seed is still reachable through the ordinary reveal path for anyone
+/// moving an account to another authenticator, which is the only time it is wanted.
+///
+/// Written from Rust with the same secrecy markers and the same auto-clear as any
+/// other copy. A one-time code expires on its own, but it is still a credential for
+/// the length of its step, and leaving it on the clipboard after that is untidy at
+/// best.
+///
+/// # Errors
+///
+/// [`AppError::Locked`], [`AppError::NotFound`] if the item has no configuration,
+/// [`AppError::Clipboard`], [`AppError::Storage`] or [`AppError::Crypto`].
+#[tauri::command]
+pub fn totp_copy_current(state: State<'_, AppState>, id: Uuid) -> Result<(), AppError> {
+    let now_seconds = state.session.now_ms() / MS_PER_SECOND;
+    let unix_seconds = u64::try_from(now_seconds).unwrap_or(0);
+
+    let code = state.session.with_session(|s| {
+        let stored = s.item_totp(id)?.ok_or(AppError::NotFound)?;
+        totp::code_at(&to_service(&stored), unix_seconds).map_err(|e| match e {
+            totp::TotpError::Digits | totp::TotpError::Period | totp::TotpError::Uri => {
+                AppError::Invalid
+            }
+            _ => AppError::Crypto,
+        })
+    })?;
+
+    let token = state.session.platform().clipboard.set_secret(&code.value)?;
+    state.session.note_clipboard_write(token);
+    crate::commands::items::schedule_clipboard_clear(&state, token);
+    state.session.touch();
+    Ok(())
+}

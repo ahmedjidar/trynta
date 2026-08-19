@@ -13,7 +13,7 @@ use std::fmt;
 
 use keyring_store::{StoreError, UnlockError};
 
-use crate::commands::dto::TotpRejectionDto;
+use crate::commands::dto::{ThemeRejectionDto, TotpRejectionDto};
 use crate::session::SessionError;
 
 /// An error crossing the IPC boundary.
@@ -21,7 +21,7 @@ use crate::session::SessionError;
 /// Generated into TypeScript with everything else that crosses IPC, so the
 /// frontend matches on a closed set of discriminants rather than a hand-written
 /// union that drifts the first time a variant is added.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, ts_rs::TS)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/ipc/generated/")]
 #[serde(
     rename_all = "camelCase",
@@ -102,6 +102,17 @@ pub enum AppError {
         /// Which rule the input broke.
         reason: TotpRejectionDto,
     },
+    /// A theme document was refused, and what was wrong with it.
+    ///
+    /// Carries the offending token *name* where there is one. A theme format with
+    /// no published shape and a one-word rejection is a format nobody can author
+    /// against; between them they made importing a guessing game.
+    ThemeRejected {
+        /// Which rule the document broke.
+        reason: ThemeRejectionDto,
+        /// The token at fault, when the rule is about one.
+        token: Option<String>,
+    },
 }
 
 impl fmt::Display for AppError {
@@ -126,6 +137,7 @@ impl fmt::Display for AppError {
             Self::Biometric => "biometric unlock is unavailable",
             Self::Invalid => "the input is not valid",
             Self::TotpRejected { .. } => "that one-time-code setup could not be read",
+            Self::ThemeRejected { .. } => "that theme could not be applied",
         };
         f.write_str(s)
     }

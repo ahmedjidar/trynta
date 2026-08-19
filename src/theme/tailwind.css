@@ -291,6 +291,9 @@
  * values are the design's own motion scale, so these are thin named utilities over the
  * tokens rather than arbitrary `duration-[…]` values scattered through the components.
  */
+@utility duration-hover {
+  transition-duration: var(--duration-hover);
+}
 @utility duration-instant {
   transition-duration: var(--duration-instant);
 }

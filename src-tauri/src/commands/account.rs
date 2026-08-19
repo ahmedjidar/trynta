@@ -131,10 +131,27 @@ pub fn account_unlock(
     state: State<'_, AppState>,
     master_password: String,
 ) -> Result<AccountStatus, AppError> {
-    let file = open_or_attach(&state)?;
+    unlock_with(&state, &master_password, true)
+}
+
+/// The unlock every path shares.
+///
+/// `by_password` is the whole reason this is a parameter rather than a constant: a
+/// biometric unlock must **not** reset the 14-day master-password clock (§5.1), or
+/// the rule would never fire for the people it exists for.
+///
+/// # Errors
+///
+/// As [`account_unlock`].
+pub(crate) fn unlock_with(
+    state: &State<'_, AppState>,
+    master_password: &str,
+    by_password: bool,
+) -> Result<AccountStatus, AppError> {
+    let file = open_or_attach(state)?;
     state.session.begin_unlock()?;
 
-    let keys = match file.unlock(&master_password) {
+    let keys = match file.unlock(master_password) {
         Ok(session) => session.into_keys(),
         Err(e) => {
             // Back to Locked before returning, or a wrong password would leave
@@ -144,14 +161,14 @@ pub fn account_unlock(
         }
     };
 
-    state.session.adopt(keys, true);
+    state.session.adopt(keys, by_password);
     if let Err(e) = state.session.build_index() {
         // The keys are adopted but the vault is not usable. Lock rather than
         // leave a half-open session: fail closed (CLAUDE.md §4.10).
         state.session.lock();
         return Err(e.into());
     }
-    account_status(state)
+    account_status(state.clone())
 }
 
 /// Re-authenticate an already-unlocked vault (SPEC-V1 §6, reveal rate limit).
@@ -214,7 +231,7 @@ pub fn account_exists(state: State<'_, AppState>) -> Result<bool, AppError> {
 }
 
 /// Open the vault file and attach it if that has not happened yet.
-fn open_or_attach(
+pub(crate) fn open_or_attach(
     state: &State<'_, AppState>,
 ) -> Result<std::sync::Arc<keyring_store::VaultFile>, AppError> {
     if let Ok(file) = state.session.file() {

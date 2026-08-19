@@ -38,8 +38,11 @@ const LEVELS = [0.8, 0.9, 1, 1.1, 1.25, 1.4, 1.6] as const;
  * 1360-wide window seen at arm's length on a laptop panel. On the 1440-wide default and
  * anything above it, 1.0 leaves the panes short of the space they have and the text
  * smaller than it should be.
+ *
+ * Raised from 1.1 to 1.25 after reading the app on a real display: 1.1 was still one
+ * step further out than it wanted to be. `Ctrl`+0 returns here, not to 1.0.
  */
-export const DEFAULT_ZOOM = 1.1;
+export const DEFAULT_ZOOM = 1.25;
 
 /** Current level. Module-scoped so the shell and the shortcut agree without a store. */
 let current: number = DEFAULT_ZOOM;

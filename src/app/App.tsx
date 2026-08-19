@@ -58,6 +58,7 @@ import { NewItemSheet } from '../features/items/NewItemSheet';
 import {
   useAllItems,
   useClearCache,
+  useRefresh,
   useItemDetail,
   useItems,
   useVaults,
@@ -329,7 +330,7 @@ function Shell() {
         {surface === 'vault' ? (
           <div className="flex min-w-0 flex-1">
             <ItemList
-              items={items.data ?? []}
+              items={items.data ?? EMPTY_ITEMS}
               risks={risks}
               vaultNames={vaultNames}
               onCopy={onCopy}
@@ -358,7 +359,7 @@ function Shell() {
         ) : (
           // All four surfaces are handled, so TypeScript narrows this to `security`
           // and there is no placeholder branch left to write.
-          <SecurityPane items={items.data ?? []} onCopied={onCopied} onFailed={onFailed} />
+          <SecurityPane onCopied={onCopied} onFailed={onFailed} />
         )}
       </div>
 
@@ -429,7 +430,7 @@ interface DetailPaneProps {
 
 function DetailPane({ vaultNames, report, onCopied, onFailed }: DetailPaneProps) {
   const selectedId = useNavigation((s) => s.selectedId);
-  const clearCache = useClearCache();
+  const refresh = useRefresh();
   // Only rendered inside the unlocked branch, so the gate is satisfied by construction.
   const items = useItems();
   const detail = useItemDetail(selectedId);
@@ -477,18 +478,20 @@ function DetailPane({ vaultNames, report, onCopied, onFailed }: DetailPaneProps)
       strength={strength}
       onCopied={onCopied}
       onFailed={onFailed}
-      onEdited={clearCache}
+      onEdited={refresh}
     />
   );
 }
 
 interface SecurityPaneProps {
-  items: readonly ItemSummaryDto[];
   onCopied: (what: string) => void;
   onFailed: (message: string) => void;
 }
 
-function SecurityPane({ items, onCopied, onFailed }: SecurityPaneProps) {
+function SecurityPane({ onCopied, onFailed }: SecurityPaneProps) {
+  // The whole vault, not the list’s current filter: a risk has to be resolvable to a
+  // title and a tile whatever the list is showing.
+  const allItems = useAllItems();
   // Gated on the surface being open: the report decrypts every login's password to score
   // them, so running it because a sidebar row exists would decrypt the whole vault on
   // launch.
@@ -514,7 +517,7 @@ function SecurityPane({ items, onCopied, onFailed }: SecurityPaneProps) {
   return (
     <SecurityReport
       report={report.data}
-      items={items}
+      items={allItems.data ?? EMPTY_ITEMS}
       canCheck={report.data.breachRefreshAvailable}
       onCheckNow={() => {
         check.mutate(undefined, {
@@ -556,7 +559,7 @@ function SettingsPane({
   // Read here rather than threaded from the shell: vault management is the only
   // thing on this surface that needs the list, and it is already cached.
   const vaultQuery = useVaults();
-  const clearCache = useClearCache();
+  const refresh = useRefresh();
   const [sub, setSub] = useState<'none' | 'updates' | 'backup' | 'vaults'>('none');
 
   useEffect(() => {
@@ -582,7 +585,7 @@ function SettingsPane({
     return (
       <Vaults
         vaults={vaultQuery.data ?? EMPTY_VAULTS}
-        onChanged={clearCache}
+        onChanged={refresh}
         onDone={onCopied}
         onFailed={onFailed}
         onBack={() => {
@@ -624,6 +627,7 @@ function SettingsPane({
         onCopied('Saved');
       }}
       onFailed={onFailed}
+      onCopied={onCopied}
       onVaults={() => {
         setSub('vaults');
       }}

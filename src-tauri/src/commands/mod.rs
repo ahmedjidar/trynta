@@ -23,6 +23,7 @@
 pub mod account;
 pub mod app;
 pub mod backup;
+pub mod biometric;
 pub mod dto;
 pub mod generator;
 pub mod icon;

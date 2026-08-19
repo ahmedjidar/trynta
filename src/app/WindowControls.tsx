@@ -93,7 +93,7 @@ export function WindowControls() {
         onClick={() => {
           void closeWindow();
         }}
-        className={cn(BUTTON, 'hover:bg-status-danger hover:text-text-on-accent')}
+        className={cn(BUTTON, 'window-close hover:bg-status-danger')}
       >
         <Glyph name="windowClose" size={14} />
       </button>

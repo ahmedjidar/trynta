@@ -142,7 +142,12 @@ export function TitleBar({ onOpenPalette, onLock, modifierKey, os }: TitleBarPro
           title={`Appearance: ${LABEL[mode]}. Click for ${LABEL[NEXT[mode]]}.`}
         >
           <Glyph name={MODE_GLYPH[mode]} />
-          {LABEL[mode]}
+          {/* The label is reserved at its widest, so cycling Light → Dark → System
+              cannot change the button's width. It could, and it did: the search field
+              is centred between the two toolbar halves, so a two-pixel change here
+              slid the whole search field sideways every time the theme was toggled.
+              Nothing in a title bar should move because a label got shorter. */}
+          <span className="toolbar-label">{LABEL[mode]}</span>
         </ToolbarButton>
         <ToolbarButton onClick={onLock} title={`Lock vault (${modifierKey}L)`}>
           <Glyph name="lock" />

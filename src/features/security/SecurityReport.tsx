@@ -58,8 +58,9 @@ export interface SecurityReportProps {
 }
 
 export function SecurityReport({ report, items, onCheckNow, canCheck }: SecurityReportProps) {
-  const select = useNavigation((s) => s.select);
-  const go = useNavigation((s) => s.go);
+  // `revealItem`, not `select`: a risk can be on an item the list is filtering out,
+  // and selecting it then left the detail pane saying "select an item".
+  const revealItem = useNavigation((s) => s.revealItem);
   const iconSources = useItemIcons(items);
   const resolvedTheme = useThemeStore((s) => s.resolved);
 
@@ -218,8 +219,7 @@ export function SecurityReport({ report, items, onCheckNow, canCheck }: Security
                 customSrc={iconSources[risk.itemId]}
                 theme={resolvedTheme}
                 onOpen={() => {
-                  select(risk.itemId);
-                  go('vault');
+                  revealItem(risk.itemId);
                 }}
               />
             ))}

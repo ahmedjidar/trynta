@@ -18,7 +18,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { CopyAction } from '../../components/Bits';
 import { FieldLabel, GroupedRow } from '../../components/GroupedList';
-import { itemCopyField, totpCurrent } from '../../ipc';
+import { totpCopyCurrent, totpCurrent } from '../../ipc';
 import type { TotpCodeDto } from '../../ipc';
 
 /**
@@ -111,7 +111,8 @@ export function TotpRow({ itemId, title, onCopied, onFailed }: TotpRowProps) {
       <div className="flex-1" />
       <CopyAction
         onClick={() => {
-          itemCopyField(itemId, { field: 'totpSecret' }).then(
+          // The code, not the seed. See `totpCopyCurrent`.
+          totpCopyCurrent(itemId).then(
             () => {
               onCopied('Code copied');
             },

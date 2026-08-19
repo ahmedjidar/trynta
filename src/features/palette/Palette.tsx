@@ -70,7 +70,7 @@ export function Palette({ onClose, onLock, modifierKey }: PaletteProps) {
   const field = useRef<HTMLInputElement>(null);
 
   const go = useNavigation((s) => s.go);
-  const select = useNavigation((s) => s.select);
+  const revealItem = useNavigation((s) => s.revealItem);
   const { closing, dismiss } = useDismiss(onClose);
   const resolvedTheme = useThemeStore((s) => s.resolved);
 
@@ -95,8 +95,7 @@ export function Palette({ onClose, onLock, modifierKey }: PaletteProps) {
         kind: vaults.data?.find((v) => v.id === item.vaultId)?.name ?? 'Item',
         icon: item.icon,
         run: () => {
-          select(item.id);
-          go('vault');
+          revealItem(item.id);
           dismiss();
         },
       }));
@@ -128,7 +127,7 @@ export function Palette({ onClose, onLock, modifierKey }: PaletteProps) {
     }
 
     return [...itemRows, ...actionRows];
-  }, [items.data, vaults.data, query, go, select, dismiss, onLock, modifierKey]);
+  }, [items.data, vaults.data, query, go, revealItem, dismiss, onLock, modifierKey]);
 
   useEffect(() => {
     field.current?.focus();
@@ -199,7 +198,11 @@ export function Palette({ onClose, onLock, modifierKey }: PaletteProps) {
 
         <div
           data-scroll-pane
-          className="flex flex-col gap-[var(--row-gap)] overflow-y-auto p-2"
+          // `pb-3` rather than a uniform `p-2`: the last row sat flush against the
+          // rounded border with nothing between them, which reads as truncation rather
+          // than as the end of a list. The extra bottom padding is inside the scroll
+          // container, so it scrolls with the content and there is always a gap.
+          className="flex flex-col gap-[var(--row-gap)] overflow-y-auto p-2 pb-3"
           role="listbox"
           aria-label="Results"
         >
