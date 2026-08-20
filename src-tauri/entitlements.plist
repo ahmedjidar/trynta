@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Hardened Runtime, minimum entitlements. Keyring is not App Sandboxed:
+	<!-- Hardened Runtime, minimum entitlements. Trynta is not App Sandboxed:
 	     it is distributed with Developer ID, not through the App Store.
 
 	     Deliberately absent:
@@ -14,7 +14,7 @@
 	<!-- Keychain access for the biometric-unlock wrap (SPEC-V1 §5.1). -->
 	<key>keychain-access-groups</key>
 	<array>
-		<string>$(AppIdentifierPrefix)app.keyring.desktop</string>
+		<string>$(AppIdentifierPrefix)dev.trynta.desktop</string>
 	</array>
 </dict>
 </plist>

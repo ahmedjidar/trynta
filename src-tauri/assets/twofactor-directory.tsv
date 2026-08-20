@@ -15,8 +15,8 @@
 #
 # WHAT IT DOES NOT MEAN: SMS, email codes, push approval, a hardware key, or a
 # vendor's own proprietary app. Those are real second factors and several are
-# stronger than TOTP — but they are not what Keyring can help with, and "add a
-# one-time code in Keyring" is only actionable when a TOTP app is actually accepted.
+# stronger than TOTP — but they are not what Trynta can help with, and "add a
+# one-time code in Trynta" is only actionable when a TOTP app is actually accepted.
 # This is why Apple, Steam, Netflix and most retail banks are absent: their second
 # factor is real and their users cannot put it here.
 #
