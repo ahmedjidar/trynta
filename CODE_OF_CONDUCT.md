@@ -78,7 +78,7 @@ If the maintainer finds that this Code of Conduct has been violated, the followi
    2) Consequence: Access to all community spaces, tools, and communication channels is removed. In general, permanent bans should be rarely used, should have strong reasoning behind them, and should only be resorted to if working through other remedies has failed to change the behavior.
    3) Repair: There is no possible repair in cases of this severity.
 
-This enforcement ladder is intended as a guideline. It does not limit the ability of Community Managers to use their discretion and judgment, in keeping with the best interests of our community.
+This enforcement ladder is intended as a guideline. It does not limit the maintainer's discretion and judgment, in keeping with the best interests of the community.
 
 
 ## Scope

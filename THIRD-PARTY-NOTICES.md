@@ -246,8 +246,8 @@ the same string about 8% narrower.
 
 **Bundled, never fetched.** The `@font-face` rules in `src/theme/fonts.css` point at
 `/fonts/…`, which is what the production CSP's `font-src 'self'` permits. A webfont pulled from a
-CDN would be an outbound request on every launch — a fourth permitted request, which CLAUDE.md §4.7
-does not allow, and the same class of leak ADD-001 exists to prevent, arriving through the typeface
+CDN would be an outbound request on every launch — a third permitted request, where CLAUDE.md §4.7
+allows exactly two, and the same class of leak ADD-001 exists to prevent, arriving through the typeface
 instead of the icons.
 
 Under the OFL the font may be embedded and redistributed; the Reserved Font Name clause means a

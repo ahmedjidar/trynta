@@ -141,11 +141,12 @@ compiled and passed the gate once, on 2026-08-17 at `c925f0f`, and has not been 
 billing at ten times the rate. It is not a judgement that macOS matters less, and it reverts when
 there is Apple hardware.
 
-**The standards get stricter, not looser.** Because nothing compiles the macOS code, it has to be
-right on the first read: real API signatures checked against vendored crate source rather than
-recalled, every macOS path carrying the same test coverage as its Windows counterpart even though
-the tests do not run, and every uncertainty marked `// UNVERIFIED:` at the site with a matching row
-in [`MACOS-UNVERIFIED.md`](../MACOS-UNVERIFIED.md).
+**The standards get stricter, not looser.** Because nothing has compiled the macOS code since
+2026-08-17, anything written after that has to be right on the first read: real API signatures
+checked against vendored crate source rather than recalled, every macOS path carrying the same test
+coverage as its Windows counterpart even though the tests do not run, and every uncertainty marked
+`// UNVERIFIED:` at the site with a matching row in
+[`MACOS-UNVERIFIED.md`](../MACOS-UNVERIFIED.md).
 
 **Measured, not assumed:** `cargo check --target aarch64-apple-darwin` does not work from Windows.
 `keyring-crypto` cross-checks cleanly; `keyring-store` fails on `libsqlite3-sys`; the `keyring`

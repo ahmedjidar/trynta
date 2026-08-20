@@ -33,14 +33,18 @@ Without it, that one feature reports itself unavailable — everything else work
 
 ### Windows is the only platform anyone can verify
 
-CI runs the full gate on `windows-latest` for every push. **The macOS code has never been
-compiled by anyone.** If you are on a Mac, you cannot build this today, and a patch that "fixes"
-macOS cannot be verified by us either. That is not a reason not to send it — it is a reason to be
-explicit in the pull request about what you did and did not run.
+CI runs the full gate on `windows-latest` for every push. **macOS compiled and passed the gate
+once, on 2026-08-17 at `c925f0f`, and nothing macOS has been compiled since** — ADD-005 moved it to
+tags and manual dispatch that afternoon and there are no tags. So there is one green macOS run in
+the Actions history, and every macOS change made after it is unbuilt.
+
+If you are on a Mac you can still try, and a patch that fixes something on macOS is welcome — but
+nobody here can verify it, and neither can CI as currently configured. That is not a reason not to
+send it. It is a reason to be explicit in the pull request about what you did and did not run.
 
 If you write macOS code, [`MACOS-UNVERIFIED.md`](MACOS-UNVERIFIED.md) has to grow a row in the same
-commit. Read its header first; it explains the format and why the standard is _stricter_ for code
-nothing compiles.
+commit. Read its header first; it explains the format, and why the standard is _stricter_ for code
+that no compiler has checked since 2026-08-17.
 
 ## Running the tests
 
