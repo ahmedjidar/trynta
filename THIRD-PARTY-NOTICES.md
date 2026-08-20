@@ -331,12 +331,12 @@ Five dev-only packages carry licences worth naming, none of which is distributed
    marks — 12 CC-BY-SA-4.0, 19 GPL/AGPL, 3 MPL-2.0, 1 LGPL-3.0 — are each compatible with
    AGPL-3.0 and were deliberately left in place.
 
-2. **The installers carry no licence text.** `bundle.licenseFile`, `bundle.resources`,
-   `bundle.copyright` and `bundle.publisher` are all unset in `src-tauri/tauri.conf.json`, so a
-   built `.msi` or `.exe` ships without `LICENSE`, `NOTICE` or this file. Several bundled assets —
-   CC-BY and CC-BY-SA marks, the SIL OFL typeface, MPL-2.0 components, and four per-brand written
-   permissions — require their attribution to accompany the distribution, and AGPL-3.0 §4 requires
-   the licence to accompany the conveyed work. **Fix before any public binary release.**
+2. ~~**The installers carry no licence text.**~~ **Resolved 2026-08-20.** `bundle.licenseFile`,
+   `copyright`, `publisher` and `resources` are set in `src-tauri/tauri.conf.json`, so `LICENSE`,
+   `NOTICE` and this file are installed alongside the executable and the copyright string is
+   embedded in the package metadata. Verified by inspecting the built MSI's `File` table rather
+   than by trusting the configuration: it lists four files — the executable plus all three
+   documents.
 
 3. **The EFF wordlist is not vendored**, so the passphrase generator reports itself unavailable.
    See the wordlist section above.

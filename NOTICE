@@ -62,10 +62,12 @@ summary, this distribution includes:
     repository; see THIRD-PARTY-NOTICES.md.
 
 
-A KNOWN GAP, STATED RATHER THAN HIDDEN
---------------------------------------
+WHERE THIS FILE LIVES IN A BUILT INSTALL
+---------------------------------------
 
-As of this writing the Windows installers produced by `pnpm tauri build` do not
-carry this file, LICENSE, or THIRD-PARTY-NOTICES.md — `bundle.licenseFile` and
-`bundle.resources` are unset in src-tauri/tauri.conf.json. Anyone redistributing a
-built installer should include all three alongside it until that is fixed.
+The Windows installers place this file, LICENSE and THIRD-PARTY-NOTICES.md next to
+the executable in the installation directory, so the attribution travels with the
+software rather than only with the source tree. They are declared as
+`bundle.resources` in src-tauri/tauri.conf.json.
+
+Anyone redistributing a build should keep all three together.
