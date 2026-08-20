@@ -201,3 +201,20 @@ pub fn verify_ed25519(
     vk.verify(message, &Signature::from_bytes(signature))
         .map_err(|_| CryptoError::BadSignature)
 }
+
+impl AccountKeys {
+    /// Visit each 32-byte secret this holds, as a borrow of the live buffer.
+    ///
+    /// For pinning pages into RAM (CLAUDE.md §4.5). The caller gets the address the key
+    /// actually lives at, which is the only address worth locking — `to_bytes()` would
+    /// hand back a copy and locking that would pin the wrong page while leaving the real
+    /// one pageable.
+    ///
+    /// Deliberately a visitor rather than an accessor returning the slices. There is no
+    /// `&[u8; 32]` escaping to a caller that might store it, and the borrow cannot
+    /// outlive the closure.
+    pub fn for_each_secret_region<F: FnMut(&[u8])>(&self, mut visit: F) {
+        visit(self.x25519.as_bytes());
+        visit(self.ed25519.as_bytes());
+    }
+}

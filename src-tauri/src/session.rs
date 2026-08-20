@@ -213,6 +213,15 @@ impl SessionManager {
     /// §5.1).
     pub fn adopt(&self, keys: SessionKeys, by_password: bool) {
         let now = self.clock.now_ms();
+
+        // Pin the key pages before the keys go anywhere (CLAUDE.md §4.5). Here, because
+        // this is the one point where they are live and at a settled address — after
+        // this they are behind a mutex and moving them to lock them would defeat the
+        // purpose. Best-effort by design: a refused lock warns and the unlock proceeds,
+        // because refusing to open a vault over a page-residency hint would trade a
+        // real feature for a partial mitigation.
+        crate::platform::memory::lock_session_keys(|visit| keys.for_each_key_region(visit));
+
         let mut inner = self.lock_inner();
         inner.keys = Some(keys);
         inner.state = VaultState::Unlocked;

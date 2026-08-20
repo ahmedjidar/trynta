@@ -96,10 +96,11 @@ Items are encrypted individually under per-item keys, wrapped by per-vault keys,
 derived from the master password. Every key and plaintext buffer is `Zeroizing`, so it is wiped when
 it drops.
 
-**Key pages are not locked into RAM.** `VirtualLock`/`mlock` is not called anywhere, so key material
-can in principle be written to the page file. Zeroization is best-effort by nature and this is one
-of the ways it is best-effort. It is a known gap, not a design position — see
-[`SECURITY.md`](SECURITY.md).
+The three 32-byte keys a live session holds are pinned into RAM with `VirtualLock` at unlock, so
+they are kept out of the page file. The Argon2 derivation buffer is a documented exception — it is
+far larger than the lockable working set. Locking pins an address rather than a value, and a
+hibernation image is a full memory dump whatever is locked; [`SECURITY.md`](SECURITY.md) sets out
+exactly what this does and does not buy.
 
 Crypto crates are pinned to one RustCrypto generation and `cargo deny` fails the build on a second
 copy of `digest`, `sha2`, `rand_core`, `aead` or `curve25519-dalek`.

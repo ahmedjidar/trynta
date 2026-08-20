@@ -14,7 +14,7 @@ once there is real Apple hardware.
 What that means concretely, for anyone assessing this project:
 
 - Every security claim below that depends on platform code — biometric unlock, the biometric key
-  wrap at rest, clipboard concealment — is implemented **for Windows only**. The macOS half of each
+  wrap at rest, clipboard concealment, key-page locking — is implemented **for Windows only**. The macOS half of each
   is written to the same standard and its behaviour is unknown. See "What is not verified" below
   for how much of the Windows half an automated test actually covers, which is less than all of it.
 - Specifically unverified on macOS: that changing the enrolled fingerprint set destroys the
@@ -51,15 +51,15 @@ We do not currently run a paid bounty programme.
 An honest list, because "we take security seriously" is not a security property. None of the
 following has been confirmed by a third party or, in most cases, by an automated test.
 
-| Area                                 | State                                                                                                                                                                                                                                                                 |
-| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Third-party review**               | **None.** No audit, no penetration test, no external cryptographic review of any part of this codebase.                                                                                                                                                               |
-| **The whole macOS build**            | Never compiled. See the section above and [`MACOS-UNVERIFIED.md`](MACOS-UNVERIFIED.md).                                                                                                                                                                               |
-| **Biometric unlock (Windows Hello)** | Implemented and reachable, but the acceptance gate **skips** it — AC06 is marked `skip: requires the platform secure-store and biometric layer`. The signing path, the key wrap at rest, and invalidation on enrolment change have been exercised by hand, not by CI. |
-| **The updater's install path**       | The manifest signature check is tested. Downloading, verifying and _applying_ a real update to a real installation has never been done end to end.                                                                                                                    |
-| **Memory locking**                   | Not implemented at all. See the page-file bullet under "Out of scope".                                                                                                                                                                                                |
-| **Clipboard history exclusion**      | The three Windows exclusion formats are set and tested, but only against the formats themselves — not against a machine with Cloud Clipboard actually syncing.                                                                                                        |
-| **The share-alike bundled icons**    | Six bundled marks are CC-BY-SA 2.5/3.0, which are not GPL-compatible. Recorded in [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) as an open item. Not a vulnerability; a licensing one.                                                                           |
+| Area                                 | State                                                                                                                                                                                                                                                                                                                                   |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Third-party review**               | **None.** No audit, no penetration test, no external cryptographic review of any part of this codebase.                                                                                                                                                                                                                                 |
+| **The whole macOS build**            | Never compiled. See the section above and [`MACOS-UNVERIFIED.md`](MACOS-UNVERIFIED.md).                                                                                                                                                                                                                                                 |
+| **Biometric unlock (Windows Hello)** | Implemented and reachable, but the acceptance gate **skips** it — AC06 is marked `skip: requires the platform secure-store and biometric layer`. The signing path, the key wrap at rest, and invalidation on enrolment change have been exercised by hand, not by CI.                                                                   |
+| **The updater's install path**       | The manifest signature check is tested. Downloading, verifying and _applying_ a real update to a real installation has never been done end to end.                                                                                                                                                                                      |
+| **Memory locking**                   | Implemented for Windows and covered by tests — `VirtualLock` on the three 32-byte session keys, warning and continuing if the OS refuses. The macOS `mlock` counterpart is written and, like everything else on that platform, has never been compiled. What it does and does not buy is set out in `src-tauri/src/platform/memory.rs`. |
+| **Clipboard history exclusion**      | The three Windows exclusion formats are set and tested, but only against the formats themselves — not against a machine with Cloud Clipboard actually syncing.                                                                                                                                                                          |
+| **The share-alike bundled icons**    | Six bundled marks are CC-BY-SA 2.5/3.0, which are not GPL-compatible. Recorded in [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) as an open item. Not a vulnerability; a licensing one.                                                                                                                                             |
 
 ## Scope
 
@@ -86,13 +86,16 @@ These are stated in the threat model as undefended, not overlooked:
 - A webview compromised at the moment of unlock. The master password is typed into an `<input>`
   and exists as an unzeroizable JavaScript string for that moment. This is inherent to every
   webview-based password manager; CSP and capability hardening are what stand between us and it.
-- **Key material being paged to disk. Nothing in this build locks memory.** `VirtualLock` and
-  `mlock` are not called anywhere, so neither the 32-byte keys nor the Argon2 buffer is pinned to
-  RAM, and either can in principle reach the page file. An earlier version of this document said
-  the 32-byte keys were locked. That was wrong, and the correction is the important part: treat a
-  machine that hibernates or swaps as a machine where key material may have touched disk.
-  Zeroization is best-effort regardless — allocators reuse blocks and `String` growth orphans
-  copies.
+- **The Argon2 memory buffer being paged to disk.** It is far larger than the lockable working
+  set on either platform, and it is a documented exception rather than an oversight: the three
+  32-byte keys a live session holds — the MUK and the two account secrets — **are** pinned with
+  `VirtualLock` at unlock, and a 64 MiB derivation buffer cannot be.
+- **A hibernation image.** `VirtualLock` keeps a page out of the page file. It does not keep it out
+  of `hiberfil.sys`, which is a complete memory dump by design.
+- **Key material that has been moved or copied since unlock.** Locking pins an address, not a
+  value. The buffers the session owns are pinned; a clone made later lives somewhere nobody locked.
+  Zeroization is best-effort for the same family of reasons — allocators reuse blocks and `String`
+  growth orphans copies.
 - Screen capture by another process while the vault is unlocked, unless the user has enabled the
   opt-in screen-capture mitigation.
 - A weak master password.

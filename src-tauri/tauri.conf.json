@@ -34,7 +34,10 @@
     "security": {
       "freezePrototype": true,
       "dangerousDisableAssetCspModification": false,
-      "assetProtocol": { "enable": false, "scope": [] },
+      "assetProtocol": {
+        "enable": false,
+        "scope": []
+      },
       "capabilities": ["default"],
       "csp": {
         "default-src": "'self'",
@@ -72,6 +75,15 @@
     "targets": ["app", "dmg", "msi", "nsis"],
     "category": "Utility",
     "shortDescription": "A password manager for credentials that belong to more than one person.",
+    "longDescription": "A local-first, end-to-end encrypted password manager. Everything that touches a secret is in Rust; brand icons are bundled and never fetched. Pre-1.0 and unaudited.",
+    "copyright": "Copyright (C) 2026 Rafik. Licensed under AGPL-3.0-or-later.",
+    "publisher": "Rafik",
+    "licenseFile": "../LICENSE",
+    "resources": {
+      "../LICENSE": "LICENSE",
+      "../NOTICE": "NOTICE",
+      "../THIRD-PARTY-NOTICES.md": "THIRD-PARTY-NOTICES.md"
+    },
     "createUpdaterArtifacts": false,
     "icon": [
       "icons/32x32.png",
@@ -86,15 +98,22 @@
     },
     "windows": {
       "allowDowngrades": false,
-      "webviewInstallMode": { "type": "downloadBootstrapper", "silent": true },
-      "nsis": { "installMode": "currentUser" }
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      },
+      "nsis": {
+        "installMode": "currentUser"
+      }
     }
   },
   "plugins": {
     "updater": {
       "endpoints": [],
       "pubkey": "",
-      "windows": { "installMode": "passive" }
+      "windows": {
+        "installMode": "passive"
+      }
     }
   }
 }

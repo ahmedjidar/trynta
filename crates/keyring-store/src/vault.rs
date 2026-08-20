@@ -1313,3 +1313,19 @@ impl Session<'_> {
         header.update_manifest(conn)
     }
 }
+
+impl SessionKeys {
+    /// Visit every 32-byte key region this holds, as a borrow of the live buffer.
+    ///
+    /// Exists so the application layer can pin these pages into RAM without the key
+    /// bytes leaving this crate as an owned value (CLAUDE.md §4.5). Three regions: the
+    /// MUK, and the account X25519 and Ed25519 secrets.
+    ///
+    /// A visitor rather than an accessor, for the same reason as
+    /// [`keyring_crypto::AccountKeys::for_each_secret_region`] — nothing escapes that a
+    /// caller could hold on to.
+    pub fn for_each_key_region<F: FnMut(&[u8])>(&self, mut visit: F) {
+        visit(self.muk.expose());
+        self.account_keys.for_each_secret_region(&mut visit);
+    }
+}

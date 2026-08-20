@@ -13,6 +13,7 @@
 
 pub mod biometric;
 pub mod clipboard;
+pub mod memory;
 pub mod paths;
 pub mod secure_store;
 
@@ -25,6 +26,7 @@ use std::sync::Arc;
 
 pub use biometric::{BiometricError, BiometricKind, Biometrics};
 pub use clipboard::{Clipboard, ClipboardError};
+pub use memory::{lock_pages, MemoryLockError};
 pub use secure_store::{SecureStore, SecureStoreError};
 
 /// Everything the application needs from the operating system.
