@@ -103,10 +103,12 @@ Violating any of these is a build-breaking bug, not a code review nit.
    best-effort by nature; never claim otherwise in the product or the specs.
 6. **No secret ever reaches a log, a panic message, a `Debug` impl, or an error string.** Manually
    implement `Debug` as a redacting impl for every type holding secrets. Test this.
-7. **Nothing phones home about vault contents.** There are exactly **three** permitted outbound
-   requests in the entire product, and adding a fourth requires a spec change: (a) HIBP range
-   queries, k-anonymous, 5 hex characters, `Add-Padding: true`; (b) the signed update manifest
-   check; (c) nothing else. Brand icons are bundled, never fetched (`ADD-001`). The app never
+7. **Nothing phones home about vault contents.** There are exactly **two** permitted outbound
+   requests in the entire product, and adding a third requires a spec change: (a) HIBP range
+   queries, k-anonymous, 5 hex characters, `Add-Padding: true`; and (b) the signed update manifest
+   check. Nothing else — `pnpm check:network` sanctions exactly those two call sites, `hibp.rs` and
+   `updates.rs`, and fails the build on a third. Brand icons are bundled, never fetched
+   (`ADD-001`). The app never
    probes a user's sites — not for favicons, not for `/.well-known/change-password`. No crash
    reporter that could capture memory. No analytics in pre-1.0.
 8. **Autofill matches on registrable domain (eTLD+1) via the Public Suffix List.** Never substring
@@ -195,18 +197,23 @@ The actual position:
 
 - **Windows is the verified platform.** CI runs the full gate on `windows-latest` for every
   push. That is the build that has to be green.
-- **macOS code is written and never compiled.** Not "lightly tested" — never built. Its
-  correctness is *unknown*, and every claim about it in this repository is a claim about code
-  that no compiler has read.
+- **macOS compiled and passed the gate once, on 2026-08-17 (`c925f0f`), and nothing macOS has
+  been compiled since.** ADD-005 moved it to tags-only that same afternoon and this repository
+  has no tags. So there *is* one green macOS run in the Actions history — do not claim otherwise,
+  it is checkable. But every macOS change made after it has **never compiled**, including the
+  three platform files ADD-005 itself rewrote in the very commit that turned the compiler off.
+  Treat macOS code written since 2026-08-17 exactly as this manual used to tell you to treat all
+  of it: unknown, and unknown in ways it does not predict.
 - macOS jobs run on tags and `workflow_dispatch` only, and are named `UNVERIFIED PLATFORM`.
 - This is a budget decision, not a technical judgement: private repo, free Actions minutes
   exhausted, macOS runners bill at 10×. It reverts when there is real Apple hardware.
 
-Calibrate your confidence accordingly. Earlier on 2026-08-17, macOS code that had been read,
-reviewed and locally linted took **two CI round trips just to build** — a `crate-type` collision
-produced two instances of `keyring_store` in one test binary, and a timing test failed because the
-runner had three cores. Neither was visible from a Windows machine. "It looks right" has already
-been wrong twice.
+Calibrate your confidence accordingly. On 2026-08-17, macOS code that had been read, reviewed and
+locally linted took **two CI round trips just to build** — three compile errors in `1423991`, three
+clippy failures in `c925f0f`, plus a `crate-type` collision that produced two instances of
+`keyring_store` in one test binary and a timing test that failed because the runner had three cores.
+None of it was visible from a Windows machine. "It looks right" has already been wrong twice, and
+that was with a compiler still checking. Nothing has checked since.
 
 `cargo check --target aarch64-apple-darwin` **does not work from Windows** and this was measured,
 not assumed: `keyring-crypto` cross-checks cleanly, `keyring-store` fails on `libsqlite3-sys`, and

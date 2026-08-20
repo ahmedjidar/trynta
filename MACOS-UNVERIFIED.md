@@ -1,18 +1,51 @@
-# macOS: written, never compiled
+# macOS: compiled once, unverified since
 
 Every macOS-specific code path in Trynta, what it is supposed to do, and how to
 verify it on real hardware.
 
-**Status: nothing below has ever been compiled.** Not "lightly tested" — not tested,
-and not built. ADD-005 makes Windows the verified platform for budget reasons
-(private repo, free Actions minutes exhausted, macOS runners bill at 10×). Treat
-every line of macOS code as unknown until a step in this document has passed.
+## Status: it built, once, and nothing since has been compiled
 
-To calibrate how unknown: earlier on 2026-08-17, code that had been read, reviewed
-and locally linted took **two CI round trips just to build** on macOS — a
-`crate-type` collision produced two instances of `keyring_store` in one test binary,
-and a timing test failed because the runner had three cores. Neither was visible from
-a Windows machine. Expect this list to be wrong in ways it does not predict.
+**The macOS build compiled and the full gate passed on 2026-08-17.** That is a
+matter of record in the Actions history, and an earlier version of this document
+claimed the opposite while also describing the CI round trips that fixed the build —
+a contradiction anyone reading the green run would have caught immediately.
+
+What actually happened, from the commit trail:
+
+| Commit      | Time (2026-08-17) | What                                                                                                                                                                                                                                                                                                                   |
+| ----------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `1423991`   | 04:01             | Three macOS **compile errors** fixed, all in code that had never been built: `NSStringPboardType` is AppKit not Foundation, `CFOptionFlags` is pointer-sized so the BiometryCurrentSet flag is `usize`, and objc2 0.6 models the `NSPasteboard` methods as safe so the `unsafe` blocks were rejected by `-D warnings`. |
+| `c925f0f`   | 04:16             | The last three macOS failures — `doc_markdown` and a `match_same_arms` in `TouchId::revoke`. After this, macOS was green.                                                                                                                                                                                              |
+| …16 pushes… | 04:16 → 15:54     | macOS CI ran on **every push** through `010b9da` (12:29).                                                                                                                                                                                                                                                              |
+| `75e07df`   | 15:54             | **ADD-005.** macOS moved to tags and `workflow_dispatch` only.                                                                                                                                                                                                                                                         |
+
+**There are no tags in this repository, so macOS has not been compiled since
+2026-08-17.** That is the honest boundary, and it is narrower than "never compiled"
+in one direction and wider in another — because ADD-005 itself rewrote all three
+macOS platform files in the very commit that turned the compiler off:
+`clipboard.rs` (+100 lines, including the `declareTypes` change), `keychain.rs`
+(+44) and `touch_id.rs` (+68). None of that rewrite has ever been built.
+
+Never compiled, and therefore unknown:
+
+- Everything in `75e07df` itself — the three platform-file rewrites above.
+- The **memory locking** (`mlock`), added 2026-08-20. Row E4.
+- The **Keychain access-group fix**, `app.keyring.desktop` → `dev.trynta.desktop`,
+  2026-08-20. Row D4.
+- The **icon pipeline**, including the hand-written `.icns` container.
+- The **Trynta rename** and the SPDX header pass, both of which touched macOS files.
+
+## Calibrate accordingly
+
+The one macOS build that happened is the best evidence available about how much a
+careful read is worth, and the answer is "not nothing, and not much": code that had
+been read, reviewed and locally linted still took **two CI round trips just to
+build**. A `crate-type` collision produced two instances of `keyring_store` in one
+test binary, and a timing test failed because the runner had three cores. Neither was
+visible from a Windows machine.
+
+Everything added since has had none of even that scrutiny. Expect this list to be
+wrong in ways it does not predict.
 
 ## How to work through this
 
@@ -151,14 +184,14 @@ supported way to corrupt one item.
 
 ## E — Paths, window chrome, keyboard
 
-| #   | Check                 | Expected                                                                                                                                                                                                                                               | How                                                                                                                                                   |
-| --- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| E1  | Data directory        | `~/Library/Application Support/Trynta`                                                                                                                                                                                                                 | `cargo test -p keyring --test platform_macos -- --nocapture`, read `app-support-files-scanned`                                                        |
-| E2  | Modifier key          | hints render `Cmd`, never a hardcoded `⌘`                                                                                                                                                                                                              | `platform::modifier_key()`; SPEC-V1 §8 forbids the literal in source                                                                                  |
-| E3  | Traffic lights        | native, and the window is draggable                                                                                                                                                                                                                    | manual, run the app                                                                                                                                   |
-| E4  | `mlock` equivalent    | `platform::memory::lock_pages` succeeds for all three 32-byte session keys, or logs a warning and continues. Implemented 2026-08-20 in `src-tauri/src/platform/memory.rs`; the Windows half is tested, the `libc::mlock` half has never been compiled. | `cargo test -p keyring --lib platform::memory` and `cargo test -p keyring --test key_pages_locked`, then unlock and read the log for the warning path |
-| E5  | Auto-lock on sleep    | locks when the lid closes                                                                                                                                                                                                                              | manual: unlock, close the lid, reopen                                                                                                                 |
-| E6  | LaunchAgent autostart | survives a reboot                                                                                                                                                                                                                                      | manual, once the setting exists (run 3)                                                                                                               |
+| #   | Check                 | Expected                                                                                                                                                                                                                                                                                                                                                                             | How                                                                                                                                                   |
+| --- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| E1  | Data directory        | `~/Library/Application Support/Trynta`                                                                                                                                                                                                                                                                                                                                               | `cargo test -p keyring --test platform_macos -- --nocapture`, read `app-support-files-scanned`                                                        |
+| E2  | Modifier key          | hints render `Cmd`, never a hardcoded `⌘`                                                                                                                                                                                                                                                                                                                                            | `platform::modifier_key()`; SPEC-V1 §8 forbids the literal in source                                                                                  |
+| E3  | Traffic lights        | native, and the window is draggable                                                                                                                                                                                                                                                                                                                                                  | manual, run the app                                                                                                                                   |
+| E4  | `mlock` equivalent    | `platform::memory::lock_pages` succeeds for all three 32-byte session keys, or logs a warning and continues. Implemented 2026-08-20 in `src-tauri/src/platform/memory.rs`; the Windows half is tested, and the macOS half — `mlock` declared with a five-line `extern "C"` block rather than a `libc` dependency — was added after the last macOS build and has never been compiled. | `cargo test -p keyring --lib platform::memory` and `cargo test -p keyring --test key_pages_locked`, then unlock and read the log for the warning path |
+| E5  | Auto-lock on sleep    | locks when the lid closes                                                                                                                                                                                                                                                                                                                                                            | manual: unlock, close the lid, reopen                                                                                                                 |
+| E6  | LaunchAgent autostart | survives a reboot                                                                                                                                                                                                                                                                                                                                                                    | manual, once the setting exists (run 3)                                                                                                               |
 
 ## G — Frontend delivery and the bundled typeface
 

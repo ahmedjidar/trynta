@@ -5,11 +5,20 @@ afford to lose while that remains true.
 
 ## macOS is unverified — read this before reporting or trusting anything on it
 
-**The macOS build has never been compiled.** Not "lightly tested": no compiler has read it, no
-test has run against it, and no one has launched it. Windows is the verified platform and the
-only one with a green build. This is a budget decision (ADD-005) — private repo, exhausted free
-Actions minutes, macOS runners at 10× — not a judgement that macOS matters less, and it reverts
-once there is real Apple hardware.
+**The macOS build compiled and passed the gate once, on 2026-08-17, and nothing macOS has been
+compiled since.** CI found and fixed three compile errors (`1423991`) and three clippy failures
+(`c925f0f`) that morning, after which macOS ran green on every push. ADD-005 (`75e07df`, 15:54 the
+same day) then moved macOS to tags and manual dispatch only, and this repository has no tags.
+
+That boundary matters in both directions. It is a real green build, verifiable in the Actions
+history — not a hope. And ADD-005 rewrote all three macOS platform files _in the same commit that
+turned the compiler off_, so even the code that policy shipped has never been built. Everything
+added since — the memory locking, the Keychain access-group fix, the icon pipeline, the rename — is
+unbuilt too.
+
+Windows is the verified platform and the only one with a currently green build. This is a budget
+decision (ADD-005) — private repo, exhausted free Actions minutes, macOS runners at 10× — not a
+judgement that macOS matters less, and it reverts once there is real Apple hardware.
 
 What that means concretely, for anyone assessing this project:
 
@@ -24,8 +33,9 @@ What that means concretely, for anyone assessing this project:
 - A macOS-only finding is **in scope and welcome**, and will not be treated as a duplicate of a
   known gap unless it is already a row in that file with the same failure described.
 
-Two macOS build failures have already been found and fixed by CI after passing local review, which
-is the honest measure of how much a careful read is worth here: not nothing, and not much.
+The one macOS build that did happen is the honest measure of how much a careful read is worth here:
+code that had been read, reviewed and locally linted still took two CI round trips just to compile.
+Not nothing, and not much. Everything added since has had none of even that.
 
 ## Reporting a vulnerability
 
@@ -54,10 +64,10 @@ part that is **not** covered, and where something _is_ covered it says by what.
 | Area                                  | State                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Third-party review**                | **None.** No audit, no penetration test, no external review of the cryptography, the storage format or the platform code. Nothing below has been looked at by anyone outside this project.                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| **The whole macOS build**             | Never compiled, by any compiler. See the section above and [`MACOS-UNVERIFIED.md`](MACOS-UNVERIFIED.md).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| **The whole macOS build**             | Compiled and green once, on 2026-08-17 at `c925f0f`. Nothing macOS has been compiled since — ADD-005 moved it to tags-only that afternoon and there are no tags, and ADD-005 itself rewrote all three macOS platform files in that same commit. See the section above and [`MACOS-UNVERIFIED.md`](MACOS-UNVERIFIED.md).                                                                                                                                                                                                                                                                                                                                          |
 | **Biometric unlock (Windows Hello)**  | The acceptance gate **skips** it: AC06 is `skip: requires the platform secure-store and biometric layer`. End-to-end tests do exist — `tests/platform_hello_enrolled.rs` covers enrol, sign, unwrap, signing-key stability across calls, and revocation making a wrap unopenable — but they are opt-in behind `TRYNTA_TEST_HELLO=1` because they raise a real consent prompt and block on a human answering it. **CI has never run them.** What CI does cover is narrower: that availability is reported honestly, that unwrapping with no enrolment is an invalidation rather than a panic, and that revoking a missing enrolment still clears any stored wrap. |
 | **The updater's install path**        | Weaker than it sounds. `tests/updater.rs` asserts the _configuration_: an endpoint cannot be set without a public key to verify against, no `dangerous*` escape hatch is enabled, the webview cannot start a download or an install, and the running version matches what the bundle declares. **No test verifies a signature against a real manifest**, and no update has ever been downloaded, verified and applied to a real installation. The signature check is the plugin's; we have tested that we asked for it, not that it happens.                                                                                                                     |
-| **Memory locking**                    | The Windows half is implemented and tested — `VirtualLock` on the three 32-byte session keys, called from `SessionManager::adopt`, warning and continuing if the OS refuses. The macOS `mlock` counterpart has never been compiled. Two limits apply on both platforms and are not defects to be fixed later: locking pins an **address, not a value**, so a key moved or cloned after unlock lives somewhere nobody locked; and it does nothing about `hiberfil.sys`, which is a complete memory dump by design. `src-tauri/src/platform/memory.rs` sets this out at length.                                                                                    |
+| **Memory locking**                    | The Windows half is implemented and tested — `VirtualLock` on the three 32-byte session keys, called from `SessionManager::adopt`, warning and continuing if the OS refuses. The macOS `mlock` counterpart was added after the last macOS build and has never been compiled. Two limits apply on both platforms and are not defects to be fixed later: locking pins an **address, not a value**, so a key moved or cloned after unlock lives somewhere nobody locked; and it does nothing about `hiberfil.sys`, which is a complete memory dump by design. `src-tauri/src/platform/memory.rs` sets this out at length.                                           |
 | **Clipboard history exclusion**       | The three Windows exclusion formats are asserted present on a real clipboard write by `platform_windows.rs::a_secret_copy_carries_every_history_exclusion_format`. What is untested is the thing that matters most: a machine with Cloud Clipboard **actually syncing**, where the formats have to be honoured rather than merely set.                                                                                                                                                                                                                                                                                                                           |
 | **Anything under load, or over time** | `proptest` covers envelope round-trips, generator entropy and the report's score arithmetic. There is no fuzzing of the on-disk format or the theme validator, no long-running soak, and no concurrency stress on the session state machine beyond the threads a couple of tests happen to spawn.                                                                                                                                                                                                                                                                                                                                                                |
 
@@ -71,9 +81,10 @@ In scope, and interesting to us in roughly this order:
    forging or bypassing `header_mac`, or resurrecting a deleted item without detection.
 3. **Anything that gets a secret into the webview** other than the single sanctioned reveal path,
    or into a log, a panic message, an error string, a `Debug` impl or a crash artefact.
-4. **Anything that makes the app talk to a network host it should not.** Exactly three outbound
-   requests exist in the whole product: HIBP range queries, the signed update manifest check, and
-   nothing else. A fourth is a vulnerability, not a feature.
+4. **Anything that makes the app talk to a network host it should not.** Exactly **two** outbound
+   requests exist in the whole product: HIBP range queries and the signed update manifest check.
+   `pnpm check:network` sanctions those two call sites and fails the build on any other. **A third
+   is a vulnerability, not a feature.**
 5. **Clipboard, lock and auto-lock failures.** A secret that survives a lock, or a clipboard entry
    that outlives its timer or reaches Windows Clipboard History or Cloud Clipboard.
 6. **Capability or CSP escapes** from the webview into the Tauri command surface.

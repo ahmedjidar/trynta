@@ -23,7 +23,7 @@
 - [ ] `node scripts/verify-v1.mjs --run 2`
 - [ ] `node scripts/verify-v1.mjs --run 3`
 
-Platform tested on: <!-- Windows / macOS (never compiled — say so) -->
+Platform tested on: <!-- Windows / macOS (last compiled 2026-08-17; if you built it, say so) -->
 
 ## Checklist
 

@@ -46,40 +46,35 @@ We agree to restrict the following behaviors in our community. Instances, threat
 
 Tensions can occur between community members even when they are trying their best to collaborate. Not every conflict represents a code of conduct violation, and this Code of Conduct reinforces encouraged behaviors and norms that can help avoid conflicts and minimize harm.
 
-When an incident does occur, it is important to report it promptly. To report a possible violation, **Report a concern privately through GitHub, either by opening a private security advisory on
-this repository or by contacting the maintainer directly through their GitHub profile. Reports
-are read only by the maintainer.
+When an incident does occur, it is important to report it promptly. **To report a possible violation, open a private security advisory on this repository, or contact the maintainer directly through their GitHub profile.** Reports are read only by the maintainer.
 
-There is one maintainer, so there is no escalation path above them. If your concern is about
-the maintainer and you would rather not raise it with them, GitHub's own abuse reporting is
-the route that does not go through this project.**
+There is one maintainer, so there is no escalation path above them. If your concern is about the maintainer and you would rather not raise it with them, GitHub's own abuse reporting is the route that does not go through this project.
 
-Community Moderators take reports of violations seriously and will make every effort to respond in a timely manner. They will investigate all reports of code of conduct violations, reviewing messages, logs, and recordings, or interviewing witnesses and other participants. Community Moderators will keep investigation and enforcement actions as transparent as possible while prioritizing safety and confidentiality. In order to honor these values, enforcement actions are carried out in private with the involved parties, but communicating to the whole community may be part of a mutually agreed upon resolution.
+Reports are taken seriously and answered as promptly as one person can. The maintainer will review what was said and where, and may ask the people involved for their account of it. Investigation and any action are kept private to those involved; where a resolution is reached that the community should know about, that is agreed with them rather than announced over them.
+
+This replaces the Contributor Covenant's paragraph about a team of Community Moderators. There is no such team here, and implying one would be borrowed authority this document has no business claiming.
 
 
 ## Addressing and Repairing Harm
 
-**The maintainer decides the response, in proportion to the harm done and whether it was
-repeated. In practice that means one of: a private word, a public correction, a request to
-step back from a thread, or a block. There is no committee and no formal appeal; this is a
-small project and pretending otherwise would be theatre.**
+The maintainer decides the response, in proportion to the harm done and whether it was repeated. In practice that means one of: a private word, a public correction, a request to step back from a thread, or a block. There is no committee and no formal appeal; this is a small project and pretending otherwise would be theatre. The ladder below is the Contributor Covenant's, kept because it is a good description of proportionality — read "the maintainer" wherever it says a moderation team.
 
-If an investigation by the Community Moderators finds that this Code of Conduct has been violated, the following enforcement ladder may be used to determine how best to repair harm, based on the incident's impact on the individuals involved and the community as a whole. Depending on the severity of a violation, lower rungs on the ladder may be skipped.
+If the maintainer finds that this Code of Conduct has been violated, the following enforcement ladder may be used to determine how best to repair harm, based on the incident's impact on the individuals involved and the community as a whole. Depending on the severity of a violation, lower rungs on the ladder may be skipped.
 
 1) Warning
    1) Event: A violation involving a single incident or series of incidents.
-   2) Consequence: A private, written warning from the Community Moderators.
+   2) Consequence: A private, written warning from the maintainer.
    3) Repair: Examples of repair include a private written apology, acknowledgement of responsibility, and seeking clarification on expectations.
 2) Temporarily Limited Activities
    1) Event: A repeated incidence of a violation that previously resulted in a warning, or the first incidence of a more serious violation.
    2) Consequence: A private, written warning with a time-limited cooldown period designed to underscore the seriousness of the situation and give the community members involved time to process the incident. The cooldown period may be limited to particular communication channels or interactions with particular community members.
    3) Repair: Examples of repair may include making an apology, using the cooldown period to reflect on actions and impact, and being thoughtful about re-entering community spaces after the period is over.
 3) Temporary Suspension
-   1) Event: A pattern of repeated violation which the Community Moderators have tried to address with warnings, or a single serious violation.
+   1) Event: A pattern of repeated violation which the maintainer has tried to address with warnings, or a single serious violation.
    2) Consequence: A private written warning with conditions for return from suspension. In general, temporary suspensions give the person being suspended time to reflect upon their behavior and possible corrective actions.
    3) Repair: Examples of repair include respecting the spirit of the suspension, meeting the specified conditions for return, and being thoughtful about how to reintegrate with the community when the suspension is lifted.
 4) Permanent Ban
-   1) Event: A pattern of repeated code of conduct violations that other steps on the ladder have failed to resolve, or a violation so serious that the Community Moderators determine there is no way to keep the community safe with this person as a member.
+   1) Event: A pattern of repeated code of conduct violations that other steps on the ladder have failed to resolve, or a violation so serious that the maintainer determines there is no way to keep the community safe with this person as a member.
    2) Consequence: Access to all community spaces, tools, and communication channels is removed. In general, permanent bans should be rarely used, should have strong reasoning behind them, and should only be resorted to if working through other remedies has failed to change the behavior.
    3) Repair: There is no possible repair in cases of this severity.
 

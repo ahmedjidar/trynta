@@ -98,9 +98,9 @@ could carry a secret are written so that they cannot. There are tests that asser
 **Fail closed.** Any error in a decrypt, verify or authorise path denies the operation. Never fall
 back to plaintext, never skip a signature check on error, never continue best-effort.
 
-**Three outbound requests exist in the whole product** — HIBP range queries and the signed update
-manifest check, and nothing else. `pnpm check:network` enforces it. A fourth needs a specification
-change, not a pull request.
+**Two outbound requests exist in the whole product** — HIBP range queries and the signed update
+manifest check. Nothing else. `pnpm check:network` sanctions exactly those two call sites and fails
+the build on a third, which needs a specification change rather than a pull request.
 
 **No hardcoded colours, spacing, radii or type.** Everything goes through the token layer in
 `src/theme/`. `pnpm check:tokens` enforces it. Visual design is produced separately and delivered

@@ -135,7 +135,7 @@ replaces it rather than qualifying it.
 
 **The position.** CI runs the full acceptance gate on `windows-latest` for every push. macOS jobs
 run only on tags and manual dispatch, and are labelled `UNVERIFIED PLATFORM`. The macOS code has
-never been compiled by any compiler.
+compiled and passed the gate once, on 2026-08-17 at `c925f0f`, and has not been compiled since — ADD-005 moved it to tags-only that afternoon and there are no tags.
 
 **Why.** Budget: a private repository with exhausted free Actions minutes, and macOS runners
 billing at ten times the rate. It is not a judgement that macOS matters less, and it reverts when

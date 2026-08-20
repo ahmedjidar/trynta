@@ -20,8 +20,9 @@ Tauri&nbsp;v2 · Rust · React · SQLite &nbsp;·&nbsp; AGPL-3.0-or-later
 >
 > - **Windows is the only verified platform.** Every push runs the full acceptance gate on
 >   `windows-latest`.
-> - **The macOS code has never been compiled.** Not "lightly tested" — never built, by any
->   compiler, ever. Its correctness is unknown. See
+> - **The macOS build compiled and passed the gate once, on 2026-08-17 — and nothing macOS has
+>   been compiled since.** ADD-005 moved it to tags-only that afternoon and there are no tags, so
+>   the memory locking, the Keychain fix, the icon pipeline and the rename are all unbuilt. See
 >   [`MACOS-UNVERIFIED.md`](MACOS-UNVERIFIED.md).
 > - **Sharing is not built.** Multi-owner credentials are the reason this project exists and
 >   they do not exist yet. There is no sync, no server and no network protocol.
@@ -133,14 +134,14 @@ sanctioned plaintext path to the frontend is a single-field, single-item, explic
 
 ## Building
 
-Verified on Windows. The macOS instructions are written from the toolchain requirements and have
-never been executed.
+Verified on Windows. The macOS instructions last held on 2026-08-17, the day of the only macOS
+build; nothing since has been compiled there.
 
 ```bash
 # Prerequisites
 #   Rust stable (see rust-toolchain.toml), Node 20+, pnpm
 #   Windows: Visual Studio Build Tools with the C++ workload, and the WebView2 runtime
-#   macOS:   Xcode Command Line Tools                            (UNVERIFIED)
+#   macOS:   Xcode Command Line Tools        (last compiled 2026-08-17)
 
 pnpm install
 pnpm tauri dev            # run in development
