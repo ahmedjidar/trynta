@@ -44,7 +44,7 @@ that is the value as published upstream; it is reproduced faithfully rather than
 Aggregated from `src-tauri/assets/icon-map.tsv`, which is the per-icon record: every row carries
 `source`, `variant`, `licence` and `brand_hex` for one match. That file is generated, committed, and
 compiled into the binary, so the attribution for any single icon is one `grep` away and stays correct
-when the sources change. Reproducing 3,778 rows here would be a copy that goes stale.
+when the sources change. Reproducing 3,817 rows here would be a copy that goes stale.
 
 | Licence                    | Icons |
 | -------------------------- | ----: |
@@ -55,7 +55,7 @@ when the sources change. Reproducing 3,778 rows here would be a copy that goes s
 | Apache-2.0                 |    53 |
 | Trademark (identification) |    45 |
 | GPL / AGPL                 |    19 |
-| CC-BY-SA (2.5 / 3.0 / 4.0) |    18 |
+| CC-BY-SA 4.0               |    12 |
 | Custom, per-brand grant    |    14 |
 | CC-BY (3.0 / 4.0)          |     7 |
 | MPL-2.0                    |     3 |
@@ -68,7 +68,7 @@ Every copyleft and share-alike licence is broken out on its own row rather than 
 grouped one. An earlier version of this table carried `Other permissive (MPL, BSD, Unlicense)` and
 a `Custom, per-brand grant` bucket that between them absorbed the single LGPL-3.0 mark and all
 three MPL-2.0 marks — both are copyleft, neither is permissive, and a notices file that hides that
-in a bucket labelled _permissive_ is worse than one that omits it. The rows sum to 3,778.
+in a bucket labelled _permissive_ is worse than one that omits it. The rows sum to 3,817.
 
 Two things worth being precise about rather than papering over:
 
@@ -76,9 +76,10 @@ Two things worth being precise about rather than papering over:
   build strips metadata, editor cruft and comments and normalises the viewBox; it never redraws,
   recolours or merges a mark. Each file remains individually identifiable and individually licensed —
   the application does not relicense them. That is the standard position for bundled assets, and it
-  is stated here as a position rather than as settled law: **confirm it before 1.0**, and drop the
-  41 share-alike and copyleft entries (18 CC-BY-SA, 19 GPL/AGPL, 3 MPL-2.0, 1 LGPL-3.0) if the
-  answer is unclear. `MANIFEST.md` carries this as an open item.
+  is stated here as a position rather than as settled law: **confirm it before 1.0**. The six
+  entries whose licence was outright incompatible with the AGPL — CC BY-SA 2.5 and 3.0 — have been
+  dropped rather than argued about; see "Deliberately excluded". The 35 that remain (12 CC-BY-SA
+  4.0, 19 GPL/AGPL, 3 MPL-2.0, 1 LGPL-3.0) are each individually compatible with AGPL-3.0.
 - **A trademark is not a licence.** Every mark here remains its owner's, whatever the file's licence
   says. Trynta uses them nominatively, to name a service the user already has an account with.
 
@@ -92,6 +93,18 @@ pipeline and a second set of rendering assumptions for a category of icon nobody
 for. Azure and GCP architecture sets go with them: same shape of restriction, same reasoning, and
 excluding a collection wholesale is auditable in a way a per-file judgement is not.
 
+**Six marks were excluded because CC BY-SA 2.5 and 3.0 are not AGPL-compatible.** Creative
+Commons declared CC BY-SA **4.0** one-way compatible with GPLv3 in 2015; 2.5 and 3.0 were never
+covered by that declaration, and their share-alike term requires derivatives under CC BY-SA, which
+conflicts with the AGPL this project is released under. The six are `f-droid.org`, `gentoo.org`,
+`inkscape.org`, `jenkins.io`, `luanti.org` and `redmine.org`; those domains now resolve to a
+generated shape.
+
+The exclusion is by exact version, not by family. CC BY-SA **4.0** is compatible and its twelve
+marks still ship, as do the GPL, AGPL, LGPL and MPL marks — all of which are compatible with
+AGPL-3.0. The incompatibility is specific to two old Creative Commons versions, not to copyleft.
+The rule is `FORBIDDEN_LICENCE` in `scripts/build-icon-map.ts`, alongside the ND and NC terms.
+
 A further **95 files** were excluded because their recorded licence is ND, NC, `Unknown`, `TODO`, or
 proprietary. The rule is in `scripts/build-icon-map.ts` as `FORBIDDEN_LICENCE`, and it fails closed:
 an unrecognised licence string is excluded, not shipped.
@@ -103,9 +116,9 @@ produced the committed map.
 
 |                                                         |                               |
 | ------------------------------------------------------- | ----------------------------: |
-| Brands with a usable mark in either source              |                         5,278 |
-| **Shipped** (reachable from a domain, host or card row) | **3,778 brands, 3,952 files** |
-| On disk                                                 |                       6.61 MB |
+| Brands with a usable mark in either source              |                         5,267 |
+| **Shipped** (reachable from a domain, host or card row) | **3,772 brands, 3,946 files** |
+| On disk                                                 |                       6.60 MB |
 | Compressed                                              |                       3.03 MB |
 
 Three cuts, each on a stated basis:
@@ -302,9 +315,8 @@ Five dev-only packages carry licences worth naming, none of which is distributed
 
 ## Open licensing items
 
-1. **Six bundled icons are CC-BY-SA 2.5 or 3.0, which are not GPL-compatible.** Creative Commons
-   declared CC BY-SA **4.0** one-way compatible with GPLv3 in 2015; 2.5 and 3.0 were never covered
-   by that declaration, and their share-alike term conflicts with the AGPL's. The six are:
+1. ~~**Six bundled icons are CC-BY-SA 2.5 or 3.0.**~~ **Resolved 2026-08-20 — removed.** They are
+   excluded by `FORBIDDEN_LICENCE` and no longer in the map or the emitted output. The six were:
 
    | Licence      | Domain         | Key        | Source |
    | ------------ | -------------- | ---------- | ------ |
@@ -315,13 +327,9 @@ Five dev-only packages carry licences worth naming, none of which is distributed
    | CC-BY-SA-3.0 | `luanti.org`   | `luanti`   | thesvg |
    | CC-BY-SA-2.5 | `redmine.org`  | `redmine`  | thesvg |
 
-   The position taken above — that each mark ships as a separate, individually licensed file and is
-   not relicensed by the application — is the standard one for bundled assets, and it is still
-   stated as a position rather than as settled law. **Resolve before 1.0.** The one-line fix, if the
-   answer is to drop them, is to add `CC-BY-SA-2.5` and `CC-BY-SA-3.0` to `FORBIDDEN_LICENCE` in
-   `scripts/build-icon-map.ts` and rerun `pnpm icons:build`; those six items fall back to a
-   generated mark. The other 35 share-alike and copyleft marks — 12 CC-BY-SA-4.0, 19 GPL/AGPL,
-   3 MPL-2.0, 1 LGPL-3.0 — are all compatible with AGPL-3.0 and are not affected.
+   Those six domains now resolve to a generated shape. The other 35 share-alike and copyleft
+   marks — 12 CC-BY-SA-4.0, 19 GPL/AGPL, 3 MPL-2.0, 1 LGPL-3.0 — are each compatible with
+   AGPL-3.0 and were deliberately left in place.
 
 2. **The installers carry no licence text.** `bundle.licenseFile`, `bundle.resources`,
    `bundle.copyright` and `bundle.publisher` are all unset in `src-tauri/tauri.conf.json`, so a

@@ -46,7 +46,7 @@ separately.
 
 ### Other people's
 
-Trynta bundles 3,952 brand marks for 3,778 services. These are trademarks of their respective
+Trynta bundles 3,946 brand marks for 3,772 services. These are trademarks of their respective
 owners, used **nominatively** — to identify a service the user already holds an account with. That
 is the same use a browser bookmark bar makes of a favicon.
 
@@ -64,7 +64,7 @@ request can be answered precisely rather than by removing a collection.
 
 **A file licence is not a trademark licence.** A CC0 SVG of a company's logo means the _drawing_ is
 freely licensed; it says nothing about the _mark_. Nominative use is the basis here, not the file
-licence, and that is true of every one of the 3,778.
+licence, and that is true of every one of the 3,772.
 
 **If a rights holder objects,** the practical answer is to remove that key from the map and rebuild
 — the item falls back to a generated mark and nothing else changes. Worth knowing before the first

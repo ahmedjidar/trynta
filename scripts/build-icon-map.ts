@@ -96,7 +96,24 @@ const EXCLUDED_COLLECTIONS = new Set(['aws', 'azure', 'gcp']);
  * company's mark to identify that company's own service inside a UI is nominative use.
  */
 const FORBIDDEN_LICENCE =
-  /\bND\b|NoDerivat|No[- ]?Derivat|\bNC\b|NonCommercial|non-commercial|\bUnknown\b|\bTODO\b|Proprietary|no express redistribution/i;
+  /\bND\b|NoDerivat|No[- ]?Derivat|\bNC\b|NonCommercial|non-commercial|\bUnknown\b|\bTODO\b|Proprietary|no express redistribution|CC[- ]?BY[- ]?SA[- ]?2\.5|CC[- ]?BY[- ]?SA[- ]?3\.0/i;
+
+/*
+ * The two share-alike versions in that pattern are excluded for a different reason from
+ * everything else in it: licence *compatibility*, not fetchability or ambiguity.
+ *
+ * Trynta is AGPL-3.0-or-later. Creative Commons declared CC BY-SA **4.0** one-way
+ * compatible with GPLv3 in 2015; 2.5 and 3.0 were never covered by that declaration, and
+ * their share-alike term requires derivatives under CC BY-SA, which conflicts with the
+ * AGPL. Six marks were affected — f-droid, gentoo, inkscape, jenkins, luanti, redmine —
+ * and those domains now fall through to a generated shape.
+ *
+ * Matched by exact version rather than by the `CC-BY-SA` family on purpose. 4.0 *is*
+ * compatible and its twelve marks still ship; a pattern that caught the whole family
+ * would drop them for nothing. GPL, AGPL, LGPL and MPL marks are compatible with
+ * AGPL-3.0 as well and are likewise untouched. The incompatibility is specific to two old
+ * Creative Commons versions, not to copyleft in general.
+ */
 
 /**
  * Host suffixes that must not reduce to their registrable domain.
