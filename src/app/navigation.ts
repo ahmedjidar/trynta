@@ -1,9 +1,10 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Which surface is showing, and what the list is filtered to.
  *
  * Deliberately not a router. There are no URLs in a desktop app, nothing is
  * linkable, and back/forward would be inventing an interaction the design does not
- * have (HO-001 has a sidebar, not history). A store is the honest model: a small
+ * have — the design has a sidebar, not history. A store is the honest model: a small
  * closed set of surfaces plus the list query, colocated because the sidebar changes
  * both at once.
  */
@@ -13,7 +14,7 @@ import { create } from 'zustand';
 import type { GlyphName } from '../components/Glyph';
 import type { ItemKindDto, ItemSourceDto, QuickFiltersDto, SortOrderDto } from '../ipc';
 
-/** The surfaces HO-001 covers. */
+/** The surfaces the design covers. */
 export type Surface = 'vault' | 'generator' | 'security' | 'settings';
 
 /** No quick filter applied. */
@@ -41,6 +42,19 @@ export interface NavigationState {
   setSort: (sort: SortOrderDto) => void;
   setSearch: (search: string) => void;
   select: (id: string | null) => void;
+  /**
+   * Show one item, whatever the list is currently filtered to.
+   *
+   * `select()` alone sets the id and nothing else, which is fine from inside the
+   * list — the row you clicked is on screen by definition. From anywhere else it is
+   * a trap: the security report and the command palette both draw from the whole
+   * vault, so selecting a risk while the list was showing one vault, or a search, or
+   * the Weak filter, left the detail pane on "Select an item to see its details".
+   * The item was selected; it just was not in the list.
+   *
+   * So this clears the things that could hide it, then selects.
+   */
+  revealItem: (id: string) => void;
 }
 
 export const useNavigation = create<NavigationState>((set) => ({
@@ -81,6 +95,15 @@ export const useNavigation = create<NavigationState>((set) => ({
   },
   select: (id) => {
     set({ selectedId: id });
+  },
+  revealItem: (id) => {
+    set({
+      surface: 'vault',
+      source: { source: 'all' },
+      filters: NO_FILTERS,
+      search: '',
+      selectedId: id,
+    });
   },
 }));
 

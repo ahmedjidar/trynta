@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! HKDF-SHA256 subkey derivation with domain separation.
 //!
 //! SPEC-V1 §3.1. Info strings are literal, versioned, and defined once here.

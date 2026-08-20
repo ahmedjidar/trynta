@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! TOTP against RFC 6238's published vectors (SPEC-V1 §4.1, §7.2, AC11).
 //!
 //! AC11: *"TOTP matches a reference implementation for SHA1/256/512 and 6/8
@@ -241,12 +242,12 @@ fn a_percent_encoded_label_decodes() {
 #[test]
 fn a_plus_in_a_label_stays_a_plus() {
     // `+` means space in form encoding and nothing in a path. An account like
-    // alice+keyring@example.test is common and must survive intact.
+    // alice+trynta@example.test is common and must survive intact.
     let cfg = totp::parse_uri(&format!(
-        "otpauth://totp/alice+keyring%40example.test?secret={SEED_SHA1}"
+        "otpauth://totp/alice+trynta%40example.test?secret={SEED_SHA1}"
     ))
     .expect("parse");
-    assert_eq!(cfg.account, "alice+keyring@example.test");
+    assert_eq!(cfg.account, "alice+trynta@example.test");
 }
 
 #[test]

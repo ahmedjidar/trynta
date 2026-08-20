@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Reading and writing the `header` row (SPEC-V1 §4.4).
 //!
 //! The header is the only row that is not encrypted, and the header MAC is what

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The in-memory search index (SPEC-V1 §4.5, §4.7, §7.1).
 //!
 //! Built once at unlock by decrypting every item's `meta_ct`, held for the life

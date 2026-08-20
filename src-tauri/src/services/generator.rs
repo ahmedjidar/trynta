@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Password, passphrase and PIN generation (SPEC-V1 §7.3).
 //!
 //! Three things in this module are easy to get subtly wrong, and each is wrong

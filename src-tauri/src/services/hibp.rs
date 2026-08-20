@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The HIBP range transport — one of exactly three outbound requests (CLAUDE.md §4.7).
 //!
 //! Everything privacy-relevant about a breach check is decided in
@@ -13,7 +14,7 @@
 //! | Method and path | `GET /range/<5 hex chars>` |
 //! | Host | `api.pwnedpasswords.com`, hardcoded, HTTPS only, no redirects |
 //! | `Add-Padding` | `true` — **mandatory**, see below |
-//! | `User-Agent` | `Keyring`, with no version |
+//! | `User-Agent` | `Trynta`, with no version |
 //! | Anything else | nothing. No cookie, no token, no account, no vault id |
 //!
 //! **`Add-Padding` is not optional.** SPEC-V1 §7.4: *"without it, response length
@@ -29,7 +30,7 @@
 //! rather than a silent forward.
 //!
 //! **The version is deliberately absent from the `User-Agent`.** HIBP asks API
-//! consumers to identify themselves, and `Keyring` does that. Appending a version
+//! consumers to identify themselves, and `Trynta` does that. Appending a version
 //! would split users into cohorts and make a single install more distinguishable
 //! across queries, for no benefit to anyone.
 
@@ -44,7 +45,7 @@ pub const HOST: &str = "api.pwnedpasswords.com";
 const ENDPOINT: &str = "https://api.pwnedpasswords.com/range/";
 
 /// What we tell HIBP we are. No version — see the module docs.
-const USER_AGENT: &str = "Keyring";
+const USER_AGENT: &str = "Trynta";
 
 /// Ceiling on one range response.
 ///
@@ -137,7 +138,7 @@ mod tests {
 
     #[test]
     fn the_user_agent_carries_no_version() {
-        assert_eq!(USER_AGENT, "Keyring");
+        assert_eq!(USER_AGENT, "Trynta");
         assert!(
             !USER_AGENT.contains(env!("CARGO_PKG_VERSION")),
             "a version in the UA splits installs into distinguishable cohorts"

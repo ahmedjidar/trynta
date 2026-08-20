@@ -1,4 +1,5 @@
-//! `.keyringbackup` export and restore (SPEC-V1 §7.8, AC15).
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//! `.tryntabak` export and restore (SPEC-V1 §7.8, AC15).
 //!
 //! AC15: *"Backup export → wipe → restore → identical vault."*
 //!
@@ -38,7 +39,7 @@ fn fixture() -> Fixture {
     let dir = tempfile::tempdir().expect("tempdir");
     Fixture {
         vault: dir.path().join("vault.db"),
-        backup: dir.path().join("export.keyringbackup"),
+        backup: dir.path().join("export.tryntabak"),
         _dir: dir,
     }
 }
@@ -392,7 +393,7 @@ fn a_file_that_is_not_a_container_is_refused_cleanly() {
     let fx = fixture();
     for junk in [
         b"".to_vec(),
-        b"not a keyring backup".to_vec(),
+        b"not a trynta backup".to_vec(),
         vec![0u8; 227],
         vec![0u8; 400],
     ] {

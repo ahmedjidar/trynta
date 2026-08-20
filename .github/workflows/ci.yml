@@ -163,7 +163,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: keyring-windows-latest
+          name: trynta-windows-latest
           path: target/**/bundle/**
           if-no-files-found: error
 
@@ -260,6 +260,6 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: keyring-macos-latest-UNVERIFIED
+          name: trynta-macos-latest-UNVERIFIED
           path: target/**/bundle/**
           if-no-files-found: error

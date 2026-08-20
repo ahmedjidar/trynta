@@ -1,18 +1,19 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
- * Security report — HO-002 `components/SecurityView.tsx`, SPEC-V1 §7.4.
+ * Security report — SPEC-V1 §7.4.
  *
  * ## The stat cards
  *
- * HO-002 colours the four figures from `--status-danger`, `--status-warning`, `--accent`
- * and `--status-info`. Same tones here, resolved through the `[data-tone]` rules in
- * `theme/dynamic.css` so a 26px figure still passes AA on a light raised surface.
+ * The four figures take `--status-danger`, `--status-warning`, `--accent` and
+ * `--status-info`, resolved through the `[data-tone]` rules in `theme/dynamic.css` rather
+ * than inline, for the CSP reason in that file's header.
  *
  * ## Two things this surface must not do
  *
  * **It makes no network request.** `security_report_run` is handed a cache-only breach
  * source in Rust, so AC14's "zero requests from a report" is structural rather than a
  * promise this component keeps. Refreshing the cache is a separate command the user
- * triggers, and HO-002's "Change all with autofill" button is not it — autofill is V3, so
+ * triggers, and the design's "Change all with autofill" is not it — autofill is V3, so
  * the action here is the breach check, which is the one thing that can actually run.
  *
  * **It never shows an unchecked item as safe.** §7.4: *"Offline → 'not checked,' never
@@ -21,7 +22,7 @@
  *
  * ## The score
  *
- * HO-002 prints a fixed 82. `null` means "not enough data" — §7.4: *"not 0, not 100"* — and
+ * The design prints a fixed 82. `null` means "not enough data" — §7.4: *"not 0, not 100"* — and
  * the breakdown renders below it because §7.4 requires the arithmetic to be visible. The
  * weights come from the response, so shipping the 2FA directory later needs no change here.
  */
@@ -31,6 +32,8 @@ import { Badge } from '../../components/Bits';
 import { GroupedList, GroupedRow } from '../../components/GroupedList';
 import { Glyph } from '../../components/Glyph';
 import { IdentityTile } from '../../components/IdentityTile';
+import { useItemIcons } from '../items/useItemIcons';
+import { useThemeStore } from '../../theme/store';
 import { StatCards } from '../../components/StatCards';
 import type { Stat } from '../../components/StatCards';
 import { useNavigation } from '../../app/navigation';
@@ -41,6 +44,7 @@ const TAGS = {
   breached: { label: 'Breached', tone: 'danger' },
   weak: { label: 'Weak', tone: 'warning' },
   reused: { label: 'Reused', tone: 'warning' },
+  missingTwoFactor: { label: 'No 2FA', tone: 'info' },
 } as const;
 
 export interface SecurityReportProps {
@@ -55,8 +59,11 @@ export interface SecurityReportProps {
 }
 
 export function SecurityReport({ report, items, onCheckNow, canCheck }: SecurityReportProps) {
-  const select = useNavigation((s) => s.select);
-  const go = useNavigation((s) => s.go);
+  // `revealItem`, not `select`: a risk can be on an item the list is filtering out,
+  // and selecting it then left the detail pane saying "select an item".
+  const revealItem = useNavigation((s) => s.revealItem);
+  const iconSources = useItemIcons(items);
+  const resolvedTheme = useThemeStore((s) => s.resolved);
 
   const stats: readonly Stat[] = [
     {
@@ -73,23 +80,32 @@ export function SecurityReport({ report, items, onCheckNow, canCheck }: Security
       tone: 'accent',
     },
     {
+      label: 'No 2FA',
+      value: String(Math.max(report.twoFactorCapable - report.twoFactorEnabled, 0)),
+      sub: 'The service offers it; this item has no code',
+      tone: 'info',
+    },
+    {
       label: 'Not checked',
       value: String(report.notChecked),
-      sub: 'No breach data for these yet',
+      // Never "safe". §7.4 is explicit, and the distinction is the whole point of
+      // the card existing: an unchecked password is an unknown, not a clean bill.
+      sub: report.notChecked > 0 ? 'Unknown — not the same as safe' : 'Every password was checked',
       tone: 'info',
     },
   ];
 
   return (
     <section
-      className="bg-surface-panel min-w-0 flex-1 overflow-y-auto"
+      data-scroll-pane
+      className="bg-surface-panel animate-pane-in min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
       aria-label="Security report"
     >
-      <div className="max-w-[880px] px-10 pt-8 pb-12">
+      <div className="mx-auto w-full max-w-[var(--measure-pane-wide)] px-10 pt-8 pb-12">
         <header className="flex items-start gap-8">
           <div className="min-w-0 flex-1">
             <h1 className="text-display tracking-display font-bold">Security report</h1>
-            <p className="text-body text-text-caption-aa mt-1 max-w-[62ch] leading-5 text-pretty">
+            <p className="text-body text-text-muted mt-1 max-w-[62ch] leading-5 text-pretty">
               {/* §7.4's own framing, and the honest one: only 5-character hash prefixes
                   are ever sent, and never from this screen. */}
               Checked against the Have I Been Pwned corpus using k-anonymous hash prefixes. Your
@@ -103,14 +119,14 @@ export function SecurityReport({ report, items, onCheckNow, canCheck }: Security
             >
               {report.score === null ? '—' : report.score}
             </div>
-            <div className="text-micro tracking-label text-text-caption-aa mt-1.5 font-bold uppercase">
+            <div className="text-micro tracking-label text-text-muted mt-1.5 font-bold uppercase">
               Vault health
             </div>
           </div>
         </header>
 
         {report.score === null ? (
-          <p className="text-body text-text-caption-aa mt-6">
+          <p className="text-body text-text-muted mt-6">
             {/* §7.4: N == 0 is null, "not 0, not 100". Saying so beats a zero that reads as
                 a catastrophic score. */}
             Not enough data to score. Add a login and the report will have something to measure.
@@ -121,7 +137,7 @@ export function SecurityReport({ report, items, onCheckNow, canCheck }: Security
 
             {report.breakdown === null ? null : (
               <>
-                <h2 className="text-micro tracking-label text-text-caption-aa mt-8 flex h-6 items-end font-bold uppercase">
+                <h2 className="text-micro tracking-label text-text-muted mt-8 flex h-6 items-end font-bold uppercase">
                   How the score is calculated
                 </h2>
                 <GroupedList className="mt-2">
@@ -136,7 +152,7 @@ export function SecurityReport({ report, items, onCheckNow, canCheck }: Security
                   ].map(({ label, term }) => (
                     <GroupedRow key={label} className="h-12">
                       <span className="text-body min-w-0 flex-1 font-medium">{label}</span>
-                      <span className="text-caption text-text-caption-aa shrink-0 tabular-nums">
+                      <span className="text-caption text-text-muted shrink-0 tabular-nums">
                         {term.weight === 0
                           ? 'no weight'
                           : `${term.weight.toFixed(2)} × ${(term.fraction * 100).toFixed(0)}%`}
@@ -151,7 +167,7 @@ export function SecurityReport({ report, items, onCheckNow, canCheck }: Security
             )}
 
             {report.twoFactorCapable === 0 ? (
-              <p className="text-chip text-text-caption-aa mt-3 max-w-[62ch] leading-4 text-pretty">
+              <p className="text-chip text-text-muted mt-3 max-w-[62ch] leading-4 text-pretty">
                 {/* Not a footnote. The 2FA term carries no weight in this build and the
                     other three are larger as a result, so this score is not comparable
                     with one from a build that ships the directory. */}
@@ -166,11 +182,11 @@ export function SecurityReport({ report, items, onCheckNow, canCheck }: Security
 
         <div className="mt-8 flex h-8 items-center gap-2.5">
           <h2 className="text-heading tracking-title font-bold">Needs attention</h2>
-          <span className="text-caption text-text-caption-aa tabular-nums">
+          <span className="text-caption text-text-muted tabular-nums">
             {report.risks.length === 1 ? '1 item' : `${String(report.risks.length)} items`}
           </span>
           <div className="flex-1" />
-          {/* HO-002's button is "Change all with autofill". Autofill is V3 and bulk
+          {/* The design's button is "Change all with autofill". Autofill is V3 and bulk
               rotation is out of scope (§7.4), so the action is the one thing this surface
               can actually do. */}
           <Button variant="outline" onClick={onCheckNow} disabled={!canCheck}>
@@ -182,10 +198,9 @@ export function SecurityReport({ report, items, onCheckNow, canCheck }: Security
           <GroupedList className="mt-3">
             <GroupedRow className="h-14">
               <span className="text-body text-text-secondary flex items-center gap-2">
-                {/* HO-002 has no empty state here; components.md specifies an accent
-                    shield-check and "Every password is strong." Reworded when
-                    `notChecked` is above zero, because "every" would then be a claim the
-                    data does not support. */}
+                {/* components.md specifies an accent shield-check and "Every password is
+                    strong." Reworded when `notChecked` is above zero, because "every"
+                    would then be a claim the data does not support. */}
                 <span className="text-accent">
                   <Glyph name="verified" />
                 </span>
@@ -202,14 +217,32 @@ export function SecurityReport({ report, items, onCheckNow, canCheck }: Security
                 key={`${risk.itemId}-${risk.kind}`}
                 risk={risk}
                 item={items.find((i) => i.id === risk.itemId)}
+                customSrc={iconSources[risk.itemId]}
+                theme={resolvedTheme}
                 onOpen={() => {
-                  select(risk.itemId);
-                  go('vault');
+                  revealItem(risk.itemId);
                 }}
               />
             ))}
           </GroupedList>
         )}
+
+        {/* What the check cannot tell you.
+
+            Every other password manager shows a breach count and lets the user assume
+            it means their account was in a named leak. It does not. The range API is
+            asked about five hex characters of a hash and answers with a count of
+            matching suffixes — it is never told which password, which account, or
+            which service, which is exactly why it is safe to ask. Learning *which*
+            breach would mean sending the account's email address to a third party,
+            and that is a thing this product does not do at any price. Saying so is
+            cheaper than letting someone infer a capability that is not there. */}
+        <p className="text-caption text-text-muted mt-6 max-w-[68ch] leading-relaxed">
+          A breach count says how many times this exact password appears in leaked data — not which
+          breach it came from, or when. Trynta asks using the first five characters of a hash and
+          never sends the password, the account name or the site. Finding out <em>which</em> breach
+          would mean sending your email address to someone else, which Trynta does not do.
+        </p>
       </div>
     </section>
   );
@@ -218,10 +251,14 @@ export function SecurityReport({ report, items, onCheckNow, canCheck }: Security
 interface RiskRowProps {
   risk: RiskDto;
   item: ItemSummaryDto | undefined;
+  /** `data:` URI, when the user supplied this item's icon. */
+  customSrc: string | undefined;
+  /** Resolved theme, for brands that ship a light/dark pair. */
+  theme: 'light' | 'dark';
   onOpen: () => void;
 }
 
-function RiskRow({ risk, item, onOpen }: RiskRowProps) {
+function RiskRow({ risk, item, customSrc, theme, onOpen }: RiskRowProps) {
   const tag = TAGS[risk.kind];
   const detail =
     risk.kind === 'breached' && risk.breachCount !== null
@@ -247,18 +284,18 @@ function RiskRow({ risk, item, onOpen }: RiskRowProps) {
       }}
     >
       {item ? (
-        <IdentityTile icon={item.icon} title={risk.title} />
+        <IdentityTile icon={item.icon} title={risk.title} customSrc={customSrc} theme={theme} />
       ) : (
         <span className="tile" data-size="32" data-tone="0" aria-hidden="true" />
       )}
       <div className="min-w-0 flex-1">
         <div className="text-body font-semibold">{risk.title}</div>
-        <div className="text-chip text-text-caption-aa truncate">{detail}</div>
+        <div className="text-chip text-text-muted truncate">{detail}</div>
       </div>
       <div className="flex w-[84px] shrink-0 justify-end">
         <Badge tone={tag.tone}>{tag.label}</Badge>
       </div>
-      <span className="text-caption text-accent-text flex shrink-0 items-center gap-0.5 font-semibold">
+      <span className="text-caption text-accent flex shrink-0 items-center gap-0.5 font-semibold">
         Fix
         <Glyph name="next" size={14} />
       </span>

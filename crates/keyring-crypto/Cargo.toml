@@ -1,6 +1,6 @@
 [package]
 name = "keyring-crypto"
-description = "Keyring key hierarchy, envelope encryption and vault manifest. Depends on nothing else in the workspace."
+description = "Trynta key hierarchy, envelope encryption and vault manifest. Depends on nothing else in the workspace."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

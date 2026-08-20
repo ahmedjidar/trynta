@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // ADD-003: the freeze rule must not depend on anyone remembering it.
 //
 // `tests/acceptance/` and `scripts/verify-v1.mjs` are frozen once committed:

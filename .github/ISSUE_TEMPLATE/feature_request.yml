@@ -1,0 +1,29 @@
+name: Feature request
+description: Suggest something Trynta should do
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before opening this, check the README's "What is not built" section. Sharing, sync,
+        autofill and import are all known gaps with plans attached — an issue asking for them
+        will be closed as a duplicate of the roadmap rather than as a bad idea.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that you cannot do today?
+    validations: { required: true }
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you have in mind
+    validations: { required: true }
+  - type: textarea
+    id: security
+    attributes:
+      label: Security implications
+      description: >
+        This is a password manager. Does this need a new network request, a new dependency, a new
+        way for a secret to reach the webview, or a change to the on-disk format? An honest "I do
+        not know" is a fine answer.

@@ -1,4 +1,5 @@
-//! Keyring cryptographic core.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//! Trynta cryptographic core.
 //!
 //! This crate is deliberately isolated: it depends on nothing else in the
 //! workspace, has no knowledge of Tauri, `SQLite` or the item model, and its tests
@@ -77,7 +78,7 @@ pub mod reserved_key_id {
     pub const MUK_APPCACHE: [u8; 16] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2];
     /// `muk.header`, which keys the header MAC.
     pub const MUK_HEADER: [u8; 16] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3];
-    /// `backup.wrap`, which seals a `.keyringbackup` body (SPEC-V1 §7.8).
+    /// `backup.wrap`, which seals a `.tryntabak` body (SPEC-V1 §7.8).
     ///
     /// A derived key rather than a generated one, so it needs a reserved id the
     /// same way the three above do. Allocated here rather than left to a caller

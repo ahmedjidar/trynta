@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The self-describing envelope every ciphertext is stored in.
 //!
 //! SPEC-V1 §3.3:
@@ -34,7 +35,7 @@ const TAG_LEN: usize = 16;
 /// `XChaCha20` nonce length.
 pub const NONCE_LEN: usize = 24;
 
-/// The shortest byte string that could be a Keyring envelope.
+/// The shortest byte string that could be a Trynta envelope.
 ///
 /// Not `HEADER_LEN + TAG_LEN`: every plaintext is padded to a whole
 /// [`crate::PAD_BLOCK`] and padding is never zero-length, so the smallest

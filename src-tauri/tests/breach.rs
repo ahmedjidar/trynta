@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The breach check's privacy rules (SPEC-V1 §7.4, §2, AC14).
 //!
 //! This is one of three outbound requests permitted in the entire product, and the

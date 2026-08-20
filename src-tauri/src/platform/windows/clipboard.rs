@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Win32 clipboard with history and Cloud Clipboard exclusion.
 //!
 //! SPEC-V1 §8 singles this out: *"The Windows clipboard-history exclusion is
@@ -24,8 +25,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use windows::core::PCWSTR;
 use windows::Win32::Foundation::{GlobalFree, HANDLE, HGLOBAL, HWND};
 use windows::Win32::System::DataExchange::{
-    CloseClipboard, EmptyClipboard, GetClipboardSequenceNumber, IsClipboardFormatAvailable,
-    OpenClipboard, RegisterClipboardFormatW, SetClipboardData,
+    CloseClipboard, EmptyClipboard, GetClipboardData, GetClipboardSequenceNumber,
+    IsClipboardFormatAvailable, OpenClipboard, RegisterClipboardFormatW, SetClipboardData,
 };
 use windows::Win32::System::Memory::{GlobalAlloc, GlobalLock, GlobalUnlock, GMEM_MOVEABLE};
 use windows::Win32::System::Ole::CF_UNICODETEXT;
@@ -89,7 +90,7 @@ impl ClipboardGuard {
         // Only one process may hold the clipboard at a time, and `OpenClipboard`
         // fails outright rather than waiting. Any other application touching the
         // clipboard in the same instant makes a copy fail, which the user would
-        // experience as Keyring randomly refusing to copy their password.
+        // experience as Trynta randomly refusing to copy their password.
         // Microsoft's own guidance is to retry; a bounded ~100 ms is far below
         // the 30 ms copy budget's tolerance for the rare contended case and far
         // above the microseconds a normal acquisition takes.
@@ -258,4 +259,57 @@ pub const fn exclusion_formats() -> [&'static str; 3] {
         CAN_INCLUDE_IN_HISTORY,
         CAN_UPLOAD_TO_CLOUD,
     ]
+}
+
+/// Read the clipboard's Unicode text, for verification only.
+///
+/// **Why a read exists in a password manager at all.** Auto-clear was written,
+/// documented, defaulted to on — and never scheduled, so the value sat on the system
+/// clipboard indefinitely. Nothing caught it because the only thing a test could
+/// assert was that a timer had been asked to run. The way to know a clipboard is
+/// empty is to read it, so this is the function that lets a test do that.
+///
+/// It is deliberately not on the [`Clipboard`](crate::platform::clipboard::Clipboard)
+/// trait: nothing in the product reads the clipboard, and adding it to the trait
+/// would make that capability available to every caller that holds one. It lives
+/// here, in the platform module, where `pnpm check:unsafe` already looks.
+///
+/// Returns `None` when the clipboard holds no text at all.
+#[must_use]
+pub fn read_text() -> Option<String> {
+    let _guard = ClipboardGuard::open().ok()?;
+
+    // SAFETY: the clipboard is open for this thread, which is `GetClipboardData`'s
+    // precondition. The returned handle is owned by the clipboard, not by us, so it
+    // is read and never freed here.
+    let handle = unsafe { GetClipboardData(CF_UNICODETEXT.0.into()) }.ok()?;
+    if handle.is_invalid() {
+        return None;
+    }
+
+    // SAFETY: `handle` is a valid global memory handle from the clipboard. `GlobalLock`
+    // returns a pointer valid until the matching `GlobalUnlock`, which happens below.
+    let ptr = unsafe { GlobalLock(HGLOBAL(handle.0)) }.cast::<u16>();
+    if ptr.is_null() {
+        return None;
+    }
+
+    // SAFETY: the clipboard's CF_UNICODETEXT is documented NUL-terminated, so scanning
+    // for the terminator stays inside the allocation.
+    let mut len = 0usize;
+    while unsafe { *ptr.add(len) } != 0 {
+        len += 1;
+        // A clipboard entry longer than this is not something a test wrote, and an
+        // unbounded scan on a malformed handle is how a read becomes a crash.
+        if len > 1_000_000 {
+            break;
+        }
+    }
+    // SAFETY: `ptr` is valid for `len` u16 units, established by the scan above.
+    let slice = unsafe { std::slice::from_raw_parts(ptr, len) };
+    let text = String::from_utf16_lossy(slice);
+
+    // SAFETY: matches the `GlobalLock` above.
+    let _ = unsafe { GlobalUnlock(HGLOBAL(handle.0)) };
+    Some(text)
 }

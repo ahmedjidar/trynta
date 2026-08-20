@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Security report data.
  *
@@ -40,6 +41,27 @@ export function useSecurityReport(enabled: boolean) {
     queryFn: () => securityReportRun(),
     enabled,
     ...LOCAL,
+  });
+}
+
+/**
+ * Read the report the security surface has already run, without running one.
+ *
+ * `enabled: false` subscribes to the cache entry rather than fetching it, so the item
+ * list's risk dots and the detail pane's strength band light up once the user has opened
+ * the report — and never cause the whole vault to be decrypted on launch to get them.
+ * Until then there is no band, which is §7.4's *"offline is 'not checked', never
+ * 'safe'"* applied to the surfaces that only borrow the result.
+ */
+export function useCachedSecurityReport() {
+  return useQuery<SecurityReportDto>({
+    queryKey: reportKey,
+    queryFn: () => securityReportRun(),
+    enabled: false,
+    ...LOCAL,
+    // A cache entry the report surface wrote is the whole point; dropping it the moment
+    // that surface unmounts would take the dots away again.
+    gcTime: Infinity,
   });
 }
 

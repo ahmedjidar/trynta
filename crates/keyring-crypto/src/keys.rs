@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Key material types.
 //!
 //! Every type here holds secret bytes and every one of them has a hand-written

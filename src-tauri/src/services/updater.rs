@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! When to check for an update, and what may be offered (SPEC-V1 §7.7).
 //!
 //! §7.7 is a deliberate carve-out from the no-network rule: *"A password manager

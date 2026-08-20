@@ -1,8 +1,9 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
- * Capsule button — HO-002 `ui/Button.tsx`.
+ * Capsule button.
  *
  * Two variants only: the design has no tertiary or ghost button, and low-emphasis actions
- * use {@link CopyAction} or {@link Chip} instead.
+ * use `CopyAction` or `Chip` instead.
  *
  * Disabled is a **token swap, not opacity**, because the gated Save button in the new-item
  * sheet has to stay legible while inert — an opacity fade on a footer button reads as a

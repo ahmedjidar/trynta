@@ -1,9 +1,10 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! DPAPI-backed secure store (SPEC-V1 §8).
 //!
 //! `CryptProtectData` encrypts under a key derived from the user's login
 //! credentials, so a blob written here is undecryptable by another user account
 //! and on another machine. That is exactly the property we want for the
-//! biometric wrap: copying `%APPDATA%\Keyring` to another PC does not carry the
+//! biometric wrap: copying `%APPDATA%\Trynta` to another PC does not carry the
 //! biometric shortcut with it.
 //!
 //! `CRYPTPROTECT_LOCAL_MACHINE` is deliberately **not** set. With it, any user
@@ -24,12 +25,12 @@ pub struct DpapiStore {
 }
 
 impl DpapiStore {
-    /// A store rooted at `%APPDATA%\Keyring\secure`.
+    /// A store rooted at `%APPDATA%\Trynta\secure`.
     #[must_use]
     pub fn new() -> Self {
         let root = std::env::var_os("APPDATA")
             .map_or_else(|| PathBuf::from("."), PathBuf::from)
-            .join("Keyring")
+            .join("Trynta")
             .join("secure");
         Self { root }
     }

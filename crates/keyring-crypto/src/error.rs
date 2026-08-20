@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Redacting error type.
 //!
 //! CLAUDE.md §4.6 and §4.10: no secret ever reaches an error string, and any
@@ -35,7 +36,7 @@ pub enum CryptoError {
 
     /// The envelope was written by a format version this build does not know.
     /// Never a best-effort parse (SPEC-V1 §3.3).
-    #[error("this vault was written by a newer version of Keyring (envelope format {found}, this build supports {supported})")]
+    #[error("this vault was written by a newer version of Trynta (envelope format {found}, this build supports {supported})")]
     UnsupportedEnvelopeVersion {
         /// The version found on disk.
         found: u16,

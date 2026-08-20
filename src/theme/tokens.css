@@ -1,18 +1,17 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
 /* ==========================================================================
-   HO-001 token layer — VERBATIM from the handoff. Do not edit.
+   Token layer — VERBATIM from the design handoff. Do not edit.
    --------------------------------------------------------------------------
-   Provenance: handoffs/HO-001-keyring-v1/tokens.css, received 2026-08-17,
-   exported from Keyring.dc.html. Recorded in handoffs/MANIFEST.md.
+   Provenance recorded in handoffs/MANIFEST.md.
 
    This file is owned by design, not engineering, and is the ONLY file in the
    codebase permitted to contain raw colour, spacing, radius, type or duration
    values (`pnpm check:tokens` allows them here and nowhere else).
 
-   Nothing below has been adjusted, including the seven values the contrast
-   report flags as failing. Silently darkening a designer's colour to pass an
-   audit is how a design system stops being the source of truth. The failures
-   are handled in `a11y.css` by ALIASING to tokens that already pass, and every
-   one is reported for HO-002.
+   Nothing below has been adjusted, including the values the accompanying
+   contrast report flags as failing. Silently darkening a designer's colour to
+   pass an audit is how a design system stops being the source of truth — the
+   failures are reported back instead, and listed in handoffs/MANIFEST.md.
 
    Two notes on structure, because they are not obvious:
 
@@ -26,8 +25,8 @@
    ========================================================================== */
 
 /* ==========================================================================
-   Keyring — design tokens
-   Source of truth: Keyring.dc.html
+   Trynta — design tokens
+   Source of truth: Trynta.dc.html
    Base theme in :root is DARK (the source system is dark-native).
    [data-theme="light"] overrides colour only.
    Structure, type, spacing, radii, shadow geometry and motion are

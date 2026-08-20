@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Backup export and restore (SPEC-V1 §7.8).
 //!
 //! `keyring-store` already owns the format, the manifest signature and the
@@ -50,7 +51,7 @@ const MIN_PASSPHRASE: usize = 12;
 
 /// Suggested filename. Timestamped so two exports in a row do not collide.
 fn suggested_name(now_ms: i64) -> String {
-    format!("keyring-backup-{}.keyringbak", now_ms / 1000)
+    format!("trynta-backup-{}.tryntabak", now_ms / 1000)
 }
 
 /// Export an encrypted backup under its own passphrase (SPEC-V1 §7.8).
@@ -80,7 +81,7 @@ pub fn backup_export(
         .file()
         .set_title("Save an encrypted backup")
         .set_file_name(suggested_name(state.session.now_ms()))
-        .add_filter("Keyring backup", &["keyringbak"])
+        .add_filter("Trynta backup", &["tryntabak"])
         .blocking_save_file()
     else {
         return Ok(None);
@@ -128,7 +129,7 @@ pub fn backup_preview(
         .dialog()
         .file()
         .set_title("Choose a backup to restore")
-        .add_filter("Keyring backup", &["keyringbak"])
+        .add_filter("Trynta backup", &["tryntabak"])
         .blocking_pick_file()
     else {
         return Ok(None);

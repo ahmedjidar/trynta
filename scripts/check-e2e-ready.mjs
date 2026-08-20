@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Whether the E2E harness can run, and exactly what is missing if it cannot.
 //
 // The harness drives the real Tauri binary through `tauri-driver`, which on Windows
@@ -49,12 +50,12 @@ function webview2Version() {
 
 const checks = [];
 
-const binary = process.env.KEYRING_E2E_BINARY ?? join(ROOT, 'target', 'debug', 'keyring.exe');
+const binary = process.env.TRYNTA_E2E_BINARY ?? join(ROOT, 'target', 'debug', 'keyring.exe');
 checks.push({
   name: 'app binary',
   ok: existsSync(binary),
   detail: binary,
-  fix: 'cargo build   (or set KEYRING_E2E_BINARY to a release build)',
+  fix: 'cargo build   (or set TRYNTA_E2E_BINARY to a release build)',
 });
 
 checks.push({

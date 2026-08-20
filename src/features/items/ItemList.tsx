@@ -1,8 +1,9 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
- * Item list column — HO-002 `components/ItemList.tsx`, SPEC-V1 §7.1.
+ * Item list column — SPEC-V1 §7.1.
  *
- * HO-002 gives every row `tabIndex={0}` inside its listbox, so each row is its own tab
- * stop. This keeps HO-002's visual treatment and moves the tab stop to the list, with
+ * The design gives every row `tabIndex={0}` inside its listbox, so each row is its own tab
+ * stop. This keeps that visual treatment and moves the tab stop to the list, with
  * `aria-activedescendant` carrying the selection: a 5,000-item vault must not cost 5,000
  * tab presses to walk past, and binding the arrow keys to the list rather than to `window`
  * is what stops Down moving the selection while the user is typing in the search field.
@@ -24,6 +25,9 @@ import { NO_FILTERS, sourceLabel, useNavigation } from '../../app/navigation';
 import { Badge, Chip } from '../../components/Bits';
 import { Glyph } from '../../components/Glyph';
 import { IdentityTile } from '../../components/IdentityTile';
+import { useItemIcons } from './useItemIcons';
+import type { IconSources } from './useItemIcons';
+import { useThemeStore } from '../../theme/store';
 import { Spacer } from '../../components/Spacer';
 import { cn } from '../../lib/cn';
 import type { ItemSummaryDto, SortOrderDto } from '../../ipc';
@@ -147,28 +151,32 @@ export function ItemList({ items, risks, vaultNames, onCopy, onNew, modifierKey 
     }
   };
 
+  // Only the rows with a custom icon cost anything here; in most vaults that is none.
+  const iconSources = useItemIcons(items);
+  const resolved = useThemeStore((s) => s.resolved);
+
   const currentSort = SORTS.find((s) => s.value === sort) ?? SORTS[0];
   const anyFilter = filters.weak || filters.hasTotp || filters.shared;
 
   return (
     <section
-      className="border-hairline bg-surface-raised flex w-80 shrink-0 flex-col border-r"
+      className="border-hairline bg-surface-raised flex w-[clamp(var(--width-list),28%,440px)] shrink-0 flex-col border-r"
       aria-label="Items"
     >
       <header className="border-hairline flex h-11 shrink-0 items-center gap-2 border-b pr-3 pl-4">
-        {/* HO-002's `listTitle` is the selected source's own name, not a fixed word:
+        {/* The column title is the selected source's own name, not a fixed word:
             "All items", "Logins", or the vault's name. */}
         <h1 className="text-heading tracking-title font-bold">
           {sourceLabel(source, source.source === 'vault' ? vaultNames[source.id] : undefined)}
         </h1>
-        <span className="text-caption text-text-caption-aa tabular-nums">
+        <span className="text-caption text-text-muted tabular-nums">
           {items.length === 1 ? '1 item' : `${String(items.length)} items`}
         </span>
         <div className="flex-1" />
         <button
           type="button"
           data-focus-ring
-          className="text-micro text-text-secondary duration-quick hover:bg-surface-hover hover:text-text-primary flex h-6 items-center gap-1 rounded-full px-2 font-semibold transition-colors"
+          className="text-micro text-text-secondary duration-hover hover:bg-surface-hover hover:text-text-primary flex h-6 items-center gap-1 rounded-full px-2 font-semibold transition-colors"
           onClick={() => {
             const at = SORTS.findIndex((s) => s.value === sort);
             const next = SORTS[(at + 1) % SORTS.length];
@@ -197,10 +205,10 @@ export function ItemList({ items, risks, vaultNames, onCopy, onNew, modifierKey 
         role="group"
         aria-label="Quick filters"
       >
-        {/* HO-002's bar is All / Weak / Has 2FA / Shared, and its own logic makes them
-            exclusive. §7.1 says "combinable" and the spec wins on behaviour, so the two
-            real ones toggle and All clears them. `Shared` is V2 and is absent rather than
-            inert — "never a toggle that does nothing" (§7.5). */}
+        {/* The design's bar is All / Weak / Has 2FA / Shared, and its own logic makes
+            them exclusive. §7.1 says "combinable" and the spec wins on behaviour, so the
+            two real ones toggle and All clears them. `Shared` is V2 and is absent rather
+            than inert — "never a toggle that does nothing" (§7.5). */}
         <Chip
           selected={!anyFilter}
           onClick={() => {
@@ -228,6 +236,7 @@ export function ItemList({ items, risks, vaultNames, onCopy, onNew, modifierKey 
       </div>
 
       <div
+        data-scroll-pane
         className="flex-1 overflow-y-auto px-2 pt-2 pb-4"
         ref={scrollRef}
         role="listbox"
@@ -240,8 +249,12 @@ export function ItemList({ items, risks, vaultNames, onCopy, onNew, modifierKey 
         }}
       >
         {items.length === 0 ? (
-          <p className="text-caption text-text-caption-aa px-6 py-14 text-center">
-            {search === '' ? 'Nothing here yet.' : `No items match “${search}”.`}
+          <p className="text-caption text-text-muted px-6 py-14 text-center">
+            {search !== ''
+              ? `No items match “${search}”.`
+              : anyFilter
+                ? 'Nothing matches this filter.'
+                : 'Nothing here yet.'}
           </p>
         ) : (
           <>
@@ -252,6 +265,8 @@ export function ItemList({ items, risks, vaultNames, onCopy, onNew, modifierKey 
                 item={item}
                 risk={risks[item.id]}
                 selected={item.id === selectedId}
+                iconSources={iconSources}
+                theme={resolved}
                 onSelect={() => {
                   select(item.id);
                 }}
@@ -262,9 +277,9 @@ export function ItemList({ items, risks, vaultNames, onCopy, onNew, modifierKey 
         )}
       </div>
 
-      {/* HO-002 also lists "⌘C Copy". The modifier resolves from the platform rather
-          than being typed (SPEC-V1 §8). */}
-      <footer className="border-hairline text-micro text-text-caption-aa flex h-8 shrink-0 items-center gap-3.5 border-t px-4">
+      {/* The modifier in these hints resolves from the platform rather than being typed
+          (SPEC-V1 §8). */}
+      <footer className="border-hairline text-micro text-text-muted flex h-8 shrink-0 items-center gap-3.5 border-t px-4">
         <span>↑↓ Navigate</span>
         <span>⏎ Open</span>
         <span>{modifierKey}C Copy</span>
@@ -277,10 +292,14 @@ interface ItemRowProps {
   item: ItemSummaryDto;
   risk: 'breached' | 'weak' | undefined;
   selected: boolean;
+  /** `data:` URIs for the rows whose icon the user supplied. */
+  iconSources: IconSources;
+  /** Resolved theme, for brands that ship a light/dark pair. */
+  theme: 'light' | 'dark';
   onSelect: () => void;
 }
 
-function ItemRow({ item, risk, selected, onSelect }: ItemRowProps) {
+function ItemRow({ item, risk, selected, iconSources, theme, onSelect }: ItemRowProps) {
   return (
     <div
       id={`item-${item.id}`}
@@ -288,11 +307,19 @@ function ItemRow({ item, risk, selected, onSelect }: ItemRowProps) {
       aria-selected={selected}
       onClick={onSelect}
       className={cn(
-        'duration-quick flex h-[var(--row-h)] shrink-0 cursor-pointer items-center gap-3 rounded-lg px-3 transition-colors',
+        // `item-row` is what the windowing effect measures a real row's height from: the
+        // token cannot be read back through `getComputedStyle`, which resolves a custom
+        // property to its specified value rather than to pixels.
+        'item-row duration-hover flex h-[var(--row-h)] shrink-0 cursor-pointer items-center gap-3 rounded-lg px-3 transition-colors',
         selected ? 'bg-surface-selected' : 'hover:bg-surface-hover',
       )}
     >
-      <IdentityTile icon={item.icon} title={item.title} />
+      <IdentityTile
+        icon={item.icon}
+        title={item.title}
+        customSrc={iconSources[item.id]}
+        theme={theme}
+      />
       <div className="min-w-0 flex-1">
         <div
           className={cn(
@@ -302,7 +329,7 @@ function ItemRow({ item, risk, selected, onSelect }: ItemRowProps) {
         >
           {item.title}
         </div>
-        <div className="text-chip text-text-caption-aa truncate">{item.subtitle ?? ''}</div>
+        <div className="text-chip text-text-muted truncate">{item.subtitle ?? ''}</div>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
         {item.hasTotp ? (

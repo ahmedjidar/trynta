@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Typed bindings for every Rust command (SPEC-V1 §6).
  *
@@ -26,6 +27,7 @@ import type { BreachCheckDto } from './generated/BreachCheckDto';
 import type { GeneratedDto } from './generated/GeneratedDto';
 import type { StrengthDto } from './generated/StrengthDto';
 import type { HistoryEntryDto } from './generated/HistoryEntryDto';
+import type { IconUploadDto } from './generated/IconUploadDto';
 import type { PassphraseOptionsDto } from './generated/PassphraseOptionsDto';
 import type { PasswordOptionsDto } from './generated/PasswordOptionsDto';
 import type { ThemeCatalogDto } from './generated/ThemeCatalogDto';
@@ -44,6 +46,7 @@ import type { SecretFieldDto } from './generated/SecretFieldDto';
 import type { SecurityReportDto } from './generated/SecurityReportDto';
 import type { SettingsDto } from './generated/SettingsDto';
 import type { SettingsPatch } from './generated/SettingsPatch';
+import type { TotpConfigInput } from './generated/TotpConfigInput';
 import type { VaultStateDto } from './generated/VaultStateDto';
 import type { VaultSummaryDto } from './generated/VaultSummaryDto';
 
@@ -358,12 +361,25 @@ export function itemUpsert(draft: ItemDraftInput): Promise<string> {
 /**
  * Soft-delete an item. Recoverable with {@link itemRestore} for 30 days.
  *
- * @throws {IpcError} `locked`, `notFound`.
+ * Takes the master password and the item's own title typed back. Both are verified
+ * in Rust, not here: a confirmation the webview checks is one that anyone calling
+ * the command skips. The title comparison is trimmed and case-insensitive.
+ *
+ * @param id - The item to delete.
+ * @param masterPassword - Proves the person deleting owns the vault.
+ * @param confirmTitle - The item's title, typed back. Proves they know which item.
+ *
+ * @throws {IpcError} `locked`, `wrongPassword`, `invalid` if the title does not
+ * match, `notFound`.
  *
  * @beta
  */
-export function itemDelete(id: string): Promise<void> {
-  return callVoid('item_delete', { id });
+export function itemDelete(
+  id: string,
+  masterPassword: string,
+  confirmTitle: string,
+): Promise<void> {
+  return callVoid('item_delete', { id, masterPassword, confirmTitle });
 }
 
 /**
@@ -399,6 +415,55 @@ export function itemRestore(id: string): Promise<void> {
  */
 export function itemEditMeta(id: string, edits: MetaEditsInput): Promise<boolean> {
   return call<boolean>('item_edit_meta', { id, edits });
+}
+
+/**
+ * The user's own icon for an item, as a `data:` URI, or `null` if it has none.
+ *
+ * Only worth calling when the item's {@link IconDto} is `custom`; every other kind
+ * renders without a round trip.
+ *
+ * The URI is safe to put in an `<img src>`: the production CSP is `img-src 'self'
+ * data:`, and an SVG inside an `<img>` cannot execute script even if it contained any —
+ * which it cannot, because Rust sanitised it on the way in.
+ *
+ * @throws {IpcError} `locked`, `notFound`, `storage`.
+ *
+ * @beta
+ */
+export function itemIcon(id: string): Promise<string | null> {
+  return call<string | null>('item_icon', { id });
+}
+
+/**
+ * Ask the user for an image file and attach it to an item.
+ *
+ * Opens a file dialog; **Rust reads, decodes, resizes and re-encodes it**. The webview
+ * never receives the chosen file or its path, which is the point: an image found on the
+ * internet is untrusted input, and a decoder is a parser.
+ *
+ * Resolves to `null` when the dialog is cancelled, which is not an error.
+ *
+ * @returns The processed size in bytes, so the UI can show what it cost.
+ * @throws {IpcError} `invalid` if the image is refused — over 2 MB, not one of
+ * SVG/PNG/JPEG/WebP/ICO, or an SVG carrying script or an external reference. Also
+ * `locked`, `notFound`, `storage`.
+ *
+ * @beta
+ */
+export function itemSetIcon(id: string): Promise<IconUploadDto | null> {
+  return call<IconUploadDto | null>('item_set_icon', { id });
+}
+
+/**
+ * Remove an item's icon, so it falls back to the bundled mark or a generated one.
+ *
+ * @throws {IpcError} `locked`, `notFound`, `storage`.
+ *
+ * @beta
+ */
+export function itemClearIcon(id: string): Promise<void> {
+  return callVoid('item_clear_icon', { id });
 }
 
 /**
@@ -555,7 +620,113 @@ export function generatorHistoryClear(): Promise<void> {
   return callVoid('generator_history_clear');
 }
 
+// ── Biometric unlock (SPEC-V1 §5, §7.5) ─────────────────────────────────────
+
+/**
+ * Whether biometric unlock is available on this device *and* set up for this vault.
+ *
+ * Both halves, because either one alone means the button cannot work: no hardware is
+ * a fact about the machine, no enrolment is a fact about this vault. Safe to call
+ * while locked — it is what the lock screen asks before offering the option.
+ *
+ * @throws {IpcError} `storage`.
+ *
+ * @beta
+ */
+export function biometricReady(): Promise<boolean> {
+  return call<boolean>('biometric_ready');
+}
+
+/**
+ * Turn biometric unlock on.
+ *
+ * Takes the master password because there is no moment when the app is holding it
+ * and could enrol silently — it is used once at unlock and dropped. Rust verifies it
+ * opens the vault before storing anything: enrolling an unverified string would
+ * produce a biometric unlock that fails forever on a biometric that works fine.
+ *
+ * @param masterPassword - The master password, as typed.
+ * @throws {IpcError} `wrongPassword`, `biometric` if the platform refuses, `storage`.
+ *
+ * @beta
+ */
+export function biometricEnable(masterPassword: string): Promise<void> {
+  return callVoid('biometric_enable', { masterPassword });
+}
+
+/**
+ * Turn biometric unlock off and destroy the stored secret.
+ *
+ * @throws {IpcError} `biometric` if the platform refuses to revoke, `storage`.
+ *
+ * @beta
+ */
+export function biometricDisable(): Promise<void> {
+  return callVoid('biometric_disable');
+}
+
+/**
+ * Unlock with the platform biometric.
+ *
+ * Raises the platform prompt — Windows Hello here. Failure is one error for every
+ * cause: cancelled, no match, and enrolment invalidated all mean *use your password*,
+ * and distinguishing them would tell an attacker which attempt got furthest.
+ *
+ * @throws {IpcError} `biometric` for any failure of the prompt, `invalidState` when
+ * §5.1's fourteen-day master-password unlock is due, `wrongPassword` if the stored
+ * secret no longer opens the vault.
+ *
+ * @beta
+ */
+export function accountUnlockBiometric(): Promise<AccountStatus> {
+  return call<AccountStatus>('account_unlock_biometric');
+}
+
 // ── TOTP (SPEC-V1 §7.2) ─────────────────────────────────────────────────────
+
+/**
+ * Read a one-time-code setup the user pasted, as a URI or a bare secret.
+ *
+ * Accepts both things services hand out and calls "the code": the
+ * `otpauth://totp/...` URI behind a QR image, and the bare base32 string sites
+ * print when they offer no QR at all. Which one it is is detected, not asked.
+ *
+ * Parsing is in Rust so the parameters that reach storage are the ones the URI
+ * carried. Dropping `algorithm=SHA256` in a TypeScript parser would store SHA-1
+ * and generate codes that never work — a bug ADD-004 §④ records having shipped
+ * once already.
+ *
+ * The returned object is ready to hand straight to {@link itemUpsert} as
+ * `body.totp`.
+ *
+ * @param input - An `otpauth://` URI or a base32 secret, as pasted.
+ * @throws {IpcError} `totpRejected`, carrying a {@link TotpRejectionDto} saying
+ * which rule failed. The input is never echoed back in the error: it is a shared
+ * secret.
+ *
+ * @beta
+ */
+export function totpParse(input: string): Promise<TotpConfigInput> {
+  return call<TotpConfigInput>('totp_parse', { input });
+}
+
+/**
+ * Attach, replace or remove an item's one-time-code setup.
+ *
+ * Pass `null` to remove one; nothing else about the item changes. Separate from
+ * {@link itemEditMeta} because the seed belongs in `secret_ct`, and separate from
+ * {@link itemUpsert} because the detail view does not hold the password.
+ *
+ * @returns Whether anything changed. Writing the same configuration twice does not
+ * burn a revision.
+ * @throws {IpcError} `notFound` if the item is absent or is not a login. Also
+ * `locked`, `storage`.
+ *
+ * @beta
+ */
+export function itemSetTotp(id: string, totp: TotpConfigInput | null): Promise<boolean> {
+  return call<boolean>('item_set_totp', { id, totp });
+}
 
 /**
  * The current one-time code for an item, with its countdown.
@@ -571,6 +742,27 @@ export function generatorHistoryClear(): Promise<void> {
  */
 export function totpCurrent(id: string): Promise<TotpCodeDto> {
   return call<TotpCodeDto>('totp_current', { id });
+}
+
+/**
+ * Put an item's current one-time code on the clipboard.
+ *
+ * The *code*, not the seed. Copying the seed and calling it the code — which is what
+ * `itemCopyField(id, { field: 'totpSecret' })` does — puts a base32 string on the
+ * clipboard that fails every verification prompt it is pasted into. The seed stays
+ * reachable through the ordinary reveal path, which is where someone moving to
+ * another authenticator would look for it.
+ *
+ * Written by Rust with the platform's secrecy markers and the same auto-clear as any
+ * other copy; the plaintext never enters the webview.
+ *
+ * @throws {IpcError} `notFound` if the item has no configuration. Also `locked`,
+ * `clipboard`.
+ *
+ * @beta
+ */
+export function totpCopyCurrent(id: string): Promise<void> {
+  return callVoid('totp_copy_current', { id });
 }
 
 // ── Security report (SPEC-V1 §7.4) ──────────────────────────────────────────
@@ -726,6 +918,43 @@ export function themeSet(id: string | null, mode: ThemeModeDto): Promise<void> {
  */
 export function themeImport(document: string): Promise<ThemeDto> {
   return call<ThemeDto>('theme_import', { document });
+}
+/**
+ * Choose a theme file and import it.
+ *
+ * The picker, the read and the validation all happen in Rust: the webview holds no
+ * filesystem permission, which is why this exists alongside {@link themeImport}
+ * rather than the frontend reading a file and passing the text.
+ *
+ * Importing does not activate — call {@link themeSet} for that.
+ *
+ * Resolves to `null` when the dialog is cancelled, which is not an error.
+ *
+ * @throws {IpcError} `invalid` if the document is refused, which includes every
+ * spelling of `url()`; `locked`; `storage`.
+ *
+ * @beta
+ */
+export function themeImportFile(): Promise<ThemeDto | null> {
+  return call<ThemeDto | null>('theme_import_file');
+}
+
+/**
+ * Save a theme document to a file the user picks.
+ *
+ * The caller builds the document from the tokens resolved on `:root`; this writes it.
+ * Rust owns the dialog and the write because the webview holds no filesystem
+ * permission — the same reasoning as the icon upload and the theme import.
+ *
+ * @param document - The JSON to write.
+ * @returns Whether a file was written. `false` means the dialog was cancelled, which
+ * is not an error.
+ * @throws {IpcError} `storage` if the file cannot be written.
+ *
+ * @beta
+ */
+export function themeExportFile(document: string): Promise<boolean> {
+  return call<boolean>('theme_export_file', { document });
 }
 
 /**

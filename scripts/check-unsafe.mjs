@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // CLAUDE.md §7: `unsafe` is permitted in exactly one place —
 // `src-tauri/src/platform/` — and every block carries a comment justifying it.
 //

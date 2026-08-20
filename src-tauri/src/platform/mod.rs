@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Platform abstraction: biometrics, clipboard, secure storage.
 //!
 //! CLAUDE.md §6: anything platform-specific lives behind a trait here with a
@@ -69,7 +70,7 @@ impl Platform {
         }
         #[cfg(not(any(windows, target_os = "macos")))]
         {
-            // Keyring ships macOS and Windows only (SPEC-V1 §8). This exists so
+            // Trynta ships macOS and Windows only (SPEC-V1 §8). This exists so
             // the workspace still builds on a Linux CI runner for the
             // supply-chain job, and every call fails closed.
             Self {

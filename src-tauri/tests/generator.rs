@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The generator (SPEC-V1 §7.3, AC12).
 //!
 //! Three properties, in order of how much damage getting them wrong would do:

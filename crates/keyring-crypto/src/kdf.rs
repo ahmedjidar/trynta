@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Argon2id key derivation and bidirectional cost calibration.
 //!
 //! SPEC-V1 §3.2. Raw output via `hash_password_into` — no PHC strings, so there

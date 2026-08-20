@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Time-based one-time passwords, RFC 6238 (SPEC-V1 §4.1, §7.2, AC11).
 //!
 //! Nothing here is novel and nothing here should be: TOTP is HMAC over a counter

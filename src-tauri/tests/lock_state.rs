@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The lock/unlock state machine and auto-lock policy (SPEC-V1 §5, §11).
 //!
 //! Every trigger crossed with every setting, plus the properties that make lock

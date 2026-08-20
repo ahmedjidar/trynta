@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Biometric unlock (SPEC-V1 §5.1).
 //!
 //! The shape is the same on both platforms and it matters that it is:

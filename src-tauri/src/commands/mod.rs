@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The IPC command surface (SPEC-V1 §6).
 //!
 //! CLAUDE.md §5: `commands/` orchestrates and never contains business logic.
@@ -23,8 +24,10 @@
 pub mod account;
 pub mod app;
 pub mod backup;
+pub mod biometric;
 pub mod dto;
 pub mod generator;
+pub mod icon;
 pub mod items;
 pub mod security;
 pub mod settings;

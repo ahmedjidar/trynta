@@ -1,6 +1,6 @@
 # Design Handoffs
 
-Visual design for Keyring is produced in **Claude Design** and delivered here. This directory is
+Visual design for Trynta is produced in **Claude Design** and delivered here. This directory is
 the **single source of truth for every visual decision** in the product.
 
 Implementing agents: read the relevant handoff before styling anything. If a screen has no handoff,

@@ -1,6 +1,6 @@
 # macOS: written, never compiled
 
-Every macOS-specific code path in Keyring, what it is supposed to do, and how to
+Every macOS-specific code path in Trynta, what it is supposed to do, and how to
 verify it on real hardware.
 
 **Status: nothing below has ever been compiled.** Not "lightly tested" — not tested,
@@ -86,7 +86,7 @@ tell you that, so most of this section is manual.
 | B3  | The round trip works at all               | `enrol` then `unwrap_secret` prompts for Touch ID and returns the same bytes                                                | manual — the automated test cannot do this, it would block on a finger                                                   |
 | B4  | **`errSecUserCanceled` is really `-128`** | dismissing the prompt gives `Cancelled`, not `Invalidated`                                                                  | enrol, trigger biometric unlock, press Cancel; if the UI says the enrolment is gone, the constant is wrong               |
 | B5  | No passcode → no item                     | `enrol` fails rather than storing unprotected                                                                               | test account with no login password (hard; skip if impractical and record that)                                          |
-| B6  | The item is `ThisDeviceOnly`              | it does not appear on another Mac with the same iCloud account                                                              | `security find-generic-password -s app.keyring.desktop.biometric` on a second Mac                                        |
+| B6  | The item is `ThisDeviceOnly`              | it does not appear on another Mac with the same iCloud account                                                              | `security find-generic-password -s dev.trynta.desktop.biometric` on a second Mac                                         |
 
 **B4 is the specific uncertainty.** `errSecItemNotFound` (`-25300`) was verified
 against `security-framework-sys 2.17.0`'s own source. `errSecUserCanceled` is
@@ -131,16 +131,17 @@ threat-model entry, not a bug to fix — record it in SECURITY.md.
 
 ## D — Keychain secure store (`platform/macos/keychain.rs`)
 
-| #   | Check                                       | Expected                                                  | How                                                                                                                                 |
-| --- | ------------------------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | Round trip                                  | store → load → delete, and a missing key reads as `None`  | `cargo test -p keyring --test platform_macos the_keychain_round_trips_a_secret`                                                     |
-| D2  | Replace, not duplicate                      | a second `store` under one key wins                       | `cargo test -p keyring --test platform_macos storing_twice_replaces_rather_than_failing`                                            |
-| D3  | Nothing plaintext in our own data directory | no sentinel found                                         | `cargo test -p keyring --test platform_macos a_keychain_item_is_not_plaintext_in_the_app_support_directory`                         |
-| D4  | Codesigning does not break it               | still works from the signed `.app`, not just `cargo test` | run D1 against the built bundle; Keychain ACLs are identity-scoped and an unsigned binary and a signed one are different identities |
+| #   | Check                                                  | Expected                                                         | How                                                                                                                                                                                                                                                                                                                                                             |
+| --- | ------------------------------------------------------ | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Round trip                                             | store → load → delete, and a missing key reads as `None`         | `cargo test -p keyring --test platform_macos the_keychain_round_trips_a_secret`                                                                                                                                                                                                                                                                                 |
+| D2  | Replace, not duplicate                                 | a second `store` under one key wins                              | `cargo test -p keyring --test platform_macos storing_twice_replaces_rather_than_failing`                                                                                                                                                                                                                                                                        |
+| D3  | Nothing plaintext in our own data directory            | no sentinel found                                                | `cargo test -p keyring --test platform_macos a_keychain_item_is_not_plaintext_in_the_app_support_directory`                                                                                                                                                                                                                                                     |
+| D4  | The keychain access group is the one the app can claim | Keychain reads and writes succeed under a Developer ID signature | `entitlements.plist` claimed `$(AppIdentifierPrefix)app.keyring.desktop` while `tauri.conf.json` declared `dev.trynta.desktop` — a rename miss, corrected 2026-08-20. A group the bundle identifier does not match is rejected by the Keychain, so **biometric unlock would have failed on the first real device.** Verify: sign, run, store and load a secret. |
+| D4  | Codesigning does not break it                          | still works from the signed `.app`, not just `cargo test`        | run D1 against the built bundle; Keychain ACLs are identity-scoped and an unsigned binary and a signed one are different identities                                                                                                                                                                                                                             |
 
 **D4 has no automated form and is the most likely macOS-only surprise.** Keychain
 access is granted per code-signing identity. Tests pass under `cargo test` and the
-shipped app prompts "Keyring wants to access the keychain" — or fails — because it
+shipped app prompts "Trynta wants to access the keychain" — or fails — because it
 is a different identity. Re-check after any change to signing or entitlements.
 
 There is deliberately no counterpart to Windows'
@@ -150,14 +151,90 @@ supported way to corrupt one item.
 
 ## E — Paths, window chrome, keyboard
 
-| #   | Check                 | Expected                                                                    | How                                                                                            |
-| --- | --------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| E1  | Data directory        | `~/Library/Application Support/Keyring`                                     | `cargo test -p keyring --test platform_macos -- --nocapture`, read `app-support-files-scanned` |
-| E2  | Modifier key          | hints render `Cmd`, never a hardcoded `⌘`                                   | `platform::modifier_key()`; SPEC-V1 §8 forbids the literal in source                           |
-| E3  | Traffic lights        | native, and the window is draggable                                         | manual, run the app                                                                            |
-| E4  | `mlock` equivalent    | `VirtualLock`'s counterpart succeeds, or warns rather than failing silently | check the log on unlock (CLAUDE.md §4.5)                                                       |
-| E5  | Auto-lock on sleep    | locks when the lid closes                                                   | manual: unlock, close the lid, reopen                                                          |
-| E6  | LaunchAgent autostart | survives a reboot                                                           | manual, once the setting exists (run 3)                                                        |
+| #   | Check                 | Expected                                                                                                                                                                                                                                                                                               | How                                                                                            |
+| --- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| E1  | Data directory        | `~/Library/Application Support/Trynta`                                                                                                                                                                                                                                                                 | `cargo test -p keyring --test platform_macos -- --nocapture`, read `app-support-files-scanned` |
+| E2  | Modifier key          | hints render `Cmd`, never a hardcoded `⌘`                                                                                                                                                                                                                                                              | `platform::modifier_key()`; SPEC-V1 §8 forbids the literal in source                           |
+| E3  | Traffic lights        | native, and the window is draggable                                                                                                                                                                                                                                                                    | manual, run the app                                                                            |
+| E4  | `mlock` equivalent    | **Nothing to check yet — memory locking is not implemented on either platform.** `VirtualLock` is never called on Windows and there is no macOS counterpart. CLAUDE.md §4.5 requires it; the code does not do it. This row stays as the reminder that it is owed on both platforms, not just this one. | n/a until it exists                                                                            |
+| E5  | Auto-lock on sleep    | locks when the lid closes                                                                                                                                                                                                                                                                              | manual: unlock, close the lid, reopen                                                          |
+| E6  | LaunchAgent autostart | survives a reboot                                                                                                                                                                                                                                                                                      | manual, once the setting exists (run 3)                                                        |
+
+## G — Frontend delivery and the bundled typeface
+
+`custom-protocol` was missing from `src-tauri/Cargo.toml`, so every build served the
+frontend from `build.devUrl` (`http://localhost:1420`) instead of the embedded bundle.
+It is now `default`, which changes what a **macOS** bundle loads as much as a Windows
+one, and it has only been observed on Windows. The typeface is a new bundled asset on
+the same path.
+
+| #   | Check                              | Expected                                                                | How                                                                                                                                                          |
+| --- | ---------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| G1  | Bundle serves the frontend         | The window loads `tauri://localhost`, **not** `http://localhost:1420`   | `pnpm tauri build`, launch the `.app` with no dev server running. A blank window means `custom-protocol` did not reach the macOS build                       |
+| G2  | Manrope loads under WKWebView      | Text renders in Manrope, not the system font                            | in the app, `document.fonts` reports `Manrope … loaded`. Failure is silent — the fallback renders and the layout is ~8% narrow                               |
+| G3  | `font-src 'self'` allows the woff2 | No CSP violation for `/fonts/manrope-*.woff2`                           | Safari Web Inspector attached to the WKWebView; a violation shows in the console. WKWebView and WebView2 differ on how `'self'` resolves for a custom scheme |
+| G4  | woff2 in the `.app`                | `Contents/Resources/…/fonts/manrope-latin.woff2` exists in the bundle   | `find <Trynta.app> -name 'manrope-*.woff2'` after `pnpm tauri build`                                                                                         |
+| G5  | AC18 under WKWebView               | an injected `<style>` is blocked and `adoptedStyleSheets` still applies | this is verified on WebView2 by `e2e/specs/theme.e2e.ts`; the WKWebView half has no harness — run the two probes by hand in the Web Inspector console        |
+
+## H — Window chrome
+
+Windows runs frameless (`decorations: false`) with the app drawing its own minimise,
+maximise and close. macOS must **not** do that: `tauri.macos.conf.json` overrides the
+window with `decorations: true`, `titleBarStyle: "Overlay"` and `hiddenTitle: true`, so the
+OS keeps its real traffic lights and floats them over our content. That override file has
+never been parsed by anything.
+
+| #   | Check                            | Expected                                                                                                           | How                                                                                                                                                                     |
+| --- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| H1  | Platform config is merged        | The window has native traffic lights and no custom minimise/maximise/close                                         | run the app. Three drawn buttons at the top right means `tauri.macos.conf.json` was not merged and the Windows config applied                                           |
+| H2  | Traffic-light inset              | The lights do not overlap the "Trynta" wordmark                                                                    | visual. `TitleBar` reserves `--pad-traffic-lights` plus a 68px lead-in on macOS; if Apple's inset differs the wordmark needs a different offset                         |
+| H3  | Title bar drags the window       | Press and move on the bar moves the window                                                                         | manual. `useDragRegion` calls `startDragging()`; the Windows path needed this because Tauri's `data-tauri-drag-region` was inert — check whether macOS behaves the same |
+| H4  | Double-click the title bar       | Zooms/unzooms, per the user's "Prefer tabs / double-click to" setting                                              | manual. Ours always calls `toggleMaximize`, which ignores that setting — decide whether that is acceptable on macOS                                                     |
+| H5  | Corner radius                    | The window wears the system radius, and no app-coloured square peeks past it                                       | visual, on a light desktop background. Windows leaves the corner to DWM for the same reason                                                                             |
+| H6  | `isMaximized` on a zoomed window | The restore/maximise glyph is not rendered on macOS at all, so nothing to check — but `WindowFrame` still reads it | it drives the frame's hairline; a wrong answer there is cosmetic, not functional                                                                                        |
+
+## K — The app icon
+
+`src-tauri/icons/icon.icns` is generated by `scripts`-adjacent tooling in the brand
+commit: PNG frames wrapped in an ICNS container written from the format description.
+No Apple tool has read it. The Windows `.ico` is verified — Explorer renders it — and
+the two containers share nothing but the PNGs inside them.
+
+| #   | Check                    | Expected                                                     | How                                                                                                          |
+| --- | ------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| K1  | The container parses     | `iconutil` reads it without complaint                        | `iconutil -c iconset src-tauri/icons/icon.icns -o /tmp/out.iconset` — a malformed container fails here first |
+| K2  | Every frame is present   | 16, 32, 64, 128, 256, 512 and 1024 all appear in the iconset | `ls /tmp/out.iconset`. Missing sizes mean the wrong OSType codes, not a bad image                            |
+| K3  | Finder and the Dock      | The mark, not a generic app square                           | `pnpm tauri build`, then look at the `.app` in Finder and launch it                                          |
+| K4  | Retina frames are chosen | The Dock uses the 2x frame rather than upscaling the 1x      | visual on a Retina panel; a soft icon means `ic08`/`ic09` are not being picked                               |
+
+## J — Hide from screen capture
+
+`settings_set` and the startup hook both call Tauri's `set_content_protected`. On
+Windows that is `SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)` and is verified; on
+macOS it is `NSWindow.sharingType = .none`, which no build of this has ever reached.
+
+The two platforms fail differently, and that is the reason this section exists.
+`WDA_EXCLUDEFROMCAPTURE` hands the compositor a blank region, so a recorder gets black.
+`sharingType` is advisory to _screen sharing_ and has historically not covered every
+capture path — `screencapture`, ScreenCaptureKit and QuickTime have each behaved
+differently across releases. A setting whose label says "hide from screen capture" and
+which only hides from some of them is worse than one that says what it does, so the
+answer to J2 decides whether the macOS copy needs to change.
+
+| #   | Check                           | Expected                                                                                                         | How                                                                                                                            |
+| --- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| J1  | The call reaches the window     | Toggling the setting does not log `could not change the window's capture protection`                             | turn it on in Settings, then read the app's `tracing` output. Failure is deliberately non-fatal, so the log is the only signal |
+| J2  | It covers the capture paths     | `⌘⇧4`, `screencapture -x`, QuickTime screen recording and a Zoom/Teams share all show a blank or excluded window | do all four with the setting on. Record which, if any, still show the vault — this is the finding that decides the copy        |
+| J3  | It survives a relaunch          | The window is protected before the lock screen appears, not after unlock                                         | enable it, quit, relaunch, and capture the **lock screen**. The flag lives in `app_state` precisely so this works pre-unlock   |
+| J4  | Turning it off really turns off | The window is capturable again without a relaunch                                                                | toggle off, capture again. `WDA_NONE` is immediate on Windows; check macOS does not need the window recreated                  |
+
+## I — Interface scale
+
+| #   | Check                      | Expected                                                 | How                                                                                                                                                             |
+| --- | -------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| I1  | `Cmd` +, - and 0           | Zoom steps and resets                                    | manual. The handler accepts `metaKey                                                                                                                            |     | ctrlKey`, so it should need no macOS-specific code — this is the assumption to test |
+| I2  | `Cmd`+wheel                | Zooms, and the webview does not also zoom underneath it  | manual. The wheel listener is non-passive and calls `preventDefault`; WKWebView may still apply its own pinch zoom                                              |
+| I3  | CSS `zoom` under WKWebView | Text is re-rendered at the new size, not a scaled bitmap | zoom to 1.4 and inspect a hairline. Safari added `zoom` support later than Chromium; if it degrades to a transform, the fix is to scale the token layer instead |
 
 ## F — Things that only exist on Windows so far
 

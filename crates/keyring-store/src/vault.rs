@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! [`VaultFile`] and [`Session`]: opening, unlocking, and the repository.
 //!
 //! The order of operations in [`VaultFile::unlock_with`] is the security-
@@ -34,7 +35,8 @@ use crate::error::{StoreError, TamperKind, UnlockError};
 use crate::header::Header;
 use crate::manifest;
 use crate::model::{
-    IndexRow, ItemDraft, ItemMeta, ItemSummary, SecretField, TotpConfig, VaultKind, VaultSummary,
+    IndexRow, ItemDraft, ItemMeta, ItemSummary, SecretField, StoredIcon, TotpConfig, VaultKind,
+    VaultSummary,
 };
 use crate::repository::{self, MetaEdits};
 use crate::schema::{
@@ -903,6 +905,74 @@ impl Session<'_> {
     pub fn item_set_favorite(&self, id: Uuid, favorite: bool) -> Result<bool, StoreError> {
         let conn = self.file.conn.lock().expect("connection lock");
         let changed = repository::item_set_favorite(&conn, &self.keys.muk, id, favorite, now_ms())?;
+        if changed {
+            self.reseal(&conn)?;
+        }
+        Ok(changed)
+    }
+
+    /// Attach, replace or remove an item's TOTP configuration (SPEC-V1 §4.1).
+    ///
+    /// Returns whether anything changed; writing the same configuration twice does
+    /// not burn a revision. Only a login can hold one.
+    ///
+    /// # Errors
+    ///
+    /// [`StoreError::ItemNotFound`] if the item is absent or is not a login,
+    /// [`StoreError::Database`], or [`StoreError::Crypto`].
+    ///
+    /// # Panics
+    ///
+    /// If an internal lock is poisoned, which can only happen if another thread
+    /// panicked while holding it.
+    pub fn item_set_totp(&self, id: Uuid, totp: Option<&TotpConfig>) -> Result<bool, StoreError> {
+        let conn = self.file.conn.lock().expect("connection lock");
+        let changed = repository::item_set_totp(&conn, &self.keys.muk, id, totp, now_ms())?;
+        if changed {
+            self.reseal(&conn)?;
+        }
+        Ok(changed)
+    }
+
+    /// The user's own icon for one item, if it has one (ADD-001).
+    ///
+    /// Reads and decrypts that item's `meta_ct` alone. The search index carries only a
+    /// flag, so this is how the bytes are obtained.
+    ///
+    /// # Errors
+    ///
+    /// [`StoreError::ItemNotFound`], [`StoreError::Database`], or [`StoreError::Crypto`].
+    ///
+    /// # Panics
+    ///
+    /// If an internal lock is poisoned, which can only happen if another thread panicked
+    /// while holding it.
+    pub fn item_custom_icon(&self, id: Uuid) -> Result<Option<StoredIcon>, StoreError> {
+        let conn = self.file.conn.lock().expect("connection lock");
+        repository::item_custom_icon(&conn, &self.keys.muk, id)
+    }
+
+    /// Attach an icon to an item, or remove the one it has.
+    ///
+    /// Returns whether anything changed; setting the same bytes twice does not burn a
+    /// revision. The caller is responsible for having processed the image first — this
+    /// stores exactly what it is given.
+    ///
+    /// # Errors
+    ///
+    /// [`StoreError::ItemNotFound`], [`StoreError::Database`], or [`StoreError::Crypto`].
+    ///
+    /// # Panics
+    ///
+    /// If an internal lock is poisoned, which can only happen if another thread panicked
+    /// while holding it.
+    pub fn item_set_custom_icon(
+        &self,
+        id: Uuid,
+        icon: Option<StoredIcon>,
+    ) -> Result<bool, StoreError> {
+        let conn = self.file.conn.lock().expect("connection lock");
+        let changed = repository::item_set_custom_icon(&conn, &self.keys.muk, id, icon, now_ms())?;
         if changed {
             self.reseal(&conn)?;
         }

@@ -1,10 +1,10 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
- * iOS switch — HO-002 `ui/Switch.tsx`.
+ * iOS switch: 40×24 track, 20px knob, 2px→18px travel on the design's spring curve.
  *
- * 40×24 track, 20px knob, 2px→18px travel on the Apple spring curve. The knob is white in
- * both themes and relies on `--shadow-knob` for separation, which is contrast-report
- * finding 3 — `a11y.css` adds a border in forced-colors mode so the state survives when
- * the shadow does not.
+ * The knob is white in both themes and relies on `--shadow-knob` for separation from the
+ * track, which contrast-report finding 3 flags: the off state's whole meaning rests on a
+ * boundary at 1.13:1. Recorded in `handoffs/MANIFEST.md` rather than adjusted here.
  */
 
 import type { MouseEvent } from 'react';

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Vault commands (SPEC-V1 §4.2, §6, §7.5).
 //!
 //! A "vault" here is a collection inside one account database, not the file. All

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The reveal rate limit (SPEC-V1 §6).
 //!
 //! > 20 reveals in any rolling 60 s, globally. Exceeding it does not reject — it

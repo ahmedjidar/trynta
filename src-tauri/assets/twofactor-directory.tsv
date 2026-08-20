@@ -1,0 +1,222 @@
+# Services known to accept a TOTP authenticator app, by registrable domain.
+#
+# HAND-CURATED, AND THAT IS DELIBERATE. SPEC-V1 §7.4 requires a bundled directory
+# and requires its licence to permit redistribution before shipping it. The
+# well-known public dataset for this (2fa.directory, formerly twofactorauth.org) is
+# a community list whose terms are not unambiguously clear for redistribution inside
+# a commercial binary, and whose entries carry no per-entry provenance. Rather than
+# ship data whose licence we would be guessing at — the exact failure ADD-001 spent
+# a whole addendum avoiding for icons — this list was written for this product and
+# is owned by it. Nothing here is copied from that dataset.
+#
+# WHAT AN ENTRY MEANS: the service accepts a time-based one-time code from a
+# standard authenticator app, on a normal consumer or developer account, without a
+# paid upgrade.
+#
+# WHAT IT DOES NOT MEAN: SMS, email codes, push approval, a hardware key, or a
+# vendor's own proprietary app. Those are real second factors and several are
+# stronger than TOTP — but they are not what Trynta can help with, and "add a
+# one-time code in Trynta" is only actionable when a TOTP app is actually accepted.
+# This is why Apple, Steam, Netflix and most retail banks are absent: their second
+# factor is real and their users cannot put it here.
+#
+# WHAT IT IS NOT: complete. It is a floor, not a census. A service missing from this
+# file counts as *not capable*, which is the safe direction — the user is never
+# nagged to add a code to something that cannot take one, and the health score's 2FA
+# term simply covers fewer items. Adding a service is a data change: append the
+# domain, keep the file sorted, rebuild.
+#
+# Accuracy over reach. An entry that is wrong produces a nag the user can never
+# satisfy, so anything doubtful was left out rather than guessed at.
+#
+# One registrable domain (eTLD+1) per line, lowercase, sorted.
+# Lines beginning with # are comments.
+
+1password.com
+activecampaign.com
+adobe.com
+airtable.com
+amazon.com
+anthropic.com
+asana.com
+atlassian.com
+auth0.com
+backblaze.com
+binance.com
+bitbucket.org
+bitfinex.com
+bitpay.com
+bitstamp.net
+bitwarden.com
+bluesky.social
+box.com
+bugcrowd.com
+canva.com
+cex.io
+chess.com
+circleci.com
+cloudflare.com
+codeberg.org
+codesandbox.io
+coinbase.com
+confluent.io
+crypto.com
+datadoghq.com
+digitalocean.com
+discord.com
+dnsimple.com
+docker.com
+dreamhost.com
+dropbox.com
+duo.com
+dynadot.com
+ea.com
+ebay.com
+elastic.co
+epicgames.com
+etrade.com
+etsy.com
+evernote.com
+expressvpn.com
+fastly.com
+fastmail.com
+figma.com
+fitbit.com
+fly.io
+gandi.net
+garmin.com
+gemini.com
+ghost.org
+gitea.com
+github.com
+gitkraken.com
+gitlab.com
+gitpod.io
+godaddy.com
+gog.com
+google.com
+grafana.com
+hackerone.com
+hashicorp.com
+heroku.com
+hetzner.com
+hey.com
+hover.com
+hubspot.com
+humblebundle.com
+ibm.com
+instagram.com
+intercom.com
+intuit.com
+ionos.com
+itch.io
+jetbrains.com
+jfrog.com
+jumpcloud.com
+keeper.io
+kickstarter.com
+kinsta.com
+kraken.com
+kucoin.com
+lastpass.com
+launchpad.net
+lichess.org
+linear.app
+linkedin.com
+linode.com
+logmein.com
+mailchimp.com
+mailgun.com
+mastodon.social
+mega.io
+mega.nz
+microsoft.com
+miro.com
+monday.com
+mongodb.com
+mullvad.net
+name.com
+namecheap.com
+namesilo.com
+netlify.com
+newrelic.com
+nintendo.com
+nordvpn.com
+notion.so
+npmjs.com
+okta.com
+openai.com
+opendns.com
+oracle.com
+ovhcloud.com
+pagerduty.com
+patreon.com
+paypal.com
+pcloud.com
+pinterest.com
+playstation.com
+porkbun.com
+postmarkapp.com
+proton.me
+protonvpn.com
+pypi.org
+rackspace.com
+railway.app
+reddit.com
+redhat.com
+render.com
+replit.com
+riotgames.com
+robinhood.com
+roblox.com
+rubygems.org
+salesforce.com
+scaleway.com
+sendgrid.com
+sentry.io
+shopify.com
+signal.org
+siteground.com
+slack.com
+snapchat.com
+snyk.io
+sourceforge.net
+sourcehut.org
+squarespace.com
+stackexchange.com
+stackoverflow.com
+stripe.com
+substack.com
+surfshark.com
+synology.com
+teamviewer.com
+telegram.org
+tesla.com
+tiktok.com
+todoist.com
+trello.com
+tumblr.com
+tunnelbear.com
+tutanota.com
+twilio.com
+twitch.tv
+twitter.com
+ubisoft.com
+ubuntu.com
+uphold.com
+upwork.com
+vercel.com
+vimeo.com
+vultr.com
+wealthfront.com
+webflow.com
+wise.com
+wix.com
+wordpress.com
+wpengine.com
+x.com
+xero.com
+yahoo.com
+zendesk.com
+zoho.com
+zoom.us

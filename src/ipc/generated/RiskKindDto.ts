@@ -3,4 +3,4 @@
 /**
  * Why an item appears in the risk list.
  */
-export type RiskKindDto = "breached" | "weak" | "reused";
+export type RiskKindDto = "breached" | "weak" | "reused" | "missingTwoFactor";

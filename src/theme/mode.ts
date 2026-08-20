@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Theme mode resolution — `dark` | `light` | `system` (SPEC-V1 §7.6).
  *

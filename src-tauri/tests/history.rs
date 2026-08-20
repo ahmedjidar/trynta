@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Generator history retention (SPEC-V1 §7.3).
 //!
 //! > **History** — real secrets, so: ≤20 entries, auto-expire at 7 days,

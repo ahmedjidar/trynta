@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Item and vault persistence: the meta/secret split in practice.
 //!
 //! [`split_draft`] is the function that enforces SPEC-V1 §3.4. Every secret
@@ -18,8 +19,9 @@ use zeroize::Zeroizing;
 use crate::error::StoreError;
 use crate::model::{
     CustomField, CustomFieldKind, IndexRow, ItemBody, ItemBodyMeta, ItemDraft, ItemMeta,
-    ItemMetaPayload, ItemSecretPayload, ItemSummary, PasswordHistoryEntry, SecretField, TotpConfig,
-    TotpParams, VaultKind, VaultMetaPayload, VaultSummary, PASSWORD_HISTORY_LIMIT,
+    ItemMetaPayload, ItemMetaPayloadPreIcon, ItemSecretPayload, ItemSummary, PasswordHistoryEntry,
+    SecretField, StoredIcon, TotpConfig, TotpParams, VaultKind, VaultMetaPayload, VaultSummary,
+    PASSWORD_HISTORY_LIMIT,
 };
 
 /// What an upsert did.
@@ -577,6 +579,10 @@ fn split_draft(
         created_at,
         custom_fields: meta_customs,
         body,
+        // A draft never carries one. Attaching an icon is its own operation, so a save
+        // from a form that has no icon field cannot silently erase one — the same
+        // reason `item_edit_meta` exists rather than routing edits through `upsert`.
+        custom_icon: None,
     };
     (meta, secret)
 }
@@ -939,7 +945,20 @@ fn read_meta_payload(
         &aad(Purpose::ItemMeta, uuid_bytes(id), revision, key_id),
         &envelope,
     )?;
-    postcard::from_bytes(&opened).map_err(|_| StoreError::MalformedPayload)
+    decode_meta(&opened)
+}
+
+/// Decode an item metadata payload, accepting both shapes the format has had.
+///
+/// See [`ItemMetaPayloadPreIcon`] for why the second attempt exists and why it cannot
+/// be reached by a payload that decodes correctly as the current shape.
+fn decode_meta(opened: &[u8]) -> Result<ItemMetaPayload, StoreError> {
+    if let Ok(current) = postcard::from_bytes::<ItemMetaPayload>(opened) {
+        return Ok(current);
+    }
+    postcard::from_bytes::<ItemMetaPayloadPreIcon>(opened)
+        .map(Into::into)
+        .map_err(|_| StoreError::MalformedPayload)
 }
 
 fn read_secret(
@@ -1077,6 +1096,7 @@ pub(crate) fn index_rows(conn: &Connection, muk: &Muk) -> Result<Vec<IndexRow>, 
             created_at: meta.created_at,
             updated_at,
             subtitle: subtitle_for(&meta.body),
+            has_custom_icon: meta.custom_icon.is_some(),
         });
     }
     Ok(out)
@@ -1128,7 +1148,147 @@ pub(crate) fn item_meta(conn: &Connection, muk: &Muk, id: Uuid) -> Result<ItemMe
         created_at: meta.created_at,
         custom_fields: meta.custom_fields,
         body: meta.body,
+        has_custom_icon: meta.custom_icon.is_some(),
     })
+}
+
+/// Read the user's icon for one item, if it has one.
+///
+/// Decrypts that item's `meta_ct` and nothing else. Separate from [`item_get`] because
+/// the icon is up to 64 KB and the detail pane asks for it once per visible row, not
+/// once per open.
+///
+/// # Errors
+///
+/// [`StoreError::ItemNotFound`] if the item is absent or deleted,
+/// [`StoreError::Database`] on a query failure, [`StoreError::Crypto`] if the envelope
+/// fails to open.
+pub(crate) fn item_custom_icon(
+    conn: &Connection,
+    muk: &Muk,
+    id: Uuid,
+) -> Result<Option<StoredIcon>, StoreError> {
+    let revision: i64 = conn
+        .query_row(
+            "SELECT revision FROM items WHERE id = ?1 AND deleted_at IS NULL",
+            [uuid_bytes(id).as_slice()],
+            |r| r.get(0),
+        )
+        .optional()?
+        .ok_or(StoreError::ItemNotFound)?;
+
+    let (item_key, key_id) = item_key(conn, muk, id)?;
+    let meta = read_meta_payload(conn, &item_key, id, key_id, revision.unsigned_abs())?;
+    Ok(meta.custom_icon)
+}
+
+/// Attach or remove an item's icon.
+///
+/// Modelled on [`item_set_favorite`]: the value lives in `meta_ct`, both envelopes bind
+/// the revision in their AAD, so the secret half is read and re-sealed unchanged. A
+/// no-op returns early rather than burning a revision — `revision` is what the manifest
+/// uses to detect a rollback, and churning it makes that signal noisier for no gain.
+///
+/// # Errors
+///
+/// [`StoreError::ItemNotFound`] if the item is absent or deleted,
+/// [`StoreError::Database`] on a query failure, [`StoreError::Crypto`] if an envelope
+/// fails to open or seal.
+pub(crate) fn item_set_custom_icon(
+    conn: &Connection,
+    muk: &Muk,
+    id: Uuid,
+    icon: Option<StoredIcon>,
+    now: i64,
+) -> Result<bool, StoreError> {
+    let revision: i64 = conn
+        .query_row(
+            "SELECT revision FROM items WHERE id = ?1 AND deleted_at IS NULL",
+            [uuid_bytes(id).as_slice()],
+            |r| r.get(0),
+        )
+        .optional()?
+        .ok_or(StoreError::ItemNotFound)?;
+
+    let (item_key, key_id) = item_key(conn, muk, id)?;
+    let mut meta = read_meta_payload(conn, &item_key, id, key_id, revision.unsigned_abs())?;
+    if meta.custom_icon == icon {
+        return Ok(false);
+    }
+    meta.custom_icon = icon;
+
+    let secret = read_secret(conn, &item_key, id, key_id, revision.unsigned_abs())?;
+    let next = revision.saturating_add(1);
+    let (meta_ct, secret_ct) =
+        seal_payloads(&item_key, id, key_id, next.unsigned_abs(), &meta, &secret)?;
+
+    conn.execute(
+        "UPDATE items SET meta_ct = ?1, secret_ct = ?2, revision = ?3, updated_at = ?4          WHERE id = ?5",
+        rusqlite::params![meta_ct, secret_ct, next, now, uuid_bytes(id).as_slice()],
+    )?;
+    Ok(true)
+}
+
+/// Attach, replace or remove an item's TOTP configuration.
+///
+/// Split across both envelopes, because a TOTP configuration is: the seed and its
+/// parameters go into `secret_ct`, and `has_totp` — which the list and the search
+/// index read, and which is not a secret — lives in `meta_ct`. Writing one without
+/// the other is how an item ends up with a badge and no code, or a code the list
+/// does not know about.
+///
+/// Only logins carry one. A card with a TOTP configuration is not a thing the
+/// model can express, so this reports `ItemNotFound` rather than silently writing
+/// a seed no reader would ever look for.
+pub(crate) fn item_set_totp(
+    conn: &Connection,
+    muk: &Muk,
+    id: Uuid,
+    totp: Option<&TotpConfig>,
+    now: i64,
+) -> Result<bool, StoreError> {
+    let revision: i64 = conn
+        .query_row(
+            "SELECT revision FROM items WHERE id = ?1 AND deleted_at IS NULL",
+            [uuid_bytes(id).as_slice()],
+            |r| r.get(0),
+        )
+        .optional()?
+        .ok_or(StoreError::ItemNotFound)?;
+
+    let (item_key, key_id) = item_key(conn, muk, id)?;
+    let mut meta = read_meta_payload(conn, &item_key, id, key_id, revision.unsigned_abs())?;
+    let mut secret = read_secret(conn, &item_key, id, key_id, revision.unsigned_abs())?;
+
+    let ItemBodyMeta::Login { has_totp, .. } = &mut meta.body else {
+        return Err(StoreError::ItemNotFound);
+    };
+
+    let (next_secret, next_params) = match totp {
+        Some(config) => (
+            Some(config.secret.clone()),
+            Some(TotpParams::from_config(config)),
+        ),
+        None => (None, None),
+    };
+    if secret.totp_secret == next_secret && secret.totp_params == next_params {
+        return Ok(false);
+    }
+
+    *has_totp = totp.is_some();
+    secret.totp_secret = next_secret;
+    secret.totp_params = next_params;
+
+    let next = revision.saturating_add(1);
+    let (meta_ct, secret_ct) =
+        seal_payloads(&item_key, id, key_id, next.unsigned_abs(), &meta, &secret)?;
+
+    conn.execute(
+        "UPDATE items SET meta_ct = ?1, secret_ct = ?2, revision = ?3, updated_at = ?4 \
+         WHERE id = ?5",
+        rusqlite::params![meta_ct, secret_ct, next, now, uuid_bytes(id).as_slice()],
+    )?;
+    Ok(true)
 }
 
 /// Decrypt exactly one secret field.
@@ -1212,4 +1372,113 @@ pub(crate) fn item_restore(conn: &Connection, id: Uuid, _now: i64) -> Result<(),
         return Err(StoreError::ItemNotFound);
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{decode_meta, ItemMetaPayload};
+    use crate::model::{ItemBodyMeta, ItemKind};
+    use serde::Serialize;
+
+    /// The exact shape the writer emitted before `custom_icon` existed.
+    ///
+    /// Declared here with `Serialize` rather than reusing
+    /// `ItemMetaPayloadPreIcon` — that type deliberately cannot be written, and a
+    /// test that shared it would be asserting against its own encoder rather than
+    /// against the bytes a shipped build actually produced.
+    #[derive(Serialize)]
+    struct PreIconWriter {
+        kind: ItemKind,
+        title: String,
+        notes: String,
+        tags: Vec<String>,
+        favorite: bool,
+        created_at: i64,
+        custom_fields: Vec<crate::model::CustomField>,
+        body: ItemBodyMeta,
+    }
+
+    fn body() -> ItemBodyMeta {
+        ItemBodyMeta::Login {
+            username: "someone@example.test".to_owned(),
+            urls: vec!["https://example.test/login".to_owned()],
+            has_totp: false,
+        }
+    }
+
+    #[test]
+    fn a_payload_written_before_the_icon_field_still_decodes() {
+        let old = PreIconWriter {
+            kind: ItemKind::Login,
+            title: "Example".to_owned(),
+            notes: "note".to_owned(),
+            tags: vec!["personal".to_owned()],
+            favorite: true,
+            created_at: 1_700_000_000_000,
+            custom_fields: Vec::new(),
+            body: body(),
+        };
+        let bytes = postcard::to_stdvec(&old).expect("encode");
+
+        let decoded = decode_meta(&bytes).expect("a pre-icon payload must still open");
+        assert_eq!(decoded.title, "Example");
+        assert_eq!(decoded.tags, vec!["personal".to_owned()]);
+        assert!(decoded.favorite);
+        assert_eq!(decoded.created_at, 1_700_000_000_000);
+        assert_eq!(decoded.body, body());
+        assert!(
+            decoded.custom_icon.is_none(),
+            "a vault written before the field existed has no icon, not a corrupt one"
+        );
+    }
+
+    #[test]
+    fn a_current_payload_round_trips_unchanged() {
+        let current = ItemMetaPayload {
+            kind: ItemKind::Login,
+            title: "Example".to_owned(),
+            notes: String::new(),
+            tags: Vec::new(),
+            favorite: false,
+            created_at: 1,
+            custom_fields: Vec::new(),
+            body: body(),
+            custom_icon: None,
+        };
+        let bytes = postcard::to_stdvec(&current).expect("encode");
+        assert_eq!(decode_meta(&bytes).expect("decode"), current);
+    }
+
+    /// The pre-icon shape is a strict prefix of the current one, so the fallback must
+    /// never be what accepts a payload that the current shape already read correctly.
+    #[test]
+    fn an_attached_icon_survives_the_two_step_decode() {
+        let with_icon = ItemMetaPayload {
+            kind: ItemKind::Login,
+            title: "Example".to_owned(),
+            notes: String::new(),
+            tags: Vec::new(),
+            favorite: false,
+            created_at: 1,
+            custom_fields: Vec::new(),
+            body: body(),
+            custom_icon: Some(crate::model::StoredIcon {
+                format: crate::model::IconFormat::Png,
+                bytes: vec![1, 2, 3, 4],
+            }),
+        };
+        let bytes = postcard::to_stdvec(&with_icon).expect("encode");
+        let decoded = decode_meta(&bytes).expect("decode");
+        assert_eq!(decoded, with_icon);
+        assert!(
+            decoded.custom_icon.is_some(),
+            "the icon must not be dropped"
+        );
+    }
+
+    #[test]
+    fn genuine_rubbish_is_still_rejected() {
+        assert!(decode_meta(&[]).is_err());
+        assert!(decode_meta(&[0xff; 8]).is_err());
+    }
 }

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Validation of imported themes (SPEC-V1 §7.6, AC19).
 //!
 //! > **An imported theme is untrusted input.** `background: url(https://attacker/…)`
@@ -8,7 +9,7 @@
 //!
 //! The threat is narrow and worth stating exactly. A theme is a bag of CSS custom
 //! properties supplied by someone else. If any value can reach the network, then
-//! importing a theme tells a third party that you opened Keyring, from which IP,
+//! importing a theme tells a third party that you opened Trynta, from which IP,
 //! and when — the one thing §7 says the product must never do.
 //!
 //! ## Why an allow-list, not a `url()` blocklist
@@ -53,6 +54,12 @@ const MAX_NAME_LEN: usize = 96;
 
 /// Most tokens a theme may define.
 const MAX_TOKENS: usize = 512;
+
+/// Characters that would let a value stop being a value.
+///
+/// `;` ends the declaration, `{}` open a rule, `<>` start markup, `@` starts an
+/// at-rule, and a surviving `\` is an escape [`decode_escapes`] could not resolve.
+const STRUCTURAL: &[char] = &[';', '{', '}', '<', '>', '@', '\\'];
 
 /// Value functions that can cause a fetch, or that have no business in a token.
 ///
@@ -146,7 +153,7 @@ struct RawTheme {
 #[non_exhaustive]
 pub enum ThemeError {
     /// The document was not the expected JSON shape.
-    #[error("that file is not a Keyring theme")]
+    #[error("that file is not a Trynta theme")]
     Malformed,
 
     /// The document is larger than [`MAX_THEME_BYTES`].
@@ -169,15 +176,61 @@ pub enum ThemeError {
     },
 
     /// A value used a function that can fetch, however it was spelled.
-    #[error("{name} uses a function that could reach the network, which a theme may never do")]
+    #[error("{name} uses {found}(), which could reach the network — a theme may never do that")]
     ForbiddenFunction {
+        /// The token whose value was refused.
+        name: String,
+        /// The function name, already matched against [`FORBIDDEN_FUNCTIONS`].
+        found: String,
+    },
+
+    /// A value called a function that is not on the allow-list.
+    #[error("{name} uses {found}(), which is not one of the functions a theme may call")]
+    UnknownFunction {
+        /// The token whose value was refused.
+        name: String,
+        /// The function name, parsed out of the value.
+        found: String,
+    },
+
+    /// A value contained a character the grammar does not admit.
+    ///
+    /// Carries the offending **character**, never the value. One character is enough
+    /// to find and fix the line, and is not a quotation of untrusted input.
+    #[error("{name} contains {found:?}, which a theme value may not")]
+    ForbiddenCharacter {
+        /// The token whose value was refused.
+        name: String,
+        /// The single character that failed.
+        found: char,
+    },
+
+    /// A value contained a CSS comment sequence.
+    ///
+    /// Refused rather than stripped. [`strip_comments`] is not string-aware, so
+    /// `"/*" url(x) "*/"` normalises here to `""` — balanced quotes, nothing left to
+    /// object to — while the engine that applies it reads the quotes as literal
+    /// strings and the `url()` between them as a fetch. Stripping cannot close that
+    /// gap without a full CSS tokeniser; refusing has no such gap, and a token value
+    /// has no legitimate use for a comment.
+    #[error("{name} contains {found}, and a theme value may not carry a comment")]
+    CommentSequence {
+        /// The token whose value was refused.
+        name: String,
+        /// Which sequence: `/*` or `*/`.
+        found: &'static str,
+    },
+
+    /// A value used double quotes that do not pair up.
+    #[error("{name} has an unclosed double quote")]
+    UnbalancedQuotes {
         /// The token whose value was refused.
         name: String,
     },
 
-    /// A value did not match the permitted grammar.
-    #[error("{name} has a value this build will not apply")]
-    InvalidValue {
+    /// A value was empty, or longer than [`MAX_VALUE_LEN`].
+    #[error("{name} is empty or longer than {MAX_VALUE_LEN} characters")]
+    ValueLength {
         /// The token whose value was refused.
         name: String,
     },
@@ -250,18 +303,29 @@ fn is_custom_property(name: &str) -> bool {
 /// Check one token value.
 fn validate_value(name: &str, value: &str) -> Result<(), ThemeError> {
     if value.is_empty() || value.len() > MAX_VALUE_LEN {
-        return Err(ThemeError::InvalidValue {
+        return Err(ThemeError::ValueLength {
             name: name.to_owned(),
+        });
+    }
+
+    // On the **raw** value, before any transformation: the whole point is that what
+    // this validator sees and what the browser applies must not be able to differ.
+    if let Some(found) = ["/*", "*/"].into_iter().find(|seq| value.contains(seq)) {
+        return Err(ThemeError::CommentSequence {
+            name: name.to_owned(),
+            found,
         });
     }
 
     let normalised = normalise(value);
 
     // A declaration terminator or a block would let a value escape its property
-    // and become a rule of its own.
-    if normalised.contains([';', '{', '}', '<', '>', '@', '\\']) {
-        return Err(ThemeError::InvalidValue {
+    // and become a rule of its own. A `\` that reached here is an escape
+    // `decode_escapes` could not resolve, which is not something to guess at.
+    if let Some(found) = normalised.chars().find(|c| STRUCTURAL.contains(c)) {
+        return Err(ThemeError::ForbiddenCharacter {
             name: name.to_owned(),
+            found,
         });
     }
 
@@ -269,18 +333,31 @@ fn validate_value(name: &str, value: &str) -> Result<(), ThemeError> {
         if FORBIDDEN_FUNCTIONS.contains(&function.as_str()) {
             return Err(ThemeError::ForbiddenFunction {
                 name: name.to_owned(),
+                found: function,
             });
         }
         if !ALLOWED_FUNCTIONS.contains(&function.as_str()) {
-            return Err(ThemeError::InvalidValue {
+            return Err(ThemeError::UnknownFunction {
                 name: name.to_owned(),
+                found: function,
             });
         }
     }
 
-    if !is_permitted_shape(&normalised) {
-        return Err(ThemeError::InvalidValue {
+    // Quotes are permitted so a font stack can name a family that has a space in it —
+    // `"sf mono", monospace` — which is what the token layer actually holds and so
+    // what our own export emits. Balanced pairs only: an unclosed quote is how a value
+    // swallows whatever follows it.
+    if normalised.matches('"').count() % 2 != 0 {
+        return Err(ThemeError::UnbalancedQuotes {
             name: name.to_owned(),
+        });
+    }
+
+    if let Some(found) = normalised.chars().find(|c| !is_permitted_char(*c)) {
+        return Err(ThemeError::ForbiddenCharacter {
+            name: name.to_owned(),
+            found,
         });
     }
     Ok(())
@@ -292,13 +369,24 @@ fn validate_value(name: &str, value: &str) -> Result<(), ThemeError> {
 /// the rest of an identifier; escapes are decoded next so `\75 rl` becomes `url`
 /// before anything looks for a function name; whitespace is collapsed last so
 /// `url  (` cannot slip past a check for `url(`.
+///
+/// **Every** run of whitespace folds to a single space, newlines included. A shadow
+/// lifted out of pretty-printed CSS arrives with embedded newlines and indentation,
+/// and it is the same value once folded — refusing it taught nobody anything. This
+/// subsumes the old collapse-before-parens rule rather than sitting beside it.
 fn normalise(value: &str) -> String {
     let no_comments = strip_comments(value);
     let decoded = decode_escapes(&no_comments);
     let lowered = decoded.to_ascii_lowercase();
-    collapse_before_parens(&lowered)
+    collapse_whitespace(&lowered)
 }
 
+/// Remove `/* … */`.
+///
+/// Unreachable in practice: [`validate_value`] refuses a value carrying either
+/// sequence before it gets here. Kept anyway, so that the function-name scan below
+/// still sees through `ur/**/l(` if that check is ever moved or removed — the
+/// spelling this was written for, and the one AC19 names.
 fn strip_comments(value: &str) -> String {
     let bytes: Vec<char> = value.chars().collect();
     let mut out = String::with_capacity(value.len());
@@ -369,18 +457,22 @@ fn decode_escapes(value: &str) -> String {
     out
 }
 
-/// Remove whitespace that sits immediately before an opening parenthesis.
+/// Fold every run of whitespace to one space, and drop it entirely before a `(`.
 ///
-/// `url (…)` is not a function token in CSS, but normalising it away costs
+/// `url (…)` is not a function token in CSS, but normalising the gap away costs
 /// nothing and means one fewer spelling to reason about.
-fn collapse_before_parens(value: &str) -> String {
+fn collapse_whitespace(value: &str) -> String {
     let mut out = String::with_capacity(value.len());
+    let mut pending = false;
     for c in value.chars() {
-        if c == '(' {
-            while out.ends_with(char::is_whitespace) {
-                out.pop();
-            }
+        if c.is_whitespace() {
+            pending = true;
+            continue;
         }
+        if pending && !out.is_empty() && c != '(' {
+            out.push(' ');
+        }
+        pending = false;
         out.push(c);
     }
     out
@@ -410,19 +502,25 @@ fn function_names(normalised: &str) -> Vec<String> {
     names
 }
 
-/// Whether every character in the value belongs to the permitted alphabet.
+/// Whether one character belongs to the permitted alphabet.
 ///
 /// The grammar is expressed as a character set plus the function check above
 /// rather than a full CSS value parser. That is a deliberate trade: a real parser
 /// is a large amount of untrusted-input handling, and the property that matters
 /// is "cannot express a fetch", which the alphabet plus the function allow-list
 /// already gives.
-fn is_permitted_shape(normalised: &str) -> bool {
-    normalised.chars().all(|c| {
-        c.is_ascii_alphanumeric()
-            || matches!(
-                c,
-                ' ' | '#' | '%' | '.' | ',' | '-' | '+' | '*' | '/' | '(' | ')' | '_' | '\''
-            )
-    })
+///
+/// `"` is in the set so a font stack can name a family with a space in it — which is
+/// what the token layer holds, and therefore what this app's own export emits. It is
+/// safe here only because of what runs before it in [`validate_value`]: comments are
+/// refused outright, escapes are decoded and a surviving `\` refused, `;` and the
+/// block characters are refused wherever they appear, and the quotes themselves must
+/// balance. A quote cannot conceal any of those, because none of them survive to
+/// reach this point.
+fn is_permitted_char(c: char) -> bool {
+    c.is_ascii_alphanumeric()
+        || matches!(
+            c,
+            ' ' | '#' | '%' | '.' | ',' | '-' | '+' | '*' | '/' | '(' | ')' | '_' | '\'' | '"'
+        )
 }

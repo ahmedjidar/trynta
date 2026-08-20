@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Search latency at 5,000 items (SPEC-V1 §9, AC20).
 //!
 //! AC20: *"Search p95 under 16 ms at 5,000 items."* §9 defines the measurement as
@@ -128,6 +129,7 @@ fn generated_rows() -> Vec<IndexRow> {
                 created_at: 1_700_000_000_000 + i64::try_from(i).unwrap_or(0),
                 updated_at: 1_700_000_000_000 + i64::try_from(ITEMS - i).unwrap_or(0),
                 subtitle: Some(format!("user{i}@{org}.{tld}")),
+                has_custom_icon: false,
             }
         })
         .collect()

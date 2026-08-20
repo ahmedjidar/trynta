@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The lock/unlock state machine (SPEC-V1 §5).
 //!
 //! ```text
@@ -324,14 +325,46 @@ impl SessionManager {
         self.lock_inner().reveals.reauthenticated();
     }
 
+    /// Consume a pending confirmation, for `require_master_on_reveal`.
+    pub fn take_fresh_reauth(&self) -> bool {
+        self.lock_inner().reveals.take_fresh_reauth()
+    }
+
     /// Remember that we put `token` on the clipboard.
     pub fn note_clipboard_write(&self, token: u64) {
         self.lock_inner().clipboard_token = Some(token);
     }
 
+    /// Clear the clipboard if it still holds the write identified by `token`.
+    ///
+    /// This is the one the auto-clear timer uses, and the token argument is the
+    /// reason it exists. [`Self::clear_clipboard`] takes whatever token is current,
+    /// which is right on lock and wrong on a timer: copy A schedules a clear for
+    /// T+15, the user copies B at T+5, and at T+15 the timer for A would take B’s
+    /// token and wipe B ten seconds early. Comparing first means a superseded timer
+    /// does nothing at all.
+    pub fn clear_clipboard_token(&self, token: u64) {
+        {
+            let mut inner = self.lock_inner();
+            if inner.clipboard_token != Some(token) {
+                // Something newer is on the clipboard. Not ours to touch.
+                return;
+            }
+            inner.clipboard_token = None;
+        }
+        match self.platform.clipboard.clear_if_ours(token) {
+            Ok(true) => tracing::debug!("auto-clear removed our clipboard entry"),
+            Ok(false) => {
+                tracing::debug!("clipboard holds someone else’s value; left alone");
+            }
+            Err(e) => tracing::warn!(error = %e, "could not clear the clipboard"),
+        }
+    }
+
     /// Clear the clipboard if it still holds our write.
     ///
-    /// Called by the auto-clear timer and by [`SessionManager::lock`].
+    /// Used by [`SessionManager::lock`], where "whatever we last wrote" is exactly
+    /// the right target.
     pub fn clear_clipboard(&self) {
         let token = self.lock_inner().clipboard_token.take();
         if let Some(token) = token {

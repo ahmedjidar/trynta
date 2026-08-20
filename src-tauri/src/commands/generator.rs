@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Generator commands (SPEC-V1 §6, §7.3).
 //!
 //! Two plaintext values cross IPC in this product. `item_reveal_field` is one; a

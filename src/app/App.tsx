@@ -1,37 +1,17 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
- * Application shell — HO-002 `KeyringApp.tsx`.
+ * Application shell.
  *
- * Composition only: the window, the title bar, the sidebar and whichever pane is
- * active. Everything with state of its own lives in the component that owns it.
- *
- * ## What is built and what is not
- *
- * Built: the shell, the item list with search, filters, sort, keyboard navigation and
- * virtualisation.
- *
- * All four sidebar surfaces are built: vault (list + detail), generator, security report
- * and settings. So are the lock screen, the command palette, the new-item sheet and the
- * updater surface.
- *
- * **Backup and restore is not built.** `keyring-store` has the format
- * (`backup_export`, `backup_merge`, `restore_replacing`) but no command exposes it, and
- * doing so needs a file-dialog capability — a permission grant rather than a screen. The
- * settings row says so instead of opening something half-drawn: a pane that renders a
- * plausible-looking placeholder is worse than one that admits it is unfinished, because
- * placeholder styling never gets replaced (CLAUDE.md §3).
+ * Composition only: the window, the title bar, the sidebar and whichever pane is active.
+ * Everything with state of its own lives in the component that owns it.
  *
  * ## There is no window
  *
- * HO-002's README is emphatic about this: the grey desk, the rounded card and the drop
- * shadow are a **picture of a Mac** that lives in `presentation/DesktopFrame.tsx`, and a
- * real desktop build mounts `KeyringApp` directly — *"Do not recreate the window chrome
- * for panes, dialogs, sheets, cards or any inner surface. Nesting a second Mac window
- * inside the first is the most common error when rebuilding this design, and it is always
- * wrong."*
- *
- * That is exactly what this file used to do: a `.desk` backdrop centring a `.window` card,
- * inside the real Windows window. Both are gone. The shell now fills the OS window, draws
- * no background of its own beyond `--surface-app`, and the OS draws the title-bar buttons.
+ * The design is presented as a picture of a desktop — grey desk, rounded card, drop
+ * shadow, three traffic lights. That is a presentation wrapper around the app, not part
+ * of it. A real desktop build mounts the app directly, fills the OS window, draws no
+ * background beyond `--surface-app`, and lets the OS draw the title-bar buttons. Nothing
+ * below may recreate that chrome for a pane, a dialog, a sheet or a card.
  *
  * ## The lock gate
  *
@@ -39,6 +19,14 @@
  * mounted while locked — §4.9's "lock is real" means there is nothing behind the lock
  * screen to read through it. Every vault query is gated on the same state, so none of
  * them fires against a locked vault and caches a rejection.
+ *
+ * ## Where the risk data comes from
+ *
+ * The item list's risk dots and the detail pane's strength band are the security
+ * report's, read from cache rather than fetched: scoring decrypts every login's password,
+ * so running it to colour a dot would decrypt the whole vault on launch. Until the user
+ * opens the report there is no band, which is §7.4's *"offline is 'not checked', never
+ * 'safe'"* applied to the surfaces that only borrow the result.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -46,20 +34,36 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { Sidebar } from './Sidebar';
 import { TitleBar } from './TitleBar';
+import { WindowControls } from './WindowControls';
+import { WindowFrame } from './WindowFrame';
+import { useDragRegion } from './useDragRegion';
+import { bindZoomShortcuts } from './zoom';
 import { useNavigation } from './navigation';
 import { Toast } from '../components/Toast';
 import { LockScreen } from '../features/account/LockScreen';
 import { Palette } from '../features/palette/Palette';
 import { Generator } from '../features/generator/Generator';
 import { SecurityReport } from '../features/security/SecurityReport';
-import { useBreachCheck, useSecurityReport } from '../features/security/useSecurity';
+import {
+  useBreachCheck,
+  useCachedSecurityReport,
+  useSecurityReport,
+} from '../features/security/useSecurity';
 import { Backup } from '../features/settings/Backup';
 import { Settings } from '../features/settings/Settings';
+import { Vaults } from '../features/settings/Vaults';
 import { Updates } from '../features/settings/Updates';
 import { ItemDetail } from '../features/items/ItemDetail';
 import { ItemList } from '../features/items/ItemList';
 import { NewItemSheet } from '../features/items/NewItemSheet';
-import { useClearCache, useItemDetail, useItems, useVaults } from '../features/items/useItems';
+import {
+  useAllItems,
+  useClearCache,
+  useRefresh,
+  useItemDetail,
+  useItems,
+  useVaults,
+} from '../features/items/useItems';
 import {
   accountLock,
   accountStatus,
@@ -68,7 +72,13 @@ import {
   revealWindow,
   settingsGet,
 } from '../ipc';
-import type { AccountStatus, ItemSummaryDto, SettingsDto } from '../ipc';
+import type {
+  AccountStatus,
+  ItemSummaryDto,
+  SecurityReportDto,
+  SettingsDto,
+  VaultSummaryDto,
+} from '../ipc';
 import { useThemeStore } from '../theme/store';
 
 /**
@@ -79,6 +89,25 @@ import { useThemeStore } from '../theme/store';
  */
 const queryClient = new QueryClient();
 
+/** Band and label per risk kind, for the detail pane's strength row. */
+/**
+ * Risks that say something about the *password*, and the band each implies.
+ *
+ * `missingTwoFactor` is deliberately absent. It is a fact about the service, not
+ * about the password, and a strong unique password on a site that offers 2FA is
+ * still a strong unique password. Mapping it here would have labelled those items
+ * "Weak" through the fallback below, which is a worse lie than saying nothing.
+ */
+const EMPTY_ITEMS: readonly ItemSummaryDto[] = Object.freeze([]);
+const EMPTY_VAULTS: readonly VaultSummaryDto[] = Object.freeze([]);
+
+const RISK_BANDS: Record<string, { band: number; label: string }> = {
+  breached: { band: 1, label: 'Breached' },
+  weak: { band: 1, label: 'Weak' },
+  reused: { band: 2, label: 'Reused' },
+};
+
+/** The root of the application. */
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -89,18 +118,24 @@ export function App() {
 
 function Shell() {
   const hydrate = useThemeStore((s) => s.hydrate);
+  const refreshThemes = useThemeStore((s) => s.refresh);
+  const forgetThemes = useThemeStore((s) => s.forget);
   const surface = useNavigation((s) => s.surface);
   const clearCache = useClearCache();
 
   const [platform, setPlatform] = useState({ modifierKey: 'Ctrl', os: 'windows' });
   const [toast, setToast] = useState<string | null>(null);
   const [account, setAccount] = useState<AccountStatus | null>(null);
+  const [settings, setSettings] = useState<SettingsDto | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const lockBarDrag = useDragRegion();
 
   const unlocked = account?.state === 'unlocked';
   const items = useItems(unlocked);
+  const everything = useAllItems(unlocked);
   const vaults = useVaults(unlocked);
+  const report = useCachedSecurityReport();
 
   useEffect(() => {
     // Callable while locked — that is what it is for. Until it answers, neither the
@@ -112,6 +147,16 @@ function Shell() {
     });
   }, []);
 
+  useEffect(() => {
+    // The toast promises a clipboard clear, so it has to know the configured interval
+    // rather than repeat the design's literal "30s".
+    if (!unlocked) return;
+    settingsGet().then(setSettings, () => {
+      // A settings read that fails is not worth a toast: the screen that needs them says
+      // so itself, and the only thing lost here is the toast's suffix.
+    });
+  }, [unlocked]);
+
   const onCopied = useCallback((what: string) => {
     setToast(what);
   }, []);
@@ -121,11 +166,28 @@ function Shell() {
 
   useEffect(() => {
     // Reveal the window only once the theme has been applied. The window is created
-    // hidden so the first frame is never the wrong palette; see app/window.ts.
+    // hidden so the first frame is never the wrong palette; see ipc/window.ts.
     void hydrate().finally(() => {
       void revealWindow();
     });
   }, [hydrate]);
+
+  useEffect(() => {
+    // Imported themes live in the encrypted settings blob, so `theme_list` returns
+    // none of them while the vault is locked — and `hydrate` runs at mount, which is
+    // always before unlock. Without this the catalogue stayed empty for the whole
+    // session: settings counted the themes correctly, because that count comes from
+    // `settings_get`, and the picker had nothing in it. Two sources disagreeing is
+    // what made it read as "importing does nothing".
+    if (!unlocked) return;
+    void refreshThemes();
+  }, [unlocked, refreshThemes]);
+
+  useEffect(() => {
+    // Ctrl/Cmd with +, - and 0. Bound before first paint so the starting level is
+    // applied in the same frame the shell mounts, rather than as a visible resize.
+    return bindZoomShortcuts();
+  }, []);
 
   useEffect(() => {
     // SPEC-V1 §8: never hardcode the modifier. It resolves from the platform.
@@ -139,38 +201,50 @@ function Shell() {
       });
   }, []);
 
-  useEffect(() => {
-    // SPEC-V1 §7.1's shortcut. `metaKey || ctrlKey` rather than a platform branch: on
-    // Windows only Ctrl is pressed and on macOS only Command is, so accepting both is
-    // the same behaviour without a `#cfg`-by-another-name in the frontend.
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey)) {
-        event.preventDefault();
-        setPaletteOpen(true);
-      }
-    };
-    globalThis.addEventListener('keydown', onKey);
-    return () => {
-      globalThis.removeEventListener('keydown', onKey);
-    };
-  }, []);
-
   const onLock = useCallback(() => {
     // Clear the cache first. If `accountLock` rejects, the keys are still gone from
     // Rust's point of view only when it succeeds — but a cache we have already
     // dropped costs one refetch, and a cache we kept after a successful lock is a
     // §4.9 violation. Order for the worse failure.
     clearCache();
+    // Imported themes are decrypted user data too, and they live in a zustand store
+    // that `clearCache` — which only knows about the query client — does not reach.
+    // Colours are not passwords, but §4.9 is about what the webview still holds after
+    // a lock, and it should not be a list of the user's themes by name.
+    forgetThemes();
+    setSettings(null);
     accountLock().then(setAccount, () => {
       setToast('Could not lock');
     });
-  }, [clearCache]);
+  }, [clearCache, forgetThemes]);
+
+  useEffect(() => {
+    // §7.1 and §7.9's two global shortcuts. `metaKey || ctrlKey` rather than a platform
+    // branch: on Windows only Ctrl is pressed and on macOS only Command is, so accepting
+    // both is the same behaviour without a `#cfg`-by-another-name in the frontend.
+    const onKey = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey)) return;
+      const key = event.key.toLowerCase();
+      if (key === 'k') {
+        event.preventDefault();
+        setPaletteOpen(true);
+      } else if (key === 'l') {
+        event.preventDefault();
+        onLock();
+      }
+    };
+    globalThis.addEventListener('keydown', onKey);
+    return () => {
+      globalThis.removeEventListener('keydown', onKey);
+    };
+  }, [onLock]);
 
   const onVaultReplaced = useCallback(() => {
     // The vault file was rewritten and Rust locked the session. Everything cached
     // describes a vault that no longer exists, so drop it and re-read the state —
     // which puts the lock screen back up for the restored vault's own password.
     clearCache();
+    setSettings(null);
     accountStatus().then(setAccount, () => {
       setToast('Could not read the vault state');
     });
@@ -189,10 +263,15 @@ function Shell() {
     );
   }, []);
 
-  // Risk state comes from the security report, which is a later stage. Empty until
-  // then, so no row claims to be safe or unsafe on no evidence — §7.4's "offline is
-  // 'not checked', never 'safe'" applied to the list.
-  const risks = useMemo<Record<string, 'breached' | 'weak'>>(() => ({}), []);
+  const risks = useMemo<Record<string, 'breached' | 'weak'>>(() => {
+    const map: Record<string, 'breached' | 'weak'> = {};
+    for (const risk of report.data?.risks ?? []) {
+      // Breached outranks weak outranks reused, and the list has one dot per row.
+      if (risk.kind === 'breached') map[risk.itemId] = 'breached';
+      else map[risk.itemId] ??= 'weak';
+    }
+    return map;
+  }, [report.data]);
 
   const vaultNames = useMemo<Record<string, string>>(
     () => Object.fromEntries((vaults.data ?? []).map((v) => [v.id, v.name])),
@@ -200,21 +279,42 @@ function Shell() {
   );
 
   const counts = useMemo<Record<string, number>>(() => {
-    const all = items.data?.length ?? 0;
-    return { all, favorites: items.data?.filter((i) => i.isFavorite).length ?? 0 };
-  }, [items.data]);
+    // From the unfiltered query, not the current one: a count that changes when you
+    // click a category is a count of the view rather than of the vault.
+    const rows = everything.data ?? [];
+    return {
+      all: rows.length,
+      favorites: rows.filter((i) => i.isFavorite).length,
+      login: rows.filter((i) => i.kind === 'login').length,
+      secureNote: rows.filter((i) => i.kind === 'secureNote').length,
+      card: rows.filter((i) => i.kind === 'card').length,
+      identity: rows.filter((i) => i.kind === 'identity').length,
+    };
+  }, [everything.data]);
 
   if (account === null) {
     // One frame at most, and the window is still hidden behind `revealWindow()`.
-    return <div className="bg-surface-app h-full w-full" />;
+    return <WindowFrame />;
   }
 
   if (account.state !== 'unlocked') {
     // §4.9: lock is real. The shell is not rendered *behind* this — it is not
     // mounted, so there are no item titles to read through a blur and no query
     // holding decrypted metadata.
+    //
+    // The frame still wraps it: the window is the window whether or not the vault is
+    // open, and a lock screen with square corners inside a rounded window is a seam.
     return (
-      <div className="bg-surface-app text-text-primary relative h-full w-full overflow-hidden">
+      <WindowFrame>
+        {/* A locked window is still a window: it has to be movable, minimisable and
+            closable. Without this the only way out of a locked app is Task Manager. */}
+        <div
+          data-drag-region
+          {...lockBarDrag}
+          className="relative z-[8] flex h-[52px] shrink-0 items-center justify-end pr-3"
+        >
+          {platform.os === 'macos' ? null : <WindowControls />}
+        </div>
         <LockScreen
           exists={account.state !== 'uninitialised'}
           onUnlocked={(next) => {
@@ -225,26 +325,31 @@ function Shell() {
             setAccount(next);
           }}
         />
-      </div>
+      </WindowFrame>
     );
   }
 
   return (
-    <div className="bg-surface-app text-text-primary relative flex h-full w-full flex-col overflow-hidden">
+    <WindowFrame>
       <TitleBar
         onOpenPalette={() => {
           setPaletteOpen(true);
         }}
         onLock={onLock}
         modifierKey={platform.modifierKey}
+        os={platform.os}
       />
       <div className="flex min-h-0 flex-1">
-        <Sidebar vaults={vaults.data ?? []} counts={counts} riskCount={0} />
+        <Sidebar
+          vaults={vaults.data ?? []}
+          counts={counts}
+          riskCount={report.data?.risks.length ?? 0}
+        />
 
         {surface === 'vault' ? (
-          <>
+          <div className="flex min-w-0 flex-1">
             <ItemList
-              items={items.data ?? []}
+              items={items.data ?? EMPTY_ITEMS}
               risks={risks}
               vaultNames={vaultNames}
               onCopy={onCopy}
@@ -253,17 +358,27 @@ function Shell() {
               }}
               modifierKey={platform.modifierKey}
             />
-            <DetailPane vaultNames={vaultNames} onCopied={onCopied} onFailed={onFailed} />
-          </>
+            <DetailPane
+              vaultNames={vaultNames}
+              report={report.data ?? null}
+              onCopied={onCopied}
+              onFailed={onFailed}
+            />
+          </div>
         ) : surface === 'generator' ? (
           <Generator onCopied={onCopied} onFailed={onFailed} />
         ) : surface === 'settings' ? (
-          <SettingsPane onCopied={onCopied} onFailed={onFailed} onVaultReplaced={onVaultReplaced} />
+          <SettingsPane
+            settings={settings}
+            onSettings={setSettings}
+            onCopied={onCopied}
+            onFailed={onFailed}
+            onVaultReplaced={onVaultReplaced}
+          />
         ) : (
           // All four surfaces are handled, so TypeScript narrows this to `security`
-          // and there is no placeholder branch left to write — the lint proved the
-          // last comparison was always true, which is a pleasant way to find out.
-          <SecurityPane items={items.data ?? []} onCopied={onCopied} onFailed={onFailed} />
+          // and there is no placeholder branch left to write.
+          <SecurityPane onCopied={onCopied} onFailed={onFailed} />
         )}
       </div>
 
@@ -299,82 +414,103 @@ function Shell() {
         onDismiss={() => {
           setToast(null);
         }}
-        // Until settings are read this is the §7.5 default. The toast must not claim a
-        // clear that is switched off, so it takes the value rather than a literal.
-        clipboardSeconds={30}
+        // The toast promises a clear, so it states the interval that is actually
+        // configured, and says nothing at all when clearing is switched off.
+        clipboardSeconds={
+          settings === null ? null : settings.clearClipboard ? settings.clipboardSeconds : null
+        }
       />
-    </div>
+    </WindowFrame>
+  );
+}
+
+/** An empty pane carrying one line, for the states the design has no composition for. */
+function PaneNotice({ label, children }: { label: string; children?: React.ReactNode }) {
+  return (
+    <section
+      className="bg-surface-panel animate-pane-in flex min-w-0 flex-1 items-center justify-center overflow-y-auto"
+      aria-label={label}
+    >
+      <p className="text-caption text-text-muted max-w-[42ch] px-10 text-center text-pretty">
+        {children}
+      </p>
+    </section>
   );
 }
 
 interface DetailPaneProps {
   /** Vault id to name, for §6's header subtitle. */
   vaultNames: Record<string, string>;
+  /** The last report, for the strength band. `null` until one has been run. */
+  report: SecurityReportDto | null;
   onCopied: (what: string) => void;
   onFailed: (message: string) => void;
 }
 
-function DetailPane({ vaultNames, onCopied, onFailed }: DetailPaneProps) {
+function DetailPane({ vaultNames, report, onCopied, onFailed }: DetailPaneProps) {
   const selectedId = useNavigation((s) => s.selectedId);
-  const clearCache = useClearCache();
+  const refresh = useRefresh();
   // Only rendered inside the unlocked branch, so the gate is satisfied by construction.
   const items = useItems();
   const detail = useItemDetail(selectedId);
 
   const summary = items.data?.find((i) => i.id === selectedId);
 
-  if (selectedId === null || !summary) {
-    return (
-      <section className="pane" aria-label="Item detail">
-        <div className="pane__content">
-          <p className="pane__prose">Select an item.</p>
-        </div>
-      </section>
+  const strength = useMemo(() => {
+    if (report === null) return { band: 0, label: 'Not checked' };
+    // Risks arrive most-severe first, so the first one that describes the password
+    // is the one to show. A kind with no band — today, missing 2FA — is skipped
+    // rather than defaulted, because defaulting is how it would have read 'Weak'.
+    const risk = report.risks.find(
+      (r) => r.itemId === selectedId && RISK_BANDS[r.kind] !== undefined,
     );
+    const band = risk === undefined ? undefined : RISK_BANDS[risk.kind];
+    if (band !== undefined) return band;
+    // Scored and not flagged. §7.4 has no per-item score, so the strongest thing the
+    // report supports saying is that nothing flagged it.
+    return { band: 4, label: 'Strong' };
+  }, [report, selectedId]);
+
+  if (selectedId === null || !summary) {
+    return <PaneNotice label="Item detail">Select an item to see its details.</PaneNotice>;
   }
 
   if (detail.isError) {
-    // Same class of bug as the security pane: a failed load must not look like a
-    // still-loading one. Fail closed and say so (CLAUDE.md §4.10).
-    return (
-      <section className="pane" aria-label="Item detail">
-        <div className="pane__content">
-          <p className="pane__prose">This item could not be opened.</p>
-        </div>
-      </section>
-    );
+    // A failed load must not look like a still-loading one. Fail closed and say so
+    // (CLAUDE.md §4.10).
+    return <PaneNotice label="Item detail">This item could not be opened.</PaneNotice>;
   }
 
   if (!detail.data) {
-    // No skeleton: components.md §4 records that the prototype has no loading state
-    // because the data is local, and specifies one only "if remote calls are added".
-    // An empty pane for one frame is closer to the design than an invented shimmer.
-    return <section className="pane" aria-label="Item detail" />;
+    // No skeleton: components.md §4 records that the design has no loading state because
+    // the data is local, and specifies one only "if remote calls are added". An empty
+    // pane for one frame is closer to the design than an invented shimmer.
+    return <section className="bg-surface-panel min-w-0 flex-1" aria-label="Item detail" />;
   }
 
   return (
     <ItemDetail
       summary={summary}
       detail={detail.data}
+      items={items.data ?? EMPTY_ITEMS}
       vaultName={vaultNames[summary.vaultId] ?? ''}
-      // Risk bands come from the security report. Until it has run there is no band,
-      // and §7.4's "never 'safe'" applies: 0 renders an empty meter labelled
-      // "Not checked" rather than a green one.
-      strength={{ band: 0, label: 'Not checked' }}
+      strength={strength}
       onCopied={onCopied}
       onFailed={onFailed}
-      onEdited={clearCache}
+      onEdited={refresh}
     />
   );
 }
 
 interface SecurityPaneProps {
-  items: readonly ItemSummaryDto[];
   onCopied: (what: string) => void;
   onFailed: (message: string) => void;
 }
 
-function SecurityPane({ items, onCopied, onFailed }: SecurityPaneProps) {
+function SecurityPane({ onCopied, onFailed }: SecurityPaneProps) {
+  // The whole vault, not the list’s current filter: a risk has to be resolvable to a
+  // title and a tile whatever the list is showing.
+  const allItems = useAllItems();
   // Gated on the surface being open: the report decrypts every login's password to score
   // them, so running it because a sidebar row exists would decrypt the whole vault on
   // launch.
@@ -382,31 +518,25 @@ function SecurityPane({ items, onCopied, onFailed }: SecurityPaneProps) {
   const check = useBreachCheck();
 
   if (report.isError) {
-    // Found by opening the surface, not by type-checking it. `!report.data` alone
-    // rendered an empty pane forever whenever the command failed, and the command
-    // fails on a locked vault — scoring passwords means decrypting them. An empty
-    // pane is indistinguishable from a broken one, which is the whole problem with
-    // treating "no data" as "still loading".
+    // `!report.data` alone rendered an empty pane forever whenever the command failed,
+    // and the command fails on a locked vault — scoring passwords means decrypting them.
+    // An empty pane is indistinguishable from a broken one, which is the whole problem
+    // with treating "no data" as "still loading".
     return (
-      <section className="pane pane--wide" aria-label="Security report">
-        <div className="pane__content">
-          <h1 className="pane__title">Security report</h1>
-          <p className="pane__prose">
-            The report scores every stored password, so it can only run while the vault is unlocked.
-          </p>
-        </div>
-      </section>
+      <PaneNotice label="Security report">
+        The report scores every stored password, so it can only run while the vault is unlocked.
+      </PaneNotice>
     );
   }
 
   if (!report.data) {
-    return <section className="pane pane--wide" aria-label="Security report" />;
+    return <section className="bg-surface-panel min-w-0 flex-1" aria-label="Security report" />;
   }
 
   return (
     <SecurityReport
       report={report.data}
-      items={items}
+      items={allItems.data ?? EMPTY_ITEMS}
       canCheck={report.data.breachRefreshAvailable}
       onCheckNow={() => {
         check.mutate(undefined, {
@@ -427,38 +557,61 @@ function SecurityPane({ items, onCopied, onFailed }: SecurityPaneProps) {
 }
 
 interface SettingsPaneProps {
+  /** Settings, or `null` while the read is in flight. */
+  settings: SettingsDto | null;
+  /** Hand a fresh copy back to the shell, so the toast's promise stays accurate. */
+  onSettings: (next: SettingsDto) => void;
   onCopied: (what: string) => void;
   onFailed: (message: string) => void;
   /** A restore that rewrote the vault file locks the session; re-read the state. */
   onVaultReplaced: () => void;
 }
 
-function SettingsPane({ onCopied, onFailed, onVaultReplaced }: SettingsPaneProps) {
-  const [settings, setSettings] = useState<SettingsDto | null>(null);
+function SettingsPane({
+  settings,
+  onSettings,
+  onCopied,
+  onFailed,
+  onVaultReplaced,
+}: SettingsPaneProps) {
   const [failed, setFailed] = useState(false);
-  const [sub, setSub] = useState<'none' | 'updates' | 'backup'>('none');
+  // Read here rather than threaded from the shell: vault management is the only
+  // thing on this surface that needs the list, and it is already cached.
+  const vaultQuery = useVaults();
+  const refresh = useRefresh();
+  const [sub, setSub] = useState<'none' | 'updates' | 'backup' | 'vaults'>('none');
 
   useEffect(() => {
-    settingsGet().then(setSettings, () => {
+    if (settings !== null) return;
+    settingsGet().then(onSettings, () => {
       setFailed(true);
     });
-  }, []);
+  }, [settings, onSettings]);
 
   if (failed) {
     return (
-      <section className="pane" aria-label="Settings">
-        <div className="pane__content">
-          <h1 className="pane__title">Settings</h1>
-          <p className="pane__prose">
-            Settings live inside the vault, so they are only readable while it is unlocked.
-          </p>
-        </div>
-      </section>
+      <PaneNotice label="Settings">
+        Settings live inside the vault, so they are only readable while it is unlocked.
+      </PaneNotice>
     );
   }
 
   if (!settings) {
-    return <section className="pane" aria-label="Settings" />;
+    return <section className="bg-surface-panel min-w-0 flex-1" aria-label="Settings" />;
+  }
+
+  if (sub === 'vaults') {
+    return (
+      <Vaults
+        vaults={vaultQuery.data ?? EMPTY_VAULTS}
+        onChanged={refresh}
+        onDone={onCopied}
+        onFailed={onFailed}
+        onBack={() => {
+          setSub('none');
+        }}
+      />
+    );
   }
 
   if (sub === 'backup') {
@@ -489,15 +642,16 @@ function SettingsPane({ onCopied, onFailed, onVaultReplaced }: SettingsPaneProps
     <Settings
       settings={settings}
       onSaved={(next) => {
-        setSettings(next);
+        onSettings(next);
         onCopied('Saved');
       }}
       onFailed={onFailed}
+      onCopied={onCopied}
+      onVaults={() => {
+        setSub('vaults');
+      }}
       onBackup={() => {
-        // Not built: the store has `backup_export`/`backup_merge`/`restore_replacing`
-        // but no commands expose them, and doing so needs a file-dialog capability —
-        // a permission grant, not a screen. Saying so beats a half-drawn surface.
-        onFailed('Backup and restore is not built yet');
+        setSub('backup');
       }}
       onUpdates={() => {
         setSub('updates');

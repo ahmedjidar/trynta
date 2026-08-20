@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The one way this crate stops the process.
 //!
 //! A few library calls return `Result` for a failure mode that cannot occur at

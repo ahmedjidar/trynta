@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Redaction tests.
 //!
 //! CLAUDE.md §4.6 and §8: no secret-bearing type's `Debug`, `Display` or error

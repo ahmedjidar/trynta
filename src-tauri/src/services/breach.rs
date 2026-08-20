@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The breach check: HIBP range queries, k-anonymous (SPEC-V1 §7.4, §2, AC14).
 //!
 //! This is one of exactly **three** outbound requests permitted in the whole

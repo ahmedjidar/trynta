@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
- * Command palette — HO-002 `overlays/CommandPalette.tsx`, SPEC-V1 §7.1.
+ * Command palette — SPEC-V1 §7.9.
  *
  * ## What it searches
  *
@@ -10,22 +11,26 @@
  *
  * ## What it does not do
  *
- * No row copies a password. HO-002 gives every result the same shape and its actions are
+ * No row copies a password. The design gives every result the same shape and its actions are
  * navigations; a palette row that copied on Enter would put a secret one fuzzy match away
  * from the wrong side of §4.3's deliberate friction. Choosing an item opens it.
  *
  * ## Keyboard
  *
- * HO-002 pre-highlights the first result, which implies Enter runs it. Up/Down move,
+ * The design pre-highlights the first result, which implies Enter runs it. Up/Down move,
  * Escape and a click on the veil dismiss. The list is a `listbox` with
  * `aria-activedescendant` rather than moving DOM focus, so the query keeps focus and typing
- * continues to filter — the behaviour HO-002's autofocused input implies but does not wire.
+ * continues to filter — the behaviour the design's autofocused input implies but does not wire.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { IdentityTile } from '../../components/IdentityTile';
+import { useItemIcons } from '../items/useItemIcons';
+import { useThemeStore } from '../../theme/store';
+import { useDismiss } from '../../components/useDismiss';
 import { Glyph } from '../../components/Glyph';
+import type { GlyphName } from '../../components/Glyph';
 import { useItems, useVaults } from '../items/useItems';
 import { useNavigation } from '../../app/navigation';
 import type { Surface } from '../../app/navigation';
@@ -35,13 +40,20 @@ interface Action {
   id: string;
   label: string;
   surface: Surface;
+  glyph: GlyphName;
 }
 
+/** Each action carries its own glyph: a row of identical marks is a row of no marks. */
 const ACTIONS: readonly Action[] = [
-  { id: 'action:generator', label: 'Generate a new password', surface: 'generator' },
-  { id: 'action:security', label: 'Run security report', surface: 'security' },
-  { id: 'action:settings', label: 'Open settings', surface: 'settings' },
-  { id: 'action:vault', label: 'Show all items', surface: 'vault' },
+  {
+    id: 'action:generator',
+    label: 'Generate a new password',
+    surface: 'generator',
+    glyph: 'generate',
+  },
+  { id: 'action:security', label: 'Run security report', surface: 'security', glyph: 'security' },
+  { id: 'action:settings', label: 'Open settings', surface: 'settings', glyph: 'settings' },
+  { id: 'action:vault', label: 'Show all items', surface: 'vault', glyph: 'all' },
 ];
 
 export interface PaletteProps {
@@ -59,12 +71,15 @@ export function Palette({ onClose, onLock, modifierKey }: PaletteProps) {
   const field = useRef<HTMLInputElement>(null);
 
   const go = useNavigation((s) => s.go);
-  const select = useNavigation((s) => s.select);
+  const revealItem = useNavigation((s) => s.revealItem);
+  const { closing, dismiss } = useDismiss(onClose);
+  const resolvedTheme = useThemeStore((s) => s.resolved);
 
   // Every item, ranked by the Rust index. The palette's own query filters below rather
   // than through this hook, so typing here does not disturb the list behind the veil.
   const items = useItems();
   const vaults = useVaults();
+  const iconSources = useItemIcons(items.data ?? []);
 
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -76,13 +91,13 @@ export function Palette({ onClose, onLock, modifierKey }: PaletteProps) {
       .map((item) => ({
         id: item.id,
         name: item.title,
-        // HO-002's trailing label is the owning vault's name, not the subtitle.
+        glyph: null,
+        // The trailing label is the owning vault's name, not the subtitle.
         kind: vaults.data?.find((v) => v.id === item.vaultId)?.name ?? 'Item',
         icon: item.icon,
         run: () => {
-          select(item.id);
-          go('vault');
-          onClose();
+          revealItem(item.id);
+          dismiss();
         },
       }));
 
@@ -91,9 +106,10 @@ export function Palette({ onClose, onLock, modifierKey }: PaletteProps) {
       name: action.label,
       kind: 'Action',
       icon: null,
+      glyph: action.glyph,
       run: () => {
         go(action.surface);
-        onClose();
+        dismiss();
       },
     }));
 
@@ -103,15 +119,16 @@ export function Palette({ onClose, onLock, modifierKey }: PaletteProps) {
         name: 'Lock vault',
         kind: `${modifierKey}L`,
         icon: null,
+        glyph: 'lock',
         run: () => {
-          onClose();
+          dismiss();
           onLock();
         },
       });
     }
 
     return [...itemRows, ...actionRows];
-  }, [items.data, vaults.data, query, go, select, onClose, onLock, modifierKey]);
+  }, [items.data, vaults.data, query, go, revealItem, dismiss, onLock, modifierKey]);
 
   useEffect(() => {
     field.current?.focus();
@@ -124,7 +141,7 @@ export function Palette({ onClose, onLock, modifierKey }: PaletteProps) {
   function onKeyDown(event: React.KeyboardEvent) {
     if (event.key === 'Escape') {
       event.preventDefault();
-      onClose();
+      dismiss();
       return;
     }
     if (event.key === 'ArrowDown') {
@@ -146,8 +163,11 @@ export function Palette({ onClose, onLock, modifierKey }: PaletteProps) {
   return (
     <div
       role="presentation"
-      onClick={onClose}
-      className="animate-veil-in bg-surface-veil veil-blur absolute inset-0 z-[6] flex justify-center pt-28"
+      onClick={dismiss}
+      className={cn(
+        'bg-surface-veil veil-blur absolute inset-0 z-[6] flex justify-center pt-28',
+        closing ? 'animate-veil-out' : 'animate-veil-in',
+      )}
     >
       <div
         role="dialog"
@@ -156,7 +176,10 @@ export function Palette({ onClose, onLock, modifierKey }: PaletteProps) {
         onClick={(event) => {
           event.stopPropagation();
         }}
-        className="animate-sheet-in bg-surface-panel shadow-sheet flex h-fit max-h-[420px] w-[600px] flex-col overflow-hidden rounded-xl"
+        className={cn(
+          'bg-surface-panel shadow-sheet flex h-fit max-h-[420px] w-[600px] flex-col overflow-hidden rounded-xl',
+          closing ? 'animate-sheet-out' : 'animate-sheet-in',
+        )}
       >
         <input
           ref={field}
@@ -175,12 +198,17 @@ export function Palette({ onClose, onLock, modifierKey }: PaletteProps) {
         />
 
         <div
-          className="flex flex-col gap-[var(--row-gap)] overflow-y-auto p-2"
+          data-scroll-pane
+          // `pb-3` rather than a uniform `p-2`: the last row sat flush against the
+          // rounded border with nothing between them, which reads as truncation rather
+          // than as the end of a list. The extra bottom padding is inside the scroll
+          // container, so it scrolls with the content and there is always a gap.
+          className="flex flex-col gap-[var(--row-gap)] overflow-y-auto p-2 pb-3"
           role="listbox"
           aria-label="Results"
         >
           {rows.length === 0 ? (
-            <p className="text-caption text-text-caption-aa px-3 py-10 text-center">No matches.</p>
+            <p className="text-caption text-text-muted px-3 py-10 text-center">No matches.</p>
           ) : (
             rows.map((row, position) => (
               <div
@@ -201,13 +229,19 @@ export function Palette({ onClose, onLock, modifierKey }: PaletteProps) {
               >
                 {row.icon === null ? (
                   <span className="bg-accent-subtle text-accent flex h-6 w-6 shrink-0 items-center justify-center rounded-sm">
-                    <Glyph name="generate" size={12} />
+                    <Glyph name={row.glyph} size={12} />
                   </span>
                 ) : (
-                  <IdentityTile icon={row.icon} size={24} title={row.name} />
+                  <IdentityTile
+                    icon={row.icon}
+                    size={24}
+                    title={row.name}
+                    customSrc={iconSources[row.id]}
+                    theme={resolvedTheme}
+                  />
                 )}
                 <span className="text-body min-w-0 flex-1 truncate font-medium">{row.name}</span>
-                <span className="text-micro text-text-caption-aa shrink-0">{row.kind}</span>
+                <span className="text-micro text-text-muted shrink-0">{row.kind}</span>
               </div>
             ))
           )}

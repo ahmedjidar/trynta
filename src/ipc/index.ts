@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * The app's entire IPC surface.
  *
@@ -11,10 +12,22 @@
  */
 
 export { IpcError, IpcTransportError } from './client';
-export { revealWindow } from './window';
+export {
+  revealWindow,
+  startDragging,
+  minimizeWindow,
+  toggleMaximizeWindow,
+  closeWindow,
+  isWindowMaximized,
+  onWindowResized,
+} from './window';
 
 export {
   accountCreate,
+  accountUnlockBiometric,
+  biometricDisable,
+  biometricEnable,
+  biometricReady,
   accountExists,
   accountLock,
   accountReauth,
@@ -32,7 +45,11 @@ export {
   generatorPassword,
   generatorPin,
   itemActivity,
+  itemClearIcon,
   itemCopyField,
+  itemIcon,
+  itemSetIcon,
+  itemSetTotp,
   itemDelete,
   itemEditMeta,
   itemGet,
@@ -52,9 +69,13 @@ export {
   vaultSetColor,
   themeDelete,
   themeImport,
+  themeExportFile,
+  themeImportFile,
   themeList,
   themeSet,
+  totpCopyCurrent,
   totpCurrent,
+  totpParse,
   updateCheck,
   updateChecksSetEnabled,
   updateInstall,
@@ -74,6 +95,7 @@ export type { GeneratedDto } from './generated/GeneratedDto';
 export type { GeneratedKindDto } from './generated/GeneratedKindDto';
 export type { HistoryEntryDto } from './generated/HistoryEntryDto';
 export type { IconDto } from './generated/IconDto';
+export type { IconUploadDto } from './generated/IconUploadDto';
 export type { PassphraseOptionsDto } from './generated/PassphraseOptionsDto';
 export type { PasswordOptionsDto } from './generated/PasswordOptionsDto';
 export type { TotpCodeDto } from './generated/TotpCodeDto';
@@ -107,8 +129,10 @@ export type { ThemeCatalogDto } from './generated/ThemeCatalogDto';
 export type { ThemeDto } from './generated/ThemeDto';
 export type { ThemeModeDto } from './generated/ThemeModeDto';
 export type { ThemeVariantDto } from './generated/ThemeVariantDto';
+export type { ThemeRejectionDto } from './generated/ThemeRejectionDto';
 export type { TotpAlgorithmDto } from './generated/TotpAlgorithmDto';
 export type { TotpConfigInput } from './generated/TotpConfigInput';
+export type { TotpRejectionDto } from './generated/TotpRejectionDto';
 export type { UpdateCheckDto } from './generated/UpdateCheckDto';
 export type { UpdateInfoDto } from './generated/UpdateInfoDto';
 export type { UpdateStatusDto } from './generated/UpdateStatusDto';

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Item and vault data over IPC.
  *
@@ -18,7 +19,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 
-import { useNavigation } from '../../app/navigation';
+import { NO_FILTERS, useNavigation } from '../../app/navigation';
 import { itemGet, itemsList, vaultsList } from '../../ipc';
 import type { ItemDetailDto, ItemSummaryDto, VaultSummaryDto } from '../../ipc';
 
@@ -58,6 +59,32 @@ export function useItems(unlocked = true) {
   });
 }
 
+/**
+ * The whole vault, unfiltered, for the sidebar's counts.
+ *
+ * Separate from {@link useItems} deliberately: that one is keyed on the current source,
+ * filters and search, so counting from it makes "All items" report the size of whatever
+ * the user is currently looking at — "Cards 1, Logins 0" while a card is selected. The
+ * counts are a property of the vault, not of the view.
+ *
+ * It runs against the Rust-side index, so the extra call is a filter over memory rather
+ * than a decrypt.
+ */
+export function useAllItems(unlocked = true) {
+  return useQuery<ItemSummaryDto[]>({
+    queryKey: keys.items({ source: 'all' }, NO_FILTERS, 'alphabetical', ''),
+    queryFn: () =>
+      itemsList({
+        source: { source: 'all' },
+        filters: NO_FILTERS,
+        sort: 'alphabetical',
+        search: '',
+      }),
+    enabled: unlocked,
+    ...LOCAL,
+  });
+}
+
 /** Every vault, for the sidebar. */
 export function useVaults(unlocked = true) {
   return useQuery<VaultSummaryDto[]>({
@@ -89,6 +116,31 @@ export function useItemDetail(id: string | null) {
  * Called on lock. `clear()` rather than `invalidateQueries`: invalidation marks data
  * stale and keeps it, which is the opposite of what §4.9 requires.
  */
+/**
+ * Refetch everything, without emptying the screen first.
+ *
+ * The difference from {@link useClearCache} is what happens *during* the refetch.
+ * `clear()` removes the cached data, so every component reading it renders its
+ * empty state for a frame or two — the detail pane finds no summary for the
+ * selected id, decides nothing is selected, and shows "Select an item". Favouriting
+ * an item made the pane you were looking at blink out and come back, and an icon
+ * change did the same.
+ *
+ * `invalidateQueries` marks the data stale and refetches while continuing to serve
+ * the previous value, so the pane stays put and the new value replaces the old one
+ * when it lands. That is what every edit wants.
+ *
+ * `clear()` is still right where the data is genuinely gone — a lock, or a restore
+ * that rewrote the vault file underneath us — and {@link useClearCache} remains for
+ * those.
+ */
+export function useRefresh() {
+  const client = useQueryClient();
+  return useCallback(() => {
+    void client.invalidateQueries();
+  }, [client]);
+}
+
 export function useClearCache() {
   const client = useQueryClient();
   return useCallback(() => {

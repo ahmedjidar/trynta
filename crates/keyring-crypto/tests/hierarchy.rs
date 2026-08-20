@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The key hierarchy as a whole (SPEC-V1 §3.1).
 //!
 //! The individual primitives are covered by `kat.rs`. This file checks the thing

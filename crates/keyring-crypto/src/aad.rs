@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The canonical 43-byte associated-data encoding.
 //!
 //! SPEC-V1 §3.3: fixed order, fixed width, big-endian, no separators. Written
@@ -39,7 +40,7 @@ pub enum Purpose {
     Activity = 4,
     /// HIBP prefix cache or generator history, under `muk.appcache`.
     AppCache = 5,
-    /// A `.keyringbackup` payload.
+    /// A `.tryntabak` payload.
     Backup = 6,
 }
 

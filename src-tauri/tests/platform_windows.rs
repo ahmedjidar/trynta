@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Real Windows platform behaviour (SPEC-V1 §8, §11).
 //!
 //! These run against the actual OS, not a mock. `#![cfg(windows)]` rather than
@@ -27,7 +28,7 @@ use keyring_lib::platform::windows::hello::WindowsHello;
 use keyring_lib::platform::{BiometricError, BiometricKind, Biometrics};
 
 /// A value that is obviously ours if it turns up somewhere it should not.
-const SENTINEL: &str = "KEYRING-PLATFORM-TEST-4Kq7Zx";
+const SENTINEL: &str = "TRYNTA-PLATFORM-TEST-4Kq7Zx";
 
 /// The clipboard is one global OS resource, so these tests cannot run in
 /// parallel with each other — a second test's write invalidates the first's
@@ -230,7 +231,7 @@ fn unwrapping_without_an_enrolment_is_invalidated_not_a_panic() {
     let hello = WindowsHello::with_store(DpapiStore::with_root(dir.path().to_path_buf()));
 
     let err = hello
-        .unwrap_secret("keyring-test-no-such-enrolment")
+        .unwrap_secret("trynta-test-no-such-enrolment")
         .expect_err("there is no enrolment");
     assert_eq!(
         err,
@@ -244,17 +245,17 @@ fn revoking_a_missing_enrolment_removes_any_stored_wrap() {
     let dir = tempfile::tempdir().expect("tempdir");
     let store = DpapiStore::with_root(dir.path().to_path_buf());
     store
-        .store("keyring-test-revoke", b"a stale wrap")
+        .store("trynta-test-revoke", b"a stale wrap")
         .expect("store");
 
     let hello = WindowsHello::with_store(DpapiStore::with_root(dir.path().to_path_buf()));
     // `revoke` deletes our blob first, so even when the platform half fails —
     // which it does on a machine with no Hello credential — the wrap is gone.
-    let _ = hello.revoke("keyring-test-revoke");
+    let _ = hello.revoke("trynta-test-revoke");
 
     let store = DpapiStore::with_root(dir.path().to_path_buf());
     assert_eq!(
-        store.load("keyring-test-revoke").expect("load"),
+        store.load("trynta-test-revoke").expect("load"),
         None,
         "revoke must remove the stored wrap even if the platform call fails"
     );

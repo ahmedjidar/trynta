@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Item commands (SPEC-V1 §6, §7.1, §7.2).
 //!
 //! This is the module the security invariants are actually about, so it is worth
@@ -120,6 +121,22 @@ pub fn item_reveal_field(
     id: Uuid,
     field: SecretFieldDto,
 ) -> Result<String, AppError> {
+    // Two gates, and they are different rules.
+    //
+    // The rolling limit (§6) exists to notice a *walk* of the vault: twenty reveals
+    // in a minute is not how anyone uses a password manager, so it asks once and
+    // then lets the user carry on.
+    //
+    // `require_master_on_reveal` (§7.5) is the user saying they want each reveal
+    // confirmed. It has to consume the confirmation, or one password entry would
+    // authorise every reveal that followed it and the setting would be decoration —
+    // which is what it was: the flag was stored, shown in settings, and never read.
+    if crate::commands::settings::reveal_requires_master(&state)?
+        && !state.session.take_fresh_reauth()
+    {
+        return Err(AppError::ReauthRequired);
+    }
+
     if state.session.check_reveal() == Gate::ReauthRequired {
         return Err(AppError::ReauthRequired);
     }
@@ -144,10 +161,17 @@ pub fn item_reveal_field(
 /// macOS concealed type, and on Windows the three clipboard-history exclusion
 /// formats without which auto-clear is theatre (SPEC-V1 §8).
 ///
-/// Not rate limited: a copy does not put the value on screen, and the clipboard
-/// holds one value at a time, so twenty copies leave the same single secret
-/// exposed as one. The reveal limit exists to notice a walk of the vault through
-/// the *readable* path.
+/// **Not** rate limited by the rolling reveal window, and that is still right: a
+/// copy does not put the value on screen, the clipboard holds one value at a time,
+/// so twenty copies leave the same single secret exposed as one. That limit exists
+/// to notice a walk of the vault through the *readable* path.
+///
+/// It **is** gated by `require_master_on_reveal`, and that gap was a real hole. The
+/// setting is about a secret leaving the vault on demand, and a copy is exactly
+/// that — the value lands on the system clipboard, readable by anything. Gating the
+/// reveal and not the copy left the control looking like a lock while the door next
+/// to it stood open, which is worse than not having it: the user believes they are
+/// protected.
 ///
 /// # Errors
 ///
@@ -159,6 +183,15 @@ pub fn item_copy_field(
     id: Uuid,
     field: SecretFieldDto,
 ) -> Result<(), AppError> {
+    // The same gate as `item_reveal_field`, spending the same confirmation. Two
+    // separate allowances would let a user confirm once and then both reveal *and*
+    // copy, which is two secrets out of the vault for one password entry.
+    if crate::commands::settings::reveal_requires_master(&state)?
+        && !state.session.take_fresh_reauth()
+    {
+        return Err(AppError::ReauthRequired);
+    }
+
     let value = state
         .session
         .with_session(|s| s.item_copy_field(id, field.into()).map_err(AppError::from))?;
@@ -168,8 +201,41 @@ pub fn item_copy_field(
     // tell our own write apart from something the user copied since, and leave
     // theirs alone.
     state.session.note_clipboard_write(token);
+    schedule_clipboard_clear(&state, token);
     state.session.touch();
     Ok(())
+}
+
+/// Start the clipboard auto-clear countdown for a write we just made.
+///
+/// **This did not exist.** `item_copy_field` wrote the secret, remembered the token so
+/// a clear *could* tell its own write apart from the user's, and then nothing ever
+/// called the clear. The setting was on by default, said "copied secrets are wiped
+/// after 30 seconds", and wiped nothing — the value stayed on the system clipboard
+/// until something else replaced it.
+///
+/// A thread rather than an async task: it needs one sleep and one call, the platform
+/// clipboard is blocking anyway, and reaching for a Tokio timer would mean making
+/// `tokio` a direct dependency for this (CLAUDE.md §2). The thread exits when it fires.
+///
+/// Superseded timers are harmless by construction — `clear_clipboard_token` compares
+/// the token before doing anything, so an earlier copy's timer cannot wipe a later
+/// copy's value.
+pub(crate) fn schedule_clipboard_clear(state: &State<'_, AppState>, token: u64) {
+    let Ok(settings) = crate::commands::settings::load(state) else {
+        // Settings live in the vault. If they cannot be read the vault is locking or
+        // locked, and lock clears the clipboard itself.
+        return;
+    };
+    if !settings.clear_clipboard {
+        return;
+    }
+    let seconds = settings.clipboard_seconds;
+    let session = std::sync::Arc::clone(&state.session);
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(u64::from(seconds)));
+        session.clear_clipboard_token(token);
+    });
 }
 
 /// Create or update an item.
@@ -200,20 +266,93 @@ pub fn item_upsert(state: State<'_, AppState>, draft: ItemDraftInput) -> Result<
     Ok(id)
 }
 
-/// Soft-delete an item.
+/// Soft-delete an item, behind two confirmations that are checked **here**.
+///
+/// Deleting is the one destructive thing a user can do to their own data from the
+/// item pane, and an unlocked vault sitting on an unattended desk is the threat it
+/// has to survive. So it takes two things that a passer-by does not have: the master
+/// password, and the item's own title typed out.
+///
+/// Both are verified in Rust rather than in the webview. A confirmation the frontend
+/// checks is a confirmation anyone who can call the command skips, which makes it a
+/// speed bump rather than a gate — and this command is reachable from the IPC surface
+/// whether or not a dialog was ever drawn.
+///
+/// The password goes through the store's own unlock path, so the comparison is the
+/// same constant-time one the lock screen uses and a wrong attempt is seen by the
+/// backoff counter. The resulting session is dropped immediately; proving presence
+/// does not replace the keys already held.
+///
+/// The title is compared trimmed and case-insensitively. The point of typing it is
+/// that the user has to look at *which* item they are about to destroy and name it —
+/// which "GitHub" against "github" satisfies just as well, while a rejection on case
+/// only teaches people to copy and paste, defeating the exercise entirely.
+///
+/// The delete is a soft delete, as it always was: the row keeps a `deleted_at` and
+/// `item_restore` puts it back. That is not a reason to make this cheaper to call —
+/// nothing in the UI surfaces deleted items yet, so from where the user stands this
+/// is permanent.
 ///
 /// # Errors
 ///
-/// [`AppError::Locked`], [`AppError::NotFound`], [`AppError::Storage`] or
+/// [`AppError::Locked`] if the vault is locked; [`AppError::WrongPassword`] if the
+/// master password does not verify; [`AppError::Invalid`] if the typed title does not
+/// match the item's; [`AppError::NotFound`], [`AppError::Storage`] or
 /// [`AppError::Crypto`].
 #[tauri::command]
-pub fn item_delete(state: State<'_, AppState>, id: Uuid) -> Result<(), AppError> {
+pub fn item_delete(
+    state: State<'_, AppState>,
+    id: Uuid,
+    master_password: String,
+    confirm_title: String,
+) -> Result<(), AppError> {
+    if state.session.state() != crate::session::VaultState::Unlocked {
+        return Err(AppError::Locked);
+    }
+
+    // Read the title first, so a delete against a missing id fails as NotFound
+    // rather than burning a password attempt on an item that was never there.
+    let meta = state
+        .session
+        .with_session(|s| s.item_meta(id).map_err(AppError::from))?;
+
+    let file = state.session.file()?;
+    match file.unlock(&master_password) {
+        Ok(session) => {
+            drop(session.into_keys());
+            state.session.note_reauth();
+        }
+        Err(e) => return Err(e.into()),
+    }
+
+    if !title_confirms(&confirm_title, &meta.title) {
+        return Err(AppError::Invalid);
+    }
+
     state
         .session
         .with_session(|s| s.item_delete(id).map_err(AppError::from))?;
     state.session.build_index()?;
     state.session.touch();
     Ok(())
+}
+
+/// Whether the typed title confirms the item's.
+///
+/// Trimmed and case-insensitive. The point of typing the name is that the user has
+/// to look at *which* item they are destroying and name it, which "GitHub" against
+/// "github" satisfies as well as an exact match — while rejecting on case only
+/// teaches people to copy and paste the name, which defeats the exercise.
+///
+/// Split out from [`item_delete`] because it is the part with edge cases, and the
+/// part a future refactor could get subtly wrong without anything failing loudly.
+fn title_confirms(typed: &str, actual: &str) -> bool {
+    let typed = typed.trim();
+    // An empty title cannot be confirmed by an empty box. Titles are trimmed and
+    // rejected empty on write, so this is defence against a vault that predates
+    // that rule rather than a reachable state — and getting it wrong would mean a
+    // one-click delete on exactly the items whose name gives least warning.
+    !typed.is_empty() && typed.eq_ignore_ascii_case(actual.trim())
 }
 
 /// Restore a soft-deleted item.
@@ -313,4 +452,40 @@ pub fn item_activity(
         .session
         .with_session(|s| s.item_activity(id, limit).map_err(AppError::from))?;
     Ok(events.into_iter().map(ActivityEventDto::from).collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::title_confirms;
+
+    #[test]
+    fn the_exact_title_confirms() {
+        assert!(title_confirms("Northline Bank", "Northline Bank"));
+    }
+
+    #[test]
+    fn surrounding_whitespace_and_case_do_not_matter() {
+        // Typing it back proves the user read which item they are on. Neither of
+        // these is evidence they did not.
+        assert!(title_confirms("  northline bank  ", "Northline Bank"));
+        assert!(title_confirms("NORTHLINE BANK", "Northline Bank"));
+        assert!(title_confirms("Northline Bank", "  Northline Bank "));
+    }
+
+    #[test]
+    fn a_different_title_does_not_confirm() {
+        assert!(!title_confirms("Northline", "Northline Bank"));
+        assert!(!title_confirms("Northline Bank 2", "Northline Bank"));
+        assert!(!title_confirms("NorthlineBank", "Northline Bank"));
+    }
+
+    #[test]
+    fn an_empty_box_never_confirms() {
+        // Including against an empty title, which would otherwise make the
+        // confirmation a formality on precisely the items that need it most.
+        assert!(!title_confirms("", "Northline Bank"));
+        assert!(!title_confirms("   ", "Northline Bank"));
+        assert!(!title_confirms("", ""));
+        assert!(!title_confirms("  ", "  "));
+    }
 }

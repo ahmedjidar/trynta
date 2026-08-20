@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * UI glyphs — bundled, never fetched.
  *
@@ -23,13 +24,18 @@
 
 import {
   Activity,
+  AlertTriangle,
   Check,
   ChevronRight,
   ChevronsUpDown,
   CreditCard,
+  Dices,
   Fingerprint,
   KeyRound,
   Lock,
+  Maximize2,
+  Minimize2,
+  Minus,
   Monitor,
   Moon,
   Plus,
@@ -37,7 +43,6 @@ import {
   Settings,
   Shield,
   ShieldCheck,
-  Sparkles,
   Star,
   StickyNote,
   Sun,
@@ -62,7 +67,10 @@ const GLYPHS = {
   next: ChevronRight,
   close: X,
   check: Check,
-  generate: Sparkles,
+  // Dice, not a sparkle. A sparkle has become the house mark for "a language model
+  // did this", and nothing here involves one: the generator is a CSPRNG with
+  // rejection sampling (§7.3). Dice say *random*, which is what the button does.
+  generate: Dices,
   security: Activity,
   settings: Settings,
   biometric: Fingerprint,
@@ -73,6 +81,11 @@ const GLYPHS = {
   card: CreditCard,
   identity: User,
   favorite: Star,
+  warning: AlertTriangle,
+  windowMinimise: Minus,
+  windowMaximise: Maximize2,
+  windowRestore: Minimize2,
+  windowClose: X,
 } as const;
 
 /** A glyph role. */
@@ -82,8 +95,8 @@ export interface GlyphProps {
   /** Which glyph. */
   name: GlyphName;
   /**
-   * Edge in px. HO-002 sizes icons per use — 12 beside chip text, 14 in a segment or a
-   * "Fix" affordance, 16 everywhere else — so the default is the token and the two
+   * Edge in px. The design sizes icons per use — 12 beside chip text, 14 in a segment or
+   * a "Fix" affordance, 16 everywhere else — so the default is the token and the two
    * smaller steps are the design's own.
    */
   size?: 12 | 14 | 16;
@@ -101,7 +114,7 @@ export function Glyph({ name, size = 16, label }: GlyphProps) {
   return (
     <Component
       // `lucide` so base.css's `svg.lucide` rule applies the token size and stroke, which
-      // is HO-002's own mechanism. The attributes below carry the same values for the
+      // is the design's own mechanism. The attributes below carry the same values for the
       // case where a rule has not matched yet.
       className="lucide"
       // Passed as attributes because SVG presentation attributes are not the CSS `style`

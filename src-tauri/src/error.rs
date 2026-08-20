@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Redacting error types for the application shell.
 //!
 //! CLAUDE.md §4.6: no secret ever reaches a log, a panic message, a `Debug` impl
@@ -13,6 +14,7 @@ use std::fmt;
 
 use keyring_store::{StoreError, UnlockError};
 
+use crate::commands::dto::{ThemeRejectionDto, TotpRejectionDto};
 use crate::session::SessionError;
 
 /// An error crossing the IPC boundary.
@@ -20,7 +22,7 @@ use crate::session::SessionError;
 /// Generated into TypeScript with everything else that crosses IPC, so the
 /// frontend matches on a closed set of discriminants rather than a hand-written
 /// union that drifts the first time a variant is added.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, ts_rs::TS)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/ipc/generated/")]
 #[serde(
     rename_all = "camelCase",
@@ -92,6 +94,34 @@ pub enum AppError {
     UpdateFailed,
     /// The input did not validate.
     Invalid,
+    /// A one-time-code setup was refused, and which rule it broke.
+    ///
+    /// Separate from [`Self::Invalid`] because the value being validated is a
+    /// shared secret: the reason is a closed enum so the UI can be specific
+    /// without the input ever reaching an error string (SPEC-V1 §4.1).
+    TotpRejected {
+        /// Which rule the input broke.
+        reason: TotpRejectionDto,
+    },
+    /// A theme document was refused, and what was wrong with it.
+    ///
+    /// Carries the offending token *name* where there is one. A theme format with
+    /// no published shape and a one-word rejection is a format nobody can author
+    /// against; between them they made importing a guessing game.
+    ThemeRejected {
+        /// Which rule the document broke.
+        reason: ThemeRejectionDto,
+        /// The token at fault, when the rule is about one.
+        token: Option<String>,
+        /// The smallest thing that identifies the fault: one character, or a
+        /// function name the validator matched against a fixed list.
+        ///
+        /// Naming the token said *where* to look but not *what* to change. This is
+        /// deliberately not the value — it is a single character or an identifier
+        /// already known to the validator, so nothing untrusted is quoted back
+        /// (CLAUDE.md §4.6).
+        found: Option<String>,
+    },
 }
 
 impl fmt::Display for AppError {
@@ -109,12 +139,14 @@ impl fmt::Display for AppError {
             Self::UpdateFailed => "the update could not be installed",
             Self::LastVaultRemaining => "the last vault cannot be deleted",
             Self::Clipboard => "the clipboard is unavailable",
-            Self::DataDirectory => "Keyring could not find a place to store your vault",
+            Self::DataDirectory => "Trynta could not find a place to store your vault",
             Self::FeatureUnavailable => "that feature is not available in this build",
             Self::Storage => "a storage operation failed",
             Self::Crypto => "a cryptographic operation failed",
             Self::Biometric => "biometric unlock is unavailable",
             Self::Invalid => "the input is not valid",
+            Self::TotpRejected { .. } => "that one-time-code setup could not be read",
+            Self::ThemeRejected { .. } => "that theme could not be applied",
         };
         f.write_str(s)
     }

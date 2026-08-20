@@ -1,16 +1,17 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
- * Lock screen — HO-002 `overlays/LockScreen.tsx`, SPEC-V1 §5.
+ * Lock screen — SPEC-V1 §5.
  *
  * ## Opaque, not a scrim
  *
- * HO-002's own comment says it: *"Opaque, not a scrim: the vault contents must not be
- * readable behind it."* CLAUDE.md §4.9 says the same from the other direction — lock is
- * real, not a UI overlay — and this goes one step further: the shell is not mounted behind
- * this at all, so there is nothing to read through it even in principle.
+ * The design is explicit that the vault's contents must not be readable behind this.
+ * CLAUDE.md §4.9 says the same from the other direction — lock is real, not a UI overlay —
+ * and this goes one step further: the shell is not mounted behind it at all, so there is
+ * nothing to read through it even in principle.
  *
  * ## No biometric unlock, and no mention of one
  *
- * HO-002's copy says "Touch ID" twice and offers a Touch ID row. There is no biometric
+ * The design's copy says "Touch ID" twice and offers a Touch ID row. There is no biometric
  * unlock in this build: `account_unlock_biometric` does not exist and AC06 defers
  * enrolment to the platform secure-store work.
  *
@@ -23,17 +24,18 @@
  *
  * ## First run
  *
- * HO-002 has no create-vault screen (MANIFEST HO-002 item 6). Rather than improvise a
- * layout this reuses its exactly and adds one confirm row, because a vault created from a
- * single unconfirmed field loses every password to one typo and there is no reset path by
- * design.
+ * The design has no create-vault screen (recorded in handoffs/MANIFEST.md). Rather than
+ * improvise a layout this reuses the lock screen's exactly and adds one confirm row,
+ * because a vault created from a single unconfirmed field loses every password to one typo
+ * and there is no reset path by design.
  */
 
 import { useEffect, useId, useRef, useState } from 'react';
 
+import { BrandMark } from '../../components/BrandMark';
 import { Button } from '../../components/Button';
 import { IpcError } from '../../ipc';
-import { accountCreate, accountUnlock } from '../../ipc';
+import { accountCreate, accountUnlock, accountUnlockBiometric, biometricReady } from '../../ipc';
 import type { AccountStatus } from '../../ipc';
 
 export interface LockScreenProps {
@@ -44,6 +46,28 @@ export interface LockScreenProps {
 }
 
 export function LockScreen({ exists, onUnlocked }: LockScreenProps) {
+  // Asked, not assumed. The button is only worth drawing when the device has a
+  // biometric *and* this vault has been enrolled — either half missing means it
+  // cannot work, and an unlock button that cannot unlock is worse than none.
+  const [helloReady, setHelloReady] = useState(false);
+  const [helloBusy, setHelloBusy] = useState(false);
+
+  useEffect(() => {
+    if (!exists) return;
+    let live = true;
+    biometricReady().then(
+      (ready) => {
+        if (live) setHelloReady(ready);
+      },
+      () => {
+        // Fail closed: no button rather than one that might not work.
+        if (live) setHelloReady(false);
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [exists]);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +77,7 @@ export function LockScreen({ exists, onUnlocked }: LockScreenProps) {
   const confirmId = useId();
 
   useEffect(() => {
-    // HO-002 uses the `autoFocus` attribute. Done here so focus also lands after a failed
+    // The design uses the `autoFocus` attribute. Done here so focus also lands after a failed
     // attempt re-renders the form.
     field.current?.focus();
   }, []);
@@ -96,19 +120,22 @@ export function LockScreen({ exists, onUnlocked }: LockScreenProps) {
       aria-labelledby="lock-title"
     >
       <form className="w-[296px] text-center" onSubmit={submit}>
-        <div className="bg-accent text-tile-lock text-text-on-accent shadow-accent-glow-lg mx-auto flex h-[60px] w-[60px] items-center justify-center rounded-2xl font-extrabold">
-          K
+        {/* The mark stands on its own here rather than sitting on a coloured tile:
+            the lock screen is the one surface with nothing else on it, and a badge
+            around a logo is what you do when the logo is a letter. */}
+        <div className="brand-mark mx-auto flex h-[60px] items-center justify-center">
+          <BrandMark size={92} />
         </div>
         <h1 className="text-title tracking-title mt-5 font-bold" id="lock-title">
           {exists ? 'Vault locked' : 'Create your vault'}
         </h1>
-        <p className="text-body text-text-caption-aa mt-2 leading-5 text-pretty">
+        <p className="text-body text-text-muted mt-2 leading-5 text-pretty">
           {exists
             ? 'Your keys were wiped from memory. Unlock with your master password.'
             : 'This password is the only way into your vault. It is never stored, never sent anywhere, and cannot be reset — if you lose it, the vault is unreadable.'}
         </p>
 
-        {/* HO-002 gives the input a placeholder and no label. A placeholder is not an
+        {/* The design gives the input a placeholder and no label. A placeholder is not an
             accessible name — it disappears on the first keystroke — so the label is
             rendered and visually hidden. The appearance is unchanged. */}
         <label className="sr-only" htmlFor={passwordId}>
@@ -157,17 +184,52 @@ export function LockScreen({ exists, onUnlocked }: LockScreenProps) {
           {busy ? (exists ? 'Unlocking…' : 'Creating…') : exists ? 'Unlock' : 'Create vault'}
         </Button>
 
+        {/* Only when the device has a biometric and this vault has been enrolled.
+            The design drew a Touch ID row unconditionally and an earlier commit
+            removed it for being a promise the build could not keep; this is that
+            promise, kept, and it disappears again the moment either half is false. */}
+        {helloReady ? (
+          <Button
+            type="button"
+            block
+            variant="outline"
+            disabled={busy || helloBusy}
+            className="text-body mt-2 h-10 rounded-full"
+            onClick={() => {
+              setHelloBusy(true);
+              accountUnlockBiometric().then(
+                (status) => {
+                  setHelloBusy(false);
+                  onUnlocked(status);
+                },
+                (failure: unknown) => {
+                  setHelloBusy(false);
+                  // One sentence for every cause. Cancelled, no match and an
+                  // invalidated enrolment all mean "use your password", and
+                  // separating them would say which attempt got furthest.
+                  setError(
+                    failure instanceof IpcError && failure.error.kind === 'invalidState'
+                      ? 'Use your master password this time — Trynta asks for it every couple of weeks.'
+                      : 'Windows Hello did not confirm. Use your master password.',
+                  );
+                },
+              );
+            }}
+          >
+            {helloBusy ? 'Waiting for Windows Hello…' : 'Unlock with Windows Hello'}
+          </Button>
+        ) : null}
+
         {/* One live region for both, so a screen reader announces whichever applies
             without the two competing. Reserves its line so the button does not move
             under the pointer when a message appears. */}
         <p
-          className="text-chip text-status-danger-text mt-2 min-h-4 leading-4 text-pretty"
+          className="text-chip text-status-danger mt-2 min-h-4 leading-4 text-pretty"
           role="status"
           aria-live="polite"
         >
           {mismatch ? 'Those do not match.' : (error ?? '')}
         </p>
-
       </form>
     </div>
   );

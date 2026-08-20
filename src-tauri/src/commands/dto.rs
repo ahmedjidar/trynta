@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Types that cross the IPC boundary.
 //!
 //! CLAUDE.md §5: Rust types are the source of truth. These derive `ts-rs`, which
@@ -158,7 +159,7 @@ impl From<&IndexRow> for ItemSummaryDto {
             title: row.title.clone(),
             subtitle: row.subtitle.clone(),
             has_totp: row.has_totp,
-            icon: IconDto::from(icons::resolve(&row.urls, &row.title)),
+            icon: IconDto::from(icons::resolve(&row.urls, &row.title, row.has_custom_icon)),
             is_favorite: row.favorite,
             is_shared: false,
             revision: row.revision,
@@ -617,6 +618,51 @@ impl From<CustomFieldInput> for CustomField {
     }
 }
 
+/// Why a theme document was refused (SPEC-V1 §7.6).
+///
+/// A closed enum plus the offending token's **name**, never its value. The name is
+/// something the user wrote in a file they chose and is what they need in order to
+/// fix it; the value is untrusted input from that same file and is exactly the kind
+/// of string that should not be interpolated into a message that may be rendered or
+/// logged (CLAUDE.md §4.6).
+///
+/// The companion `found` on [`crate::error::AppError::ThemeRejected`] narrows that to
+/// the smallest thing that identifies the fault — one character, or a function name
+/// the validator has already matched against a fixed list. Neither is a quotation of
+/// the value, and both are what turn "this token is wrong" into "this token is wrong
+/// *here*".
+///
+/// Before this, every rejection arrived as `invalid` — "the input is not valid" — for
+/// a format that had no published shape. Between the two, a theme could be refused
+/// with no way to learn what was wrong with it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub enum ThemeRejectionDto {
+    /// Not the expected JSON shape at all.
+    Malformed,
+    /// Larger than the accepted size.
+    TooLarge,
+    /// `id` or `name` was empty, over-long, or not a safe identifier.
+    BadIdentity,
+    /// More tokens than a theme may define.
+    TooManyTokens,
+    /// A key was not a `--custom-property` name.
+    NotACustomProperty,
+    /// A value used a function that could reach the network.
+    ForbiddenFunction,
+    /// A value called a function that is not on the allow-list.
+    UnknownFunction,
+    /// A value held a character the grammar does not admit.
+    ForbiddenCharacter,
+    /// A value carried a CSS comment sequence.
+    CommentSequence,
+    /// A value's double quotes did not pair up.
+    UnbalancedQuotes,
+    /// A value was empty, or longer than the limit.
+    ValueLength,
+}
+
 /// TOTP hash algorithm, on the wire.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[ts(export, export_to = "../../src/ipc/generated/")]
@@ -628,6 +674,36 @@ pub enum TotpAlgorithmDto {
     Sha256,
     /// SHA-512.
     Sha512,
+}
+
+/// Why a pasted one-time-code setup was refused (SPEC-V1 §4.1).
+///
+/// A closed enum rather than a message string, for two reasons that pull the same
+/// way. The obvious one: the thing being validated **is a shared secret**, and an
+/// error that quoted its input would put a TOTP seed into every log and error path
+/// that touches it (CLAUDE.md §4.6). The less obvious one: "the input is not
+/// valid" is useless to someone holding a QR code they cannot scan. *Which* rule
+/// failed is exactly what they need, and it is not sensitive.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub enum TotpRejectionDto {
+    /// Characters outside the RFC 4648 base32 alphabet.
+    NotBase32,
+    /// Valid base32, but it decoded to nothing.
+    EmptySecret,
+    /// Valid base32 characters that do not form whole bytes.
+    TruncatedSecret,
+    /// An `otpauth://` URI with no `secret` parameter.
+    MissingSecret,
+    /// Looked like a URI but was not `otpauth://totp/...`.
+    NotOtpauthUri,
+    /// `otpauth://hotp/` — counter-based, which this product does not implement.
+    CounterBased,
+    /// `digits` was neither 6 nor 8.
+    UnsupportedDigits,
+    /// `period` was zero.
+    UnsupportedPeriod,
 }
 
 impl From<TotpAlgorithmDto> for TotpAlgorithm {
@@ -1213,6 +1289,8 @@ pub enum RiskKindDto {
     Weak,
     /// Shared with at least one other item.
     Reused,
+    /// The service accepts an authenticator app and this item has no code.
+    MissingTwoFactor,
 }
 
 impl From<report::RiskKind> for RiskKindDto {
@@ -1221,6 +1299,7 @@ impl From<report::RiskKind> for RiskKindDto {
             report::RiskKind::Breached => Self::Breached,
             report::RiskKind::Weak => Self::Weak,
             report::RiskKind::Reused => Self::Reused,
+            report::RiskKind::MissingTwoFactor => Self::MissingTwoFactor,
         }
     }
 }
@@ -1520,8 +1599,10 @@ pub struct ThemeCatalogDto {
 
 /// How to draw an item's identity tile.
 ///
-/// The wire form of [`icons::Icon`]. Carries a bundled key or a monogram, and
-/// nothing a URL could be built from — see the note on [`ItemSummaryDto::icon`].
+/// The wire form of [`icons::Icon`]. Carries a bundled key, a marker that the user
+/// attached their own, or a seed for a generated mark — and **nothing a URL could be
+/// built from**, which is what makes it impossible for the webview to construct an icon
+/// request even by accident. See the note on [`ItemSummaryDto::icon`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[ts(export, export_to = "../../src/ipc/generated/")]
 #[serde(
@@ -1534,12 +1615,24 @@ pub enum IconDto {
     Bundled {
         /// Key into the bundled set. Never user-supplied, never a URL.
         key: String,
+        /// Whether `<key>-light.svg` / `<key>-dark.svg` exist for theme selection.
+        themed: bool,
+        /// Whether every ink in the mark is too dark to read on the dark tile, so
+        /// the tile should put a light chip behind it rather than recolour it —
+        /// ADD-001 forbids recolouring, and a recoloured brand mark is the wrong
+        /// mark.
+        dark_ink: bool,
     },
-    /// A locally generated monogram.
-    Monogram {
-        /// One or two uppercase initials.
-        initials: String,
-        /// Which `--identity-N` fill to use, `1..=7`.
+    /// The user's own icon. Fetch the bytes with `item_icon`.
+    Custom,
+    /// A generated geometric mark, drawn by the frontend from this seed.
+    ///
+    /// A seed rather than a rendered shape: which shapes exist is a design decision and
+    /// belongs to the token layer, not to Rust. What Rust owes is determinism.
+    Shape {
+        /// Stable for a given identity, forever.
+        seed: u32,
+        /// Which `--identity-N` to build the mark from, `1..=7`.
         tone: u8,
     },
 }
@@ -1547,10 +1640,32 @@ pub enum IconDto {
 impl From<icons::Icon> for IconDto {
     fn from(icon: icons::Icon) -> Self {
         match icon {
-            icons::Icon::Bundled { key } => Self::Bundled { key },
-            icons::Icon::Monogram { initials, tone } => Self::Monogram { initials, tone },
+            icons::Icon::Bundled {
+                key,
+                themed,
+                dark_ink,
+            } => Self::Bundled {
+                key,
+                themed,
+                dark_ink,
+            },
+            icons::Icon::Custom => Self::Custom,
+            icons::Icon::Shape { seed, tone } => Self::Shape { seed, tone },
         }
     }
+}
+
+/// What attaching an icon cost, so the picker can show it.
+///
+/// Only the size. The processed bytes go straight into the item and come back through
+/// `item_icon`; returning them here would mean the same image crossing IPC twice for no
+/// reason.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub struct IconUploadDto {
+    /// Size of the processed icon in bytes, at most 64 KB.
+    pub bytes: u32,
 }
 
 // ── Settings (SPEC-V1 §7.5) ─────────────────────────────────────────────────

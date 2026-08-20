@@ -1,4 +1,5 @@
-//! Keyring encrypted store — schema, two-phase migrations, item repository.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//! Trynta encrypted store — schema, two-phase migrations, item repository.
 //!
 //! Depends on `keyring-crypto` and nothing else in the workspace: no Tauri, no
 //! frontend build. That is a deliberate placement (ADD-003 §①) so the acceptance

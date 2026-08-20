@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Touch ID, via the Keychain's biometry access control (SPEC-V1 §5.1, §8).
 //!
 //! **UNVERIFIED PLATFORM (ADD-005).** Never compiled. Signatures were read out of
@@ -33,8 +34,8 @@ use security_framework::passwords_options::{AccessControlOptions, PasswordOption
 
 use crate::platform::biometric::{BiometricError, BiometricKind, Biometrics};
 
-/// Keychain service name for every Keyring biometric item.
-const SERVICE: &str = "app.keyring.desktop.biometric";
+/// Keychain service name for every Trynta biometric item.
+const SERVICE: &str = "dev.trynta.desktop.biometric";
 
 /// `errSecUserCanceled` — the user dismissed the Touch ID prompt.
 ///

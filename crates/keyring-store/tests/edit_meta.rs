@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Metadata-only edits (SPEC-V1 §7.1, the detail pane's edit mode).
 //!
 //! One property, and it is the reason this path exists rather than reusing

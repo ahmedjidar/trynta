@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Unlock backoff (SPEC-V1 §3.6, ADD-003 §③).
 //!
 //! Three free attempts, then `min(5 × 2^(n−4), 900)` seconds. A successful

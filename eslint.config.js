@@ -5,7 +5,23 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', '.tsbuild', 'target', 'src-tauri/target', 'src-tauri/gen', 'coverage'] },
+  // `handoffs/` holds received artifacts — a design export, and two vendored logo
+  // repositories that each ship their own toolchain. Linting them is neither our job nor
+  // possible: thesvg's `eslint.config.mjs` imports `eslint-config-next`, which is not a
+  // dependency here, and ESLint loads a nested config before it decides whether to lint
+  // anything under it. `public/icons` is generated.
+  {
+    ignores: [
+      'dist',
+      '.tsbuild',
+      'target',
+      'src-tauri/target',
+      'src-tauri/gen',
+      'coverage',
+      'handoffs',
+      'public/icons',
+    ],
+  },
 
   // ── Node-side tooling ──────────────────────────────────────────────────────
   {

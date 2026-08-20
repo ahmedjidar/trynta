@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The imported-theme validator (SPEC-V1 §7.6, AC19).
 //!
 //! AC19: *"A theme containing `url()` is rejected by the Rust validator."*

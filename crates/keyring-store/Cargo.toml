@@ -1,6 +1,6 @@
 [package]
 name = "keyring-store"
-description = "Keyring encrypted SQLite store: schema, two-phase migrations, item repository."
+description = "Trynta encrypted SQLite store: schema, two-phase migrations, item repository."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

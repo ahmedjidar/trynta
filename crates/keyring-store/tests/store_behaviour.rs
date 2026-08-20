@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Store behaviour that the frozen acceptance suite does not cover.
 //!
 //! AC01–AC16 assert the criteria in SPEC-V1 §11. These assert the rules the spec

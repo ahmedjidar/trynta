@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! ISO/IEC 7816-4 padding to a 256-byte boundary.
 //!
 //! SPEC-V1 §3.3 and §4.4: pad the plaintext before encryption so a ciphertext

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Strip comments from source while preserving line structure and string contents.
  *

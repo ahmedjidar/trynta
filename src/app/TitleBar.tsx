@@ -1,26 +1,30 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
- * Title bar — HO-002 `components/Toolbar.tsx`.
+ * Title bar: identity, the search trigger, appearance and lock.
  *
- * ## Three departures from HO-002, each forced
+ * ## Three departures from the design, each forced
  *
- * **No traffic lights.** HO-002's `trafficLights` prop defaults to true for its browser
- * mockup, and its own README says to pass `false` in a real Tauri build and let the OS draw
- * the buttons. That also settles the open HO-002 manifest item: rendering them on Windows
- * gave the window two sets of chrome. They are gone rather than conditional, because there
- * is no platform in this product that wants them — macOS gets its native ones too.
+ * **Window controls, not traffic lights.** The design is drawn inside a picture of a
+ * Mac, and those three dots belong to the picture. On Windows there is no system
+ * titlebar at all (`decorations: false`), so the app draws minimise / maximise / close
+ * itself, in the app's own vocabulary. On macOS the OS floats its real traffic lights
+ * over the content and the bar just leaves room for them.
  *
- * **The modifier is resolved, not typed.** HO-002 prints `⌘K`. SPEC-V1 §8 forbids
+ * **The modifier is resolved, not typed.** The design prints `⌘K`. SPEC-V1 §8 forbids
  * hardcoding a modifier; it comes from `app_platform_info`, so this reads `CtrlK` on
  * Windows.
  *
- * **The theme control is tri-state.** HO-002 toggles dark/light. CLAUDE.md §3 requires
+ * **The theme control is tri-state.** The design toggles dark/light. CLAUDE.md §3 requires
  * `system` following the OS, so the button cycles three ways and names the *stored* mode —
  * a control labelled "Dark" while following a dark OS would be lying about what is stored.
  */
 
 import { cn } from '../lib/cn';
+import { BrandMark } from '../components/BrandMark';
 import { Glyph } from '../components/Glyph';
 import type { GlyphName } from '../components/Glyph';
+import { WindowControls } from './WindowControls';
+import { useDragRegion } from './useDragRegion';
 import { useThemeStore } from '../theme/store';
 import type { ThemeMode } from '../theme/mode';
 
@@ -31,6 +35,8 @@ export interface TitleBarProps {
   onLock: () => void;
   /** The platform's modifier label, from `app_platform_info`. Never hardcoded. */
   modifierKey: string;
+  /** Which OS, so the window controls land on the side that platform puts them. */
+  os: string;
 }
 
 /** Cycle order: what the next press gives you. */
@@ -71,27 +77,57 @@ function ToolbarButton({
   );
 }
 
-export function TitleBar({ onOpenPalette, onLock, modifierKey }: TitleBarProps) {
+export function TitleBar({ onOpenPalette, onLock, modifierKey, os }: TitleBarProps) {
   const mode = useThemeStore((s) => s.mode);
   const setMode = useThemeStore((s) => s.setMode);
+  const drag = useDragRegion();
+
+  // macOS draws its own traffic lights over our content, on the left. Windows has no
+  // system chrome at all here, so the app supplies the three controls on the right.
+  const macOS = os === 'macos';
 
   return (
-    <div className="border-hairline bg-surface-chrome vibrancy relative z-[3] flex h-[52px] shrink-0 items-center border-b pr-4 pl-5">
-      <div className="text-body flex shrink-0 items-center gap-2 font-bold tracking-tight">
-        <span className="bg-accent text-badge-sm text-text-on-accent flex h-[18px] w-[18px] items-center justify-center rounded-xs font-extrabold">
-          K
+    // The bar is the drag region: `useDragRegion` starts a window move only when the
+    // press lands on an element carrying `data-drag-region`, so the controls inside it
+    // keep their clicks without needing an opt-out.
+    <div
+      data-drag-region
+      {...drag}
+      className={cn(
+        'border-hairline bg-surface-chrome vibrancy relative z-[3] flex h-[52px] shrink-0 items-center border-b pr-3',
+        // Room for the traffic lights, which the OS positions at a fixed inset.
+        macOS ? 'pl-[var(--pad-traffic-lights)]' : 'pl-4',
+      )}
+    >
+      <div
+        data-drag-region
+        className={cn(
+          'text-body pointer-events-none flex shrink-0 items-center gap-2 font-bold tracking-tight',
+          macOS && 'ml-[68px]',
+        )}
+      >
+        {/* The mark, not a letter on a coloured square. The square was a stand-in
+            from before there was a mark, and it read as a placeholder because it
+            was one. Drawn rather than rastered: at 18px a downscaled PNG of two
+            thin rings is mush. */}
+        <span className="brand-mark flex items-center">
+          <BrandMark size={22} />
         </span>
-        Keyring
+        Trynta
       </div>
 
-      <div className="flex flex-1 justify-center px-5">
+      {/* Also a drag region: this wrapper spans most of the bar, and only the element
+          under the pointer counts — so without it the middle two-thirds of the title bar
+          would be dead to dragging. The search button inside is its own target and
+          still receives its click. */}
+      <div data-drag-region className="flex flex-1 justify-center px-5">
         <button
           type="button"
           data-focus-ring
           onClick={onOpenPalette}
           className={cn(
             'border-hairline bg-surface-panel flex h-8 w-[380px] cursor-text items-center gap-2 rounded-full border px-3',
-            'text-caption text-text-caption-aa shadow-inner-top',
+            'text-caption text-text-muted shadow-inner-top',
             'duration-moderate transition-[box-shadow,border-color]',
             'hover:border-strong hover:shadow-search-hover',
           )}
@@ -112,12 +148,24 @@ export function TitleBar({ onOpenPalette, onLock, modifierKey }: TitleBarProps) 
           title={`Appearance: ${LABEL[mode]}. Click for ${LABEL[NEXT[mode]]}.`}
         >
           <Glyph name={MODE_GLYPH[mode]} />
-          {LABEL[mode]}
+          {/* The label is reserved at its widest, so cycling Light → Dark → System
+              cannot change the button's width. It could, and it did: the search field
+              is centred between the two toolbar halves, so a two-pixel change here
+              slid the whole search field sideways every time the theme was toggled.
+              Nothing in a title bar should move because a label got shorter. */}
+          <span className="toolbar-label">{LABEL[mode]}</span>
         </ToolbarButton>
         <ToolbarButton onClick={onLock} title={`Lock vault (${modifierKey}L)`}>
           <Glyph name="lock" />
           Lock
         </ToolbarButton>
+
+        {macOS ? null : (
+          <>
+            <span className="bg-hairline mx-1 h-5 w-px shrink-0" aria-hidden="true" />
+            <WindowControls />
+          </>
+        )}
       </div>
     </div>
   );

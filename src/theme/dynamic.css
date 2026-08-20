@@ -1,37 +1,38 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
 /*
  * Values that vary at runtime — expressed as CSS keyed on data attributes.
  *
  * ## Why this file exists at all
  *
- * HO-002 sets every varying value with the React `style` prop: the segmented indicator's
- * `left`, the strength meter's `transform` and colour, the identity tile's size and
- * background, the stat figure's colour, the TOTP countdown's width. That works in its
- * dev server and **silently stops working in our release build**: the production CSP in
- * `tauri.conf.json` is `style-src 'self'` with no `unsafe-inline`, so a markup `style`
- * attribute is dropped — while `devCsp` allows `unsafe-inline`, which is why the port
- * looks correct when you run it. An eslint rule bans the prop for exactly this reason
- * (SPEC-V1 §7.6); this file is the replacement.
+ * The design sets every varying value with the React `style` prop: the segmented
+ * indicator's `left`, the strength meter's `transform` and colour, the identity tile's
+ * size and background, the stat figure's colour, the TOTP countdown's width. That works
+ * in a dev server and **silently stops working in a release build**: the production CSP
+ * in `tauri.conf.json` is `style-src 'self'` with no `unsafe-inline`, so a markup `style`
+ * attribute is dropped — while `devCsp` allows `unsafe-inline`, which is why an inline
+ * style looks correct right up until it ships. An eslint rule bans the prop for exactly
+ * this reason (SPEC-V1 §7.6); this file is the replacement.
  *
  * The rule for what belongs here: a value that varies over a **small, closed set** becomes
  * a data attribute and a rule below. A value that is genuinely continuous — the TOTP
  * countdown — is written through the CSSOM instead, which the CSP permits because it is a
  * script API rather than markup.
  *
- * Appearance is identical to HO-002 in every case. Nothing here introduces a value: every
- * colour is a token and every geometry figure is the design's own.
+ * Appearance is identical to the handoff in every case. Nothing here introduces a value:
+ * every colour is a token and every geometry figure is the design's own.
  */
 
 :root {
-  /* HO-002's segmented track has a 3px inset and the token layer has no 1.5-step.
-     Declared once here, in the theme layer, rather than repeated as a literal in
-     each of the eight indicator rules below. Recorded in MANIFEST.md. */
+  /* The segmented track has a 3px inset and the token layer has no 1.5-step. Declared
+     once here, in the theme layer, rather than repeated as a literal in each of the
+     eight indicator rules below. Recorded in MANIFEST.md. */
   --space-075: 3px;
 }
 
-/* ── Segmented control indicator — HO-002 SegmentedControl ─────────────────── */
+/* ── Segmented control indicator ───────────────────────────────────────────── */
 
 /*
- * HO-002 computes `left: calc(index * 100/count% + 3px)` and
+ * The design computes `left: calc(index * 100/count% + 3px)` and
  * `width: calc(100/count% - 6px)`. Only two segment counts exist in the product — three
  * (generator types) and four (item kinds) — so those are the rules written, plus two for
  * completeness. A count with no rule leaves the indicator at its first position rather
@@ -76,12 +77,23 @@
   left: var(--space-075);
 }
 
-/* ── Strength meter — HO-002 StrengthMeter ─────────────────────────────────── */
+/*
+ * Forced-colours mode. Selection is carried by the indicator's fill and by a font-weight
+ * change, which is enough under WCAG — but a fill is exactly what a high-contrast theme
+ * discards, so the indicator gets a real border there.
+ */
+@media (forced-colors: active) {
+  .segmented__indicator {
+    border: 1px solid ButtonText;
+  }
+}
+
+/* ── Strength meter ────────────────────────────────────────────────────────── */
 
 /*
  * A `scaleX` transform on an inner element, not a width change, so it is composited and
- * the collapse mirrors the fill exactly. The 60ms stagger is HO-002's; `--stagger-meter`
- * carries it and drops to 0 under `prefers-reduced-motion`.
+ * the collapse mirrors the fill exactly. `--stagger-meter` carries the 60ms per-segment
+ * delay and drops to 0 under `prefers-reduced-motion`.
  */
 .meter__fill {
   transform: scaleX(0);
@@ -129,34 +141,31 @@
   transition-delay: calc(var(--stagger-meter) * 3);
 }
 
-/* ── Tone ramps ───────────────────────────────────────────────────────────── */
+/* ── Tone ramps ────────────────────────────────────────────────────────────── */
 
 /*
  * One set of rules for every place the design colours a value by status: the strength
- * label, the four stat figures, the risk dot. HO-002 passes these as inline colours from
- * three separate lookup tables; here the tone name is the attribute and the token is the
- * value, so a tone cannot be spelled differently in two components.
- *
- * The `-text` variants are the a11y.css aliases: the raw status colours fail AA for text
- * on light surfaces (contrast-report findings 6 and 7).
+ * label, the four stat figures, the risk dot. The design passes these as inline colours
+ * from three separate lookup tables; here the tone name is the attribute and the token is
+ * the value, so a tone cannot be spelled differently in two components.
  */
 [data-tone='danger'] {
-  color: var(--status-danger-text);
+  color: var(--status-danger);
 }
 [data-tone='warning'] {
-  color: var(--status-warning-text);
+  color: var(--status-warning);
 }
 [data-tone='accent'] {
-  color: var(--accent-text);
+  color: var(--accent);
 }
 [data-tone='info'] {
-  color: var(--status-info-text);
+  color: var(--status-info);
 }
 [data-tone='neutral'] {
   color: var(--text-secondary);
 }
 [data-tone='empty'] {
-  color: var(--text-caption-aa);
+  color: var(--text-muted);
 }
 
 .dot[data-tone='danger'] {
@@ -166,13 +175,20 @@
   background: var(--status-warning);
 }
 
-/* ── Identity tile — HO-002 IdentityTile ──────────────────────────────────── */
+/* ── Identity tile ─────────────────────────────────────────────────────────── */
 
 /*
- * HO-002 sets `width`/`height` inline from a numeric prop and picks the background from
- * `identityColor()`. Both become attributes: six sizes and seven tones, which is the
- * whole closed set. ADD-001 removes the favicon layer entirely — the monogram is not a
- * fallback here, it is the tile — so the inlay rules HO-002 needs are gone with it.
+ * The design sets `width`/`height` inline from a numeric prop and picks the background
+ * from `identityColor()`. Both become attributes: six sizes and seven tones, which is the
+ * whole closed set.
+ *
+ * ADD-001 removes the favicon layer: a runtime icon fetch announces every service the
+ * user holds an account with. Rust resolves an icon to a bundled key or a monogram, so
+ * the monogram is not a fallback here — it is the tile — and the inlay rules the design
+ * needs for a crossfading favicon go with it.
+ *
+ * The shadow is the design's own `boxShadow.tile`: an inset half-pixel ring that keeps a
+ * tile's edge legible against a surface of similar value.
  */
 .tile {
   display: grid;
@@ -183,7 +199,9 @@
   font-weight: var(--weight-bold);
   letter-spacing: var(--tracking-tight);
   line-height: var(--leading-none);
-  box-shadow: var(--shadow-hairline), var(--shadow-lift);
+  box-shadow:
+    inset 0 0 0 0.5px var(--border-strong),
+    var(--shadow-lift);
 }
 
 .tile[data-size='24'] {
@@ -239,21 +257,46 @@
   background: var(--identity-7);
 }
 
-/* A bundled brand icon fills the tile; the monogram underneath is then redundant. */
+/* A bundled brand icon sits on the panel surface, the way a favicon inlay does in the
+   design: the tile reads as a chip rather than a cut-out. */
+.tile[data-tone='0'] {
+  background: var(--surface-raised);
+}
+
 .tile__icon {
-  width: 100%;
-  height: 100%;
+  width: var(--favicon-inlay);
+  height: var(--favicon-inlay);
   object-fit: contain;
 }
 
-/* ── Vault swatch ─────────────────────────────────────────────────────────── */
+/*
+ * The generated mark is the tile, not an inlay: it is drawn to the tile's own edge with
+ * its own internal margins, so a shape and a brand icon sit at the same optical weight
+ * beside each other in a list.
+ */
+.tile__mark {
+  width: 100%;
+  height: 100%;
+  color: var(--identity-text);
+}
+
+.tile[data-size='56'] .tile__icon,
+.tile[data-size='64'] .tile__icon {
+  width: 60%;
+  height: 60%;
+}
+
+/* ── Vault swatch ──────────────────────────────────────────────────────────── */
 
 /*
  * Vaults carry a `colorToken` such as `vault.accent.3` and the token layer defines no
- * `--vault-accent-*` ramp (MANIFEST HO-002 item 2, still open). Until it does, the swatch
+ * `--vault-accent-*` ramp (MANIFEST item 2, still open). Until it does, the swatch
  * borrows the identity ramp, which at least distinguishes vaults from each other instead
  * of rendering them all in `--accent`.
  */
+.swatch {
+  background: var(--accent);
+}
 .swatch[data-accent='vault.accent.1'] {
   background: var(--identity-1);
 }
@@ -275,11 +318,8 @@
 .swatch[data-accent='vault.accent.7'] {
   background: var(--identity-7);
 }
-.swatch {
-  background: var(--accent);
-}
 
-/* ── TOTP countdown ───────────────────────────────────────────────────────── */
+/* ── TOTP countdown ────────────────────────────────────────────────────────── */
 
 /*
  * The one genuinely continuous value in the product: 0–100% once a second. Written
@@ -290,4 +330,227 @@
   width: 100%;
   background: var(--accent);
   transition: width var(--duration-countdown) linear;
+}
+
+/* ── Toast ─────────────────────────────────────────────────────────────────── */
+
+/*
+ * One transition, both directions. The pill stays mounted so the exit has something to
+ * animate — see `components/Toast.tsx` — and `data-visible` is the only thing that
+ * changes. `pointer-events` goes with it, so an invisible pill never swallows a click
+ * on the pane behind it.
+ */
+.toast {
+  opacity: 0;
+  transform: translateY(10px) scale(0.97);
+  pointer-events: none;
+  transition:
+    opacity var(--duration-base) var(--ease-spring),
+    transform var(--duration-base) var(--ease-spring);
+}
+
+.toast[data-visible] {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+  transition-duration: var(--duration-toast);
+}
+
+/* ── Generator length slider ───────────────────────────────────────────────── */
+
+/*
+ * The design writes `accent-[var(--accent)]`, which Tailwind compiles to an arbitrary
+ * value rather than a token utility. Same declaration, named once.
+ */
+.slider {
+  accent-color: var(--accent);
+}
+
+/* ── Brand marks that cannot read on a dark tile ─────────────────────────────
+ *
+ * A brand mark is drawn for the background its owner publishes it on, which is
+ * almost always white. Roughly a fifth of the bundled set is therefore black or
+ * near-black ink, which vanishes on `--surface-raised` in the dark theme.
+ *
+ * ADD-001 forbids recolouring a tier-1 mark, and is right to — a recoloured brand
+ * mark is the wrong mark. So what changes is what sits *behind* it. `dark_ink` is
+ * computed per file at build time, so only the marks that need this get it:
+ * Spotify's green and Netflix's red read fine on dark and are left alone, because
+ * a white square behind them would be worse than the problem.
+ *
+ * The base theme is dark (see tokens.css), so the chip is the default and the light
+ * theme turns it off — in light, `--surface-raised` was already the right answer.
+ *
+ * Both values are token references. No colour is introduced here. */
+.tile[data-chip='light'] {
+  background: var(--surface-knob);
+}
+
+[data-theme='light'] .tile[data-chip='light'] {
+  background: var(--surface-raised);
+}
+
+/* The selected colour in a vault swatch picker.
+ *
+ * A ring rather than a border: a border would resize the dot and make the row jump
+ * as the selection moves along it. */
+[data-selected='true'].swatch {
+  box-shadow:
+    0 0 0 2px var(--surface-panel),
+    0 0 0 3.5px var(--accent);
+}
+
+/* ── One duration the handoff does not carry ─────────────────────────────────
+ *
+ * The motion scale starts at 120ms, which is right for a state change and too slow
+ * for hover. Hover is not a transition anyone waits to watch — it is feedback, and
+ * feedback late enough to notice reads as lag. Defined here rather than in
+ * tokens.css because that file is copied byte-for-byte from the design source and
+ * this value is not in it.
+ *
+ * Still a fade, not a snap: at 90ms nothing flickers as the pointer runs down a
+ * list, which a 0ms swap does. */
+:root {
+  --duration-hover: 90ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-hover: 0.01ms;
+  }
+}
+/* ── Nothing reflows because a label changed ─────────────────────────────────
+ *
+ * The theme control cycles Light → Dark → System, and the title bar centres the
+ * search field between its two halves. A label that changes width therefore slides
+ * the search field sideways on every toggle. `ch` units rather than a pixel value so
+ * the reservation tracks the font: 6ch is "System", the longest of the three.
+ *
+ * This is the general rule, not a one-off patch: a control whose text varies over a
+ * closed set reserves its widest member. `tabular-nums` does the same job for the
+ * counters, which is why the sidebar numerals do not jog as counts change. */
+.toolbar-label {
+  display: inline-block;
+  min-width: 6ch;
+  text-align: center;
+}
+
+/* ── The close button's glyph is white on red, in both themes ────────────────
+ *
+ * It used `--text-on-accent`, which is the foreground for text on the *accent*
+ * colour — a light periwinkle, so the token is dark. On the danger red it rendered
+ * as grey-on-red in light mode. The red fill is the same red in both themes and its
+ * foreground should be too; `--surface-knob` is the token layer's only always-white
+ * surface, aliased here so the intent has a name rather than borrowing one. */
+.window-close {
+  --on-danger: var(--surface-knob);
+}
+
+.window-close:hover {
+  color: var(--on-danger);
+}
+
+/* ── A solid-square brand mark gets the tile's own corner ────────────────────
+ *
+ * Some marks are drawn as a filled square that fills its whole viewBox — Netflix,
+ * and a few hundred others. Inside a rounded tile that reads as a hard square with
+ * four sharp corners poking at the rounding. Rounding the *rendered mark* is not
+ * recolouring it and not redrawing it: the artwork is untouched, and only the corner
+ * where it meets the tile is softened. The radius is deliberately smaller than the
+ * tile's own, so the mark reads as sitting inside the tile rather than being it. */
+.tile__icon {
+  border-radius: var(--radius-xs);
+}
+
+/* ── The identity tile as an edit affordance ─────────────────────────────────
+ *
+ * Only rendered while the item is being edited, so this is never a hover on
+ * something that is not interactive. The veil sits over the tile rather than
+ * replacing it: the user needs to see the icon they are about to change. */
+.tile-edit__veil {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-xl);
+  background: var(--surface-veil);
+  color: var(--surface-knob);
+  opacity: 0;
+  transition: opacity var(--duration-hover) var(--ease-standard);
+}
+
+.tile-edit:hover .tile-edit__veil,
+.tile-edit:focus-visible .tile-edit__veil {
+  opacity: 1;
+}
+
+/* A permanent hint that the tile is live, so the affordance is not hover-only —
+ * a control that only announces itself on hover is invisible on a touchpad pass. */
+.tile-edit::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-xl);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* ── Favourite ───────────────────────────────────────────────────────────────
+ *
+ * Off is the same muted weight as any other header glyph; on is the accent, so
+ * the state is legible without a label. */
+.favourite-toggle {
+  color: var(--text-muted);
+}
+
+.favourite-toggle:hover {
+  background: var(--surface-hover);
+  color: var(--text-secondary);
+}
+
+.favourite-toggle[data-on='true'] {
+  color: var(--accent);
+}
+
+.favourite-toggle[data-on='true'] svg {
+  fill: currentColor;
+}
+
+/* ── The fallback mark ───────────────────────────────────────────────────────
+ *
+ * One tile treatment for every unmapped item, because there is now one mark. The
+ * previous `--identity-N` ramp existed to tell generated shapes apart; with a single
+ * lock it would only make the same drawing arrive in seven colours.
+ *
+ * A raised surface with a muted glyph, so the tile reads as a placeholder rather
+ * than competing with the real brand marks beside it. Both values are tokens, so
+ * light and dark are handled by the token layer and this needs no variant. */
+.tile[data-tone='fallback'] {
+  background: var(--surface-raised);
+  color: var(--text-muted);
+}
+
+.fallback-mark {
+  width: 62%;
+  height: 62%;
+}
+
+/* ── The Trynta mark ─────────────────────────────────────────────────────────
+ *
+ * Two supplied variants and nothing else: the soft light blue-violet on dark, the
+ * dark blue-black on light. The mark takes `currentColor`, so choosing between them
+ * is choosing a colour here and never touching the artwork.
+ *
+ * `--accent` in the dark theme is exactly the violet variant's #9DA5F5, so the dark
+ * case is a token reference rather than a repeat of the value. Light uses
+ * `--text-primary`, which is the near-black the light theme already draws text in and
+ * is the closest the token layer has to the supplied dark variant — the alternative
+ * was introducing a hex here, which is what §3 exists to prevent. */
+.brand-mark {
+  color: var(--accent);
+}
+
+[data-theme='light'] .brand-mark {
+  color: var(--text-primary);
 }

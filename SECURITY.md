@@ -1,6 +1,6 @@
 # Security
 
-Keyring is pre-1.0 and not ready for real credentials. Please do not store anything you cannot
+Trynta is pre-1.0 and not ready for real credentials. Please do not store anything you cannot
 afford to lose while that remains true.
 
 ## macOS is unverified — read this before reporting or trusting anything on it
@@ -14,8 +14,9 @@ once there is real Apple hardware.
 What that means concretely, for anyone assessing this project:
 
 - Every security claim below that depends on platform code — biometric unlock, the biometric key
-  wrap at rest, clipboard concealment, key locking in memory — is **verified on Windows only**.
-  The macOS half of each is written to the same standard and its behaviour is unknown.
+  wrap at rest, clipboard concealment — is implemented **for Windows only**. The macOS half of each
+  is written to the same standard and its behaviour is unknown. See "What is not verified" below
+  for how much of the Windows half an automated test actually covers, which is less than all of it.
 - Specifically unverified on macOS: that changing the enrolled fingerprint set destroys the
   Keychain item (`kSecAccessControlBiometryCurrentSet`), that the `org.nspasteboard.ConcealedType`
   marker actually lands on the pasteboard, and that Keychain access survives code-signing. Each is
@@ -31,13 +32,34 @@ is the honest measure of how much a careful read is worth here: not nothing, and
 Report privately. Do not open a public issue, and do not disclose before we have had a chance to
 ship a fix.
 
-- Email `security@` (see the address in `README.md`), ideally with a proof of concept.
-- Or use GitHub's private vulnerability reporting on this repository.
+- **Use GitHub's private vulnerability reporting** on this repository (Security → Report a
+  vulnerability). That is the channel that is live today; it is private to the maintainers and it
+  does not require an address to be published for scrapers to harvest.
+- Include a proof of concept if you have one, and say which platform and build you saw it on.
+
+A dedicated security address will be published here alongside the first tagged release. Until
+then the reporting form above is the whole channel, and pointing at an address that does not
+receive mail would be worse than saying so.
 
 We will acknowledge within 3 working days and keep you updated as we work. If you would like
 credit in the release notes, say so and tell us how you would like to be named.
 
 We do not currently run a paid bounty programme.
+
+## What is not verified
+
+An honest list, because "we take security seriously" is not a security property. None of the
+following has been confirmed by a third party or, in most cases, by an automated test.
+
+| Area                                 | State                                                                                                                                                                                                                                                                 |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Third-party review**               | **None.** No audit, no penetration test, no external cryptographic review of any part of this codebase.                                                                                                                                                               |
+| **The whole macOS build**            | Never compiled. See the section above and [`MACOS-UNVERIFIED.md`](MACOS-UNVERIFIED.md).                                                                                                                                                                               |
+| **Biometric unlock (Windows Hello)** | Implemented and reachable, but the acceptance gate **skips** it — AC06 is marked `skip: requires the platform secure-store and biometric layer`. The signing path, the key wrap at rest, and invalidation on enrolment change have been exercised by hand, not by CI. |
+| **The updater's install path**       | The manifest signature check is tested. Downloading, verifying and _applying_ a real update to a real installation has never been done end to end.                                                                                                                    |
+| **Memory locking**                   | Not implemented at all. See the page-file bullet under "Out of scope".                                                                                                                                                                                                |
+| **Clipboard history exclusion**      | The three Windows exclusion formats are set and tested, but only against the formats themselves — not against a machine with Cloud Clipboard actually syncing.                                                                                                        |
+| **The share-alike bundled icons**    | Six bundled marks are CC-BY-SA 2.5/3.0, which are not GPL-compatible. Recorded in [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) as an open item. Not a vulnerability; a licensing one.                                                                           |
 
 ## Scope
 
@@ -64,9 +86,13 @@ These are stated in the threat model as undefended, not overlooked:
 - A webview compromised at the moment of unlock. The master password is typed into an `<input>`
   and exists as an unzeroizable JavaScript string for that moment. This is inherent to every
   webview-based password manager; CSP and capability hardening are what stand between us and it.
-- The Argon2 memory buffer being paged to disk. It is far larger than the lockable working set on
-  either platform. We lock the 32-byte keys; we cannot lock 64 MiB. Zeroization is best-effort by
-  nature — allocators reuse blocks and `String` growth orphans copies.
+- **Key material being paged to disk. Nothing in this build locks memory.** `VirtualLock` and
+  `mlock` are not called anywhere, so neither the 32-byte keys nor the Argon2 buffer is pinned to
+  RAM, and either can in principle reach the page file. An earlier version of this document said
+  the 32-byte keys were locked. That was wrong, and the correction is the important part: treat a
+  machine that hibernates or swaps as a machine where key material may have touched disk.
+  Zeroization is best-effort regardless — allocators reuse blocks and `String` growth orphans
+  copies.
 - Screen capture by another process while the vault is unlocked, unless the user has enabled the
   opt-in screen-capture mitigation.
 - A weak master password.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Pure services: logic that needs neither Tauri nor the store.
 //!
 //! CLAUDE.md §5 puts `generator`, `strength`, `totp`, `breach`, `icons` and
@@ -19,6 +20,7 @@
 
 pub mod base32;
 pub mod breach;
+pub mod custom_icon;
 pub mod exact;
 pub mod generator;
 pub mod hibp;
@@ -29,4 +31,5 @@ pub mod settings;
 pub mod strength;
 pub mod theme;
 pub mod totp;
+pub mod twofactor;
 pub mod updater;

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Update commands (SPEC-V1 §6, §7.7).
 //!
 //! §7.7 is the third and last permitted outbound request, and an explicit

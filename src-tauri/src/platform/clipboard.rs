@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Clipboard (SPEC-V1 §8, CLAUDE.md §4.3).
 //!
 //! Two things make this a hand-written platform module rather than a plugin.

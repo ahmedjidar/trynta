@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! The vault health score and reuse detection (SPEC-V1 §7.4).
 //!
 //! The score is required to be **deterministic, explainable, and shown with its
@@ -306,6 +307,7 @@ pub fn reused_item_count(groups: &[ReuseGroup]) -> usize {
 
 use crate::services::breach::{self, BreachStatus, RangeSource};
 use crate::services::strength::{self, Band, Strength};
+use crate::services::twofactor;
 
 /// One item as the report sees it.
 ///
@@ -324,6 +326,9 @@ pub struct ItemUnderReview<'a> {
     pub password: &'a str,
     /// Whether a TOTP configuration exists.
     pub has_totp: bool,
+    /// The item’s URLs, reduced to eTLD+1 to ask whether the service takes a
+    /// one-time code at all. Never used for anything that reaches the network.
+    pub urls: &'a [String],
 }
 
 /// Why an item appears in the risk list.
@@ -335,6 +340,8 @@ pub enum RiskKind {
     Weak,
     /// Shared with at least one other item.
     Reused,
+    /// The service accepts an authenticator app and this item has no code.
+    MissingTwoFactor,
 }
 
 /// One entry in the risk list.
@@ -404,9 +411,24 @@ pub fn assess_all(items: &[ItemUnderReview<'_>], breach: &dyn RangeSource) -> As
     let mut not_checked = 0;
     let mut two_factor_enabled = 0;
 
+    let mut two_factor_capable = 0;
+
     for item in items {
+        let capable = twofactor::capable_for(item.urls);
+        if capable {
+            two_factor_capable += 1;
+        }
         if item.has_totp {
             two_factor_enabled += 1;
+        } else if capable {
+            // Only a service that would accept one. An item with no code on a
+            // service that has no second factor is not a risk, it is a fact.
+            risks.push(Risk {
+                item_id: item.id,
+                kind: RiskKind::MissingTwoFactor,
+                breach_count: None,
+                crack_seconds: None,
+            });
         }
 
         let status = breach::check_one(item.password, breach);
@@ -451,6 +473,7 @@ pub fn assess_all(items: &[ItemUnderReview<'_>], breach: &dyn RangeSource) -> As
         RiskKind::Breached => 0,
         RiskKind::Weak => 1,
         RiskKind::Reused => 2,
+        RiskKind::MissingTwoFactor => 3,
     });
 
     let inputs = HealthInputs {
@@ -458,8 +481,7 @@ pub fn assess_all(items: &[ItemUnderReview<'_>], breach: &dyn RangeSource) -> As
         breached,
         weak,
         reused: reused_item_count(&groups),
-        // See the doc comment: 0 until the 2FA directory has a cleared licence.
-        two_factor_capable: 0,
+        two_factor_capable,
         two_factor_enabled,
     };
 

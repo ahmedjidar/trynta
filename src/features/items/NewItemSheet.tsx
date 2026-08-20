@@ -1,20 +1,23 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
- * New-item sheet — HO-002 `overlays/NewItemSheet.tsx`, SPEC-V1 §7.1.
+ * New-item sheet — SPEC-V1 §7.1.
  *
  * Header, 4-up kind segments that swap the field set, a 64px live preview tile, the name
  * input, grouped field rows, vault chips, notes, and a footer whose copy states where the
  * item will be saved with Save gated until it has a name.
  *
- * ## Four departures from HO-002
+ * ## Four departures from the design
  *
- * - **The subtitle.** HO-002 reads "Encrypted on this Mac before it syncs." ADD-005 makes
+ * - **The subtitle.** The design reads "Encrypted on this Mac before it syncs." ADD-005 makes
  *   Windows the platform, and sync is SPEC-V3 — there is nothing to sync to, so the
  *   sentence promises a feature that does not exist. Rewritten to what actually happens.
- * - **The preview tile has no favicon.** HO-002 crossfades a Google favicon over the
- *   monogram once the domain parses. ADD-001 forbids the request; the monogram is the tile.
+ * - **The preview tile has no favicon.** The design crossfades a favicon-service icon over the
+ *   generated mark once the domain parses. ADD-001 forbids the request; the mark stands
+ *   in until a bundled brand icon matches, and the user may attach their own from the
+ *   detail pane afterwards.
  * - **"Ask for Touch ID before autofill" is not built.** Autofill is V3 (§7.5), there is no
  *   field to store it against, and §7.5 forbids a toggle that does nothing.
- * - **Generate calls Rust.** HO-002 generates with `Math.random()` in `lib/utils.ts`. A
+ * - **Generate calls Rust.** The design generates with `Math.random()`. A
  *   password manager's generator is a CSPRNG in Rust (§7.3); the button calls
  *   `generator_password`.
  *
@@ -22,7 +25,7 @@
  * report's verdict rather than approximating it in TypeScript.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Button } from '../../components/Button';
 import { Chip, CopyAction, Input } from '../../components/Bits';
@@ -34,9 +37,16 @@ import { SegmentedControl } from '../../components/SegmentedControl';
 import type { Segment } from '../../components/SegmentedControl';
 import { StrengthMeter } from '../../components/StrengthMeter';
 import { generatorPassword, itemUpsert, passwordStrength } from '../../ipc';
-import type { ItemBodyInput, ItemKindDto, StrengthDto, VaultSummaryDto } from '../../ipc';
+import type {
+  ItemBodyInput,
+  ItemKindDto,
+  StrengthDto,
+  TotpConfigInput,
+  VaultSummaryDto,
+} from '../../ipc';
+import { TotpField } from './TotpField';
 
-/** The four kinds HO-002's segmented control offers, in its order and with its glyphs. */
+/** The four kinds the segmented control offers, in the design's order and glyphs. */
 const KINDS: readonly Segment<ItemKindDto>[] = [
   { id: 'login', name: 'Login', icon: <Glyph name="login" size={14} /> },
   { id: 'secureNote', name: 'Note', icon: <Glyph name="note" size={14} /> },
@@ -44,7 +54,7 @@ const KINDS: readonly Segment<ItemKindDto>[] = [
   { id: 'identity', name: 'Identity', icon: <Glyph name="identity" size={14} /> },
 ];
 
-/** Placeholder per kind for the name field, as HO-002's `PLACEHOLDER` map does. */
+/** Placeholder per kind for the name field, as the design's own map does. */
 const NAME_PLACEHOLDER: Record<ItemKindDto, string> = {
   login: 'Northwind Mail',
   secureNote: 'Office Wi-Fi',
@@ -81,7 +91,7 @@ interface FieldSpec {
   mono?: boolean;
 }
 
-/** The field set per kind — HO-002's "swaps the field set below". */
+/** The field set per kind — the design's "swaps the field set below". */
 const FIELDS: Record<ItemKindDto, readonly FieldSpec[]> = {
   login: [
     { key: 'username', label: 'Username', placeholder: 'name@company.com' },
@@ -136,6 +146,10 @@ export function NewItemSheet({
   const [kind, setKind] = useState<ItemKindDto>('login');
   const [name, setName] = useState('');
   const [fields, setFields] = useState<Partial<Record<FieldKey, string>>>(EMPTY_FIELDS);
+  // Held apart from `fields`, which is a flat string map: a TOTP configuration is
+  // six values that must travel together, and flattening it here is exactly how the
+  // parameters got separated from their seed in the first place (ADD-004 §④).
+  const [totp, setTotp] = useState<TotpConfigInput | null>(null);
   const [notes, setNotes] = useState('');
   const [vaultId, setVaultId] = useState(defaultVaultId ?? '');
   const [strength, setStrength] = useState<StrengthDto | null>(null);
@@ -172,7 +186,6 @@ export function NewItemSheet({
     };
   }, [kind, password, name, fields.username, fields.website]);
 
-  const initials = useMemo(() => monogram(name), [name]);
   const ready = name.trim().length > 0 && vaultId !== '';
   const vaultName = vaults.find((v) => v.id === vaultId)?.name ?? '';
 
@@ -206,7 +219,7 @@ export function NewItemSheet({
       tags: [],
       favorite: false,
       customFields: [],
-      body: bodyFor(kind, fields),
+      body: bodyFor(kind, fields, totp),
     }).then(
       () => {
         setSaving(false);
@@ -233,16 +246,14 @@ export function NewItemSheet({
           <SegmentedControl segments={KINDS} value={kind} onChange={setKind} label="Item type" />
 
           <div className="flex items-center gap-4">
-            {/* The monogram the stored item will get. The tone is Rust's to choose (it
-                hashes the title), so the preview uses a fixed one rather than
-                reimplementing that hash in TypeScript where the two could drift. */}
-            <IdentityTile
-              size={64}
-              title={name}
-              icon={{ kind: 'monogram', initials: initials === '' ? '+' : initials, tone: 1 }}
-            />
+            {/* A preview of the generated mark. The real seed and tone are Rust's to
+                choose — it hashes the item's registrable domain — so this shows a fixed
+                one rather than reimplementing that hash in TypeScript, where the two
+                would drift the first time either changed. The tile the item actually
+                gets is resolved on save, and a matching brand icon outranks this. */}
+            <IdentityTile size={64} title={name} icon={{ kind: 'shape', seed: 5, tone: 1 }} />
             <label className="min-w-0 flex-1">
-              <span className="text-micro tracking-label text-text-caption-aa font-bold uppercase">
+              <span className="text-micro tracking-label text-text-muted font-bold uppercase">
                 Item name
               </span>
               <input
@@ -269,7 +280,7 @@ export function NewItemSheet({
                 <FieldLabel>{spec.label}</FieldLabel>
                 <Input
                   aria-label={spec.label}
-                  // Not `type="password"`: HO-002 draws these in the clear. The user typed
+                  // Not `type="password"`: the design draws these in the clear. The user typed
                   // it and is checking it; masking hides a typo in the one field where a
                   // typo is unrecoverable.
                   className={spec.mono ? 'flex-1 font-mono' : 'flex-1'}
@@ -287,6 +298,8 @@ export function NewItemSheet({
                 ) : null}
               </GroupedRow>
             ))}
+
+            {kind === 'login' ? <TotpField value={totp} onChange={setTotp} /> : null}
 
             {kind === 'login' ? (
               <GroupedRow className="h-11">
@@ -326,7 +339,7 @@ export function NewItemSheet({
             </GroupedRow>
 
             <GroupedRow className="min-h-[52px] items-start py-3.5">
-              <span className="text-caption text-text-caption-aa w-24 shrink-0 leading-6 font-medium">
+              <span className="text-caption text-text-muted w-24 shrink-0 leading-6 font-medium">
                 Notes
               </span>
               <textarea
@@ -363,7 +376,7 @@ export function NewItemSheet({
   );
 }
 
-/** Tone for the strength label, matching HO-002's `strengthColor()` thresholds. */
+/** Tone for the strength label, on the design's own thresholds. */
 function strengthTone(band: number): string {
   if (band === 0) return 'empty';
   if (band <= 1) return 'danger';
@@ -371,23 +384,12 @@ function strengthTone(band: number): string {
   return 'accent';
 }
 
-/** Up to two initials, by code point — which is what Rust's `chars()` iterates. */
-function monogram(name: string): string {
-  return name
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => {
-      const first = word.codePointAt(0);
-      return first === undefined ? '' : String.fromCodePoint(first);
-    })
-    .join('')
-    .toUpperCase();
-}
-
 /** Build the discriminated body the command expects from the flat field state. */
-function bodyFor(kind: ItemKindDto, f: Partial<Record<FieldKey, string>>): ItemBodyInput {
+function bodyFor(
+  kind: ItemKindDto,
+  f: Partial<Record<FieldKey, string>>,
+  totp: TotpConfigInput | null,
+): ItemBodyInput {
   switch (kind) {
     case 'login':
       return {
@@ -395,7 +397,7 @@ function bodyFor(kind: ItemKindDto, f: Partial<Record<FieldKey, string>>): ItemB
         username: f.username ?? '',
         password: f.password ?? '',
         urls: (f.website ?? '').trim() === '' ? [] : [(f.website ?? '').trim()],
-        totp: null,
+        totp,
       };
     case 'secureNote':
       return { kind: 'secureNote' };

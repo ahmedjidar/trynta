@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Theme layer unit tests (SPEC-V1 §7.6, AC17, AC18).
  *

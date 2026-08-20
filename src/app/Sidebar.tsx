@@ -1,19 +1,21 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /**
- * Source list — HO-002 `components/Sidebar.tsx`.
+ * Source list: vaults, library, tools.
  *
- * ## Two departures
+ * ## A listbox, not a stack of buttons
  *
- * **A listbox, not a stack of buttons.** HO-002 renders each row as a `<button>`, so a
- * twelve-row sidebar costs twelve tab presses to walk past. This is one tab stop with
- * arrow keys inside it, which is what a listbox is for. Selection follows focus, correct
- * for a navigation list: the design has no "focused but not selected" state, so adding one
- * would be inventing an interaction.
+ * The design renders each row as a `<button>`, so a twelve-row sidebar costs twelve tab
+ * presses to walk past. This is one tab stop with arrow keys inside it, which is what a
+ * listbox is for. Selection follows focus, correct for a navigation list: the design has
+ * no "focused but not selected" state, so adding one would be inventing an interaction.
  *
- * **No People row.** HO-002's Tools group has People with an invite badge. People, invites,
- * roles and share links are SPEC-V2/V3, so the row is absent rather than disabled — a
- * sidebar entry that opens nothing is worse than one that is not there yet.
+ * ## Two rows that are not here
  *
- * The footer reads "This device only" rather than HO-002's "Encrypted · synced 2 min ago":
+ * **Shared**, in the library group, and **People**, in tools. People, invites, roles and
+ * share links are SPEC-V2/V3, so both are absent rather than disabled — a sidebar entry
+ * that opens nothing is worse than one that is not there yet.
+ *
+ * The footer says "This device only" where the design says "Encrypted · synced 2 min ago":
  * there is no sync in V1 (SPEC-V1 §1), so the design's copy would be a claim about a
  * feature that does not exist.
  */
@@ -60,6 +62,16 @@ export function Sidebar({ vaults, counts, riskCount }: SidebarProps) {
   const groups: { label: string; rows: Row[] }[] = [
     {
       label: 'Vaults',
+      rows: vaults.map((v) => ({
+        key: `vault:${v.id}`,
+        label: v.name,
+        source: { source: 'vault' as const, id: v.id },
+        count: v.itemCount,
+        colorToken: v.colorToken,
+      })),
+    },
+    {
+      label: 'Library',
       rows: [
         {
           key: 'all',
@@ -68,25 +80,6 @@ export function Sidebar({ vaults, counts, riskCount }: SidebarProps) {
           count: counts.all,
           glyph: 'all' as const,
         },
-        ...vaults.map((v) => ({
-          key: `vault:${v.id}`,
-          label: v.name,
-          source: { source: 'vault' as const, id: v.id },
-          count: v.itemCount,
-          colorToken: v.colorToken,
-        })),
-      ],
-    },
-    {
-      label: 'Library',
-      rows: [
-        {
-          key: 'favorites',
-          label: 'Favourites',
-          source: { source: 'favorites' },
-          count: counts.favorites,
-          glyph: 'favorite' as const,
-        },
         ...CATEGORIES.map((c) => ({
           key: `category:${c.kind}`,
           label: c.label,
@@ -94,6 +87,13 @@ export function Sidebar({ vaults, counts, riskCount }: SidebarProps) {
           count: counts[c.kind],
           glyph: c.glyph,
         })),
+        {
+          key: 'favorites',
+          label: 'Favourites',
+          source: { source: 'favorites' },
+          count: counts.favorites,
+          glyph: 'favorite' as const,
+        },
       ],
     },
     {
@@ -164,10 +164,11 @@ export function Sidebar({ vaults, counts, riskCount }: SidebarProps) {
 
   return (
     <nav
-      className="border-hairline bg-surface-sidebar vibrancy flex w-60 shrink-0 flex-col border-r"
+      className="border-hairline bg-surface-sidebar vibrancy flex w-[clamp(var(--width-sidebar),17%,300px)] shrink-0 flex-col border-r"
       aria-label="Sources"
     >
       <div
+        data-scroll-pane
         className="min-h-0 flex-1 overflow-y-auto px-3 pt-3"
         ref={listRef}
         role="listbox"
@@ -178,7 +179,7 @@ export function Sidebar({ vaults, counts, riskCount }: SidebarProps) {
           <div key={group.label} className="flex flex-col gap-[var(--row-gap)]">
             <h2
               className={cn(
-                'text-micro tracking-label text-text-caption-aa flex h-6 items-center px-2 font-bold uppercase',
+                'text-micro tracking-label text-text-muted flex h-6 items-center px-2 font-bold uppercase',
                 groupIndex > 0 && 'mt-4',
               )}
             >
@@ -194,8 +195,9 @@ export function Sidebar({ vaults, counts, riskCount }: SidebarProps) {
                   aria-selected={selected}
                   // One tab stop for the list: only the selected row is tabbable.
                   tabIndex={selected ? 0 : -1}
+                  data-focus-ring
                   className={cn(
-                    'text-body duration-quick flex h-[30px] w-full items-center gap-2.5 rounded-sm px-2 transition-colors',
+                    'text-body duration-hover flex h-[30px] w-full items-center gap-2.5 rounded-sm px-2 transition-colors',
                     selected
                       ? 'bg-surface-selected text-text-primary font-semibold'
                       : 'text-text-secondary hover:bg-surface-hover cursor-pointer font-medium',
@@ -213,7 +215,7 @@ export function Sidebar({ vaults, counts, riskCount }: SidebarProps) {
                   <span
                     className={cn(
                       'flex h-4 w-4 shrink-0 items-center justify-center',
-                      selected ? 'text-accent' : 'text-text-caption-aa',
+                      selected ? 'text-accent' : 'text-text-muted',
                     )}
                     aria-hidden="true"
                   >
@@ -225,11 +227,11 @@ export function Sidebar({ vaults, counts, riskCount }: SidebarProps) {
                   </span>
                   <span className="min-w-0 flex-1 truncate text-left">{row.label}</span>
                   {row.badge ? (
-                    <span className="bg-status-warning-subtle text-micro text-status-warning-text h-[18px] min-w-[18px] rounded-full px-1.5 text-center leading-[18px] font-bold tabular-nums">
+                    <span className="bg-status-warning-subtle text-micro text-status-warning h-[18px] min-w-[18px] rounded-full px-1.5 text-center leading-[18px] font-bold tabular-nums">
                       {row.badge}
                     </span>
                   ) : row.count === undefined ? null : (
-                    <span className="text-micro text-text-caption-aa font-medium tabular-nums">
+                    <span className="text-micro text-text-muted font-medium tabular-nums">
                       {row.count}
                     </span>
                   )}
@@ -240,7 +242,7 @@ export function Sidebar({ vaults, counts, riskCount }: SidebarProps) {
         ))}
       </div>
 
-      <footer className="border-hairline text-micro text-text-caption-aa flex h-10 shrink-0 items-center gap-2 border-t px-5">
+      <footer className="border-hairline text-micro text-text-muted flex h-10 shrink-0 items-center gap-2 border-t px-5">
         <span className="bg-accent h-1.5 w-1.5 shrink-0 rounded-full" aria-hidden="true" />
         {/* SPEC-V1 §1: no sync in V1. The design's footer slot says something true
             rather than implying a feature that does not exist. */}

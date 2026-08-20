@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Windows Hello, via `KeyCredentialManager` (SPEC-V1 §5.1, §8).
 //!
 //! `KeyCredentialManager` creates an asymmetric key that the OS gates behind a

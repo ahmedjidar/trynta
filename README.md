@@ -1,112 +1,196 @@
 <div align="center">
 
-# Keyring
+<img src="public/trynta/brand/trynta-mark-violet.svg" alt="" width="120" />
 
-**A password manager built for credentials that belong to more than one person.**
+# Trynta
 
-macOS · Windows · local-first · end-to-end encrypted
+**A local-first, end-to-end encrypted password manager for the desktop.**
+
+Tauri&nbsp;v2 · Rust · React · SQLite &nbsp;·&nbsp; AGPL-3.0-or-later
 
 </div>
 
 ---
 
-## Why
+> ### Read this before you try it
+>
+> Trynta is **pre-1.0 and has never been security-audited.** No third party has reviewed
+> the cryptography, the storage format or the platform code. **Do not put real credentials
+> in it.**
+>
+> - **Windows is the only verified platform.** Every push runs the full acceptance gate on
+>   `windows-latest`.
+> - **The macOS code has never been compiled.** Not "lightly tested" — never built, by any
+>   compiler, ever. Its correctness is unknown. See
+>   [`MACOS-UNVERIFIED.md`](MACOS-UNVERIFIED.md).
+> - **Sharing is not built.** Multi-owner credentials are the reason this project exists and
+>   they do not exist yet. There is no sync, no server and no network protocol.
+>
+> That list is the honest state of the project, not a disclaimer to scroll past.
 
-Most password managers treat sharing as an afterthought bolted onto a single-user product. You get
-a read-only copy, or a link that expires, or a "team vault" that requires everyone to be on the
-same paid plan under the same admin.
+---
 
-That model breaks the moment real people use it. Two founders share a Stripe account. Four
-moderators rotate a Discord login. A family splits a Netflix subscription. Somebody changes the
-password and everyone else is locked out until it gets pasted into a group chat — which is exactly
-where credentials go to die.
+## What it is today
 
-Keyring makes co-ownership a first-class primitive. Two users confirm an invite in both
-directions, and from then on they genuinely co-own the credential. Both see it. Both can use it.
-Both can change it. Neither one is a guest in the other's vault, and neither depends on the other
-being online.
+A desktop password manager that stores logins, secure notes, cards and identities in a local
+SQLite file with field-level encryption. It unlocks with a master password, copies secrets to
+the clipboard without the plaintext ever entering the webview, generates passwords and
+passphrases, and reports weak, reused and breached credentials.
 
-## Principles
+It talks to the network in exactly two places — a k-anonymous breach check and a signed update
+manifest — and nowhere else. Brand icons are bundled, never fetched, so using Trynta does not
+disclose which services you have accounts with.
 
-**Local-first.** Your vault lives on your machine and works with the network unplugged. Sync is a
-convenience layer, never a dependency.
+<div align="center">
 
-**Zero-knowledge.** Keys are derived from your master password on your device. Anything that ever
-leaves the device is ciphertext we cannot read, by construction rather than by policy.
+|                         Dark                          |                          Light                          |
+| :---------------------------------------------------: | :-----------------------------------------------------: |
+|   ![Item list, dark](docs/screenshots/dark-items.png)   |   ![Item list, light](docs/screenshots/light-items.png)   |
+| ![Security report, dark](docs/screenshots/dark-security.png) | ![Security report, light](docs/screenshots/light-security.png) |
 
-**No dark patterns.** No engagement mechanics, no upsell interstitials, no telemetry on what's in
-your vault. Breach checks use k-anonymity: we learn a five-character hash prefix and nothing else.
+</div>
 
-**Fast enough to disappear.** Unlock, find, copy, gone. A password manager you notice is a
-password manager you route around.
+## What works
 
-**Native, not a web page in a frame.** Platform biometrics, platform secure storage, platform
-clipboard semantics — hand-written per OS rather than papered over by a cross-platform shim.
+| Area                | State                                                                                              |
+| ------------------- | -------------------------------------------------------------------------------------------------- |
+| Vault and items     | Logins, secure notes, cards, identities. Multiple vaults, renameable and recolourable, no limit.     |
+| Unlock              | Master password with Argon2id and persistent backoff. Windows Hello unlock, opt-in — **the biometric signing path is not covered by the automated gate**. |
+| Search              | Fuzzy search over an in-memory index built at unlock. Measured under 16 ms p95 at 5,000 items.       |
+| Copy and reveal     | Copy happens in Rust; the plaintext never reaches the webview. Clipboard auto-clears on a timer.     |
+| One-time codes      | RFC 6238 TOTP, SHA-1/256/512, 6 and 8 digits. Paste an `otpauth://` URI or a bare secret.            |
+| Generator           | CSPRNG with rejection sampling. Passwords and passphrases, with a real entropy figure.               |
+| Security report     | Weak, reused and breached passwords, plus accounts that support 2FA and do not have it enabled.      |
+| Breach check        | HIBP range API, k-anonymous: a 5-character hash prefix with `Add-Padding`, at most once a day.       |
+| Backup and restore  | Encrypted export under its own passphrase, independent of the master password.                       |
+| Themes              | Dark, light and follow-the-system. Import your own as JSON, validated in Rust.                       |
+| Updates             | Signed manifest check, opt-out.                                                                      |
+| Screen capture      | Optional exclusion from screenshots and screen sharing, off by default.                              |
 
-**Right now, that means Windows.** The macOS half is written and has never been compiled, so its
-state is *unknown* rather than "coming soon". Windows is the platform with a green build. See
-[`MACOS-UNVERIFIED.md`](MACOS-UNVERIFIED.md) for exactly what is unverified and how it gets
-verified.
+## What is not built
 
-## Status
-
-Pre-1.0, in active development. Not ready for real credentials yet.
-
-No accounts. No subscriptions. No payment code anywhere in this repository.
-
-## Stack
-
-Tauri v2 · Rust · React · TypeScript · SQLite
-
-Everything that touches a secret lives in Rust. The webview renders; it does not hold keys.
+- **Sharing and multi-owner credentials.** The differentiator, and the reason the project exists.
+  Account keypairs are generated and stored, but no key agreement happens anywhere — see the note
+  in the table below.
+- **Sync.** Nothing leaves the device except the two requests named above.
+- **Autofill and browser integration.** Matching, when it arrives, will be on the registrable
+  domain via the Public Suffix List — never a substring.
+- **Import from other managers.**
+- **Accounts, subscriptions, payment or licence gating.** None of it is in the repository, and it
+  is not stubbed for later.
 
 ## Cryptography
 
-| Purpose | Primitive |
-|---|---|
-| Key derivation from master password | Argon2id |
-| Subkey derivation | HKDF-SHA256 |
-| Symmetric encryption | XChaCha20-Poly1305 |
-| Key agreement for sharing | X25519 |
-| Signatures | Ed25519 |
-| Randomness | OS CSPRNG only |
+Standard primitives, used the documented way. No novel constructions.
+
+| Purpose                       | Primitive                | State                                                              |
+| ----------------------------- | ------------------------ | ------------------------------------------------------------------ |
+| Key derivation                | Argon2id (v0x13)         | Implemented, calibrated per machine, cost stored in the vault header |
+| Subkey derivation             | HKDF-SHA256              | Implemented                                                          |
+| Symmetric encryption          | XChaCha20-Poly1305       | Implemented, one envelope per field                                  |
+| Manifest and backup signature | Ed25519                  | Implemented                                                          |
+| Key agreement                 | X25519                   | **Keypair generated and stored. No agreement is performed anywhere** — it is reserved for sharing and nothing uses it yet |
+| Randomness                    | OS CSPRNG                | Implemented, no userspace PRNG                                       |
 
 Items are encrypted individually under per-item keys, wrapped by per-vault keys, wrapped by keys
-derived from your master password. Sharing works by wrapping an item key to a recipient's public
-key — no plaintext ever transits, and no server is ever in a position to read anything.
+derived from the master password. Every key and plaintext buffer is `Zeroizing`, so it is wiped when
+it drops.
 
-Standard primitives, used the boring way. No novel constructions.
+**Key pages are not locked into RAM.** `VirtualLock`/`mlock` is not called anywhere, so key material
+can in principle be written to the page file. Zeroization is best-effort by nature and this is one
+of the ways it is best-effort. It is a known gap, not a design position — see
+[`SECURITY.md`](SECURITY.md).
+
+Crypto crates are pinned to one RustCrypto generation and `cargo deny` fails the build on a second
+copy of `digest`, `sha2`, `rand_core`, `aead` or `curve25519-dalek`.
+
+## Architecture
+
+```
+crates/
+  keyring-crypto/    KDF, AEAD, envelopes, key hierarchy, manifest, backup format
+                     — depends on nothing else in the workspace
+  keyring-store/     SQLite schema, migrations, header, item repository
+                     — depends only on keyring-crypto
+src-tauri/
+  commands/          the #[tauri::command] surface; orchestration only, no logic
+  platform/          macos/ and windows/ behind traits; the only place `unsafe` is allowed
+  services/          generator, strength, TOTP, breach, icons, report, theme
+src/
+  features/<domain>/ vertical slices: items, generator, security, settings, account
+  ipc/               the only file in the frontend that calls invoke()
+  theme/             token layer, runtime theme loading
+tests/acceptance/    the frozen SPEC-V1 acceptance suite; hashes in FREEZE.lock
+```
+
+Everything that touches a secret is in Rust. The webview renders; it never holds a key. The one
+sanctioned plaintext path to the frontend is a single-field, single-item, explicit reveal.
+
+> The crates are named `keyring-*` for historical reasons — the project was called Keyring before
+> it was called Trynta. They are internal names, they are `publish = false`, and the frozen
+> acceptance suite imports them, so renaming them is not a change that can be made quietly.
 
 ## Building
 
+Verified on Windows. The macOS instructions are written from the toolchain requirements and have
+never been executed.
+
 ```bash
-# Prerequisites: Rust (stable), Node 20+, pnpm
-# macOS: Xcode Command Line Tools
-# Windows: Visual Studio Build Tools with the C++ workload, WebView2 runtime
+# Prerequisites
+#   Rust stable (see rust-toolchain.toml), Node 20+, pnpm
+#   Windows: Visual Studio Build Tools with the C++ workload, and the WebView2 runtime
+#   macOS:   Xcode Command Line Tools                            (UNVERIFIED)
 
 pnpm install
-pnpm tauri dev          # run in development
-pnpm tauri build        # produce a release bundle
+pnpm tauri dev            # run in development
+pnpm tauri build          # produce an installer
 ```
 
+The passphrase generator needs the EFF long wordlist, which is not vendored — see
+[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) for where to put it. Without it that one
+feature reports itself unavailable rather than generating from a short list.
+
+### Tests and the gate
+
 ```bash
-pnpm test               # frontend unit tests
-cargo test --manifest-path src-tauri/Cargo.toml
+pnpm test                 # frontend unit tests
+cargo test --workspace    # Rust unit, integration and property tests
 pnpm lint && pnpm typecheck
+pnpm verify:v1            # the full SPEC-V1 acceptance gate
 ```
+
+`pnpm verify:v1` runs the frozen acceptance suite plus the whole toolchain. On a machine with
+16 GB of RAM it is worth running it in slices — `node scripts/verify-v1.mjs --run 1`, `2`, `3` —
+because the release-profile compiles it chains are memory-hungry.
+
+## Contributing
+
+Read [`CONTRIBUTING.md`](CONTRIBUTING.md) first. Every contributor signs the
+[CLA](CLA.md) before a pull request is merged.
+
+## Security
+
+Please report vulnerabilities privately rather than opening a public issue.
+[`SECURITY.md`](SECURITY.md) has the contact address, the threat model, and an explicit list of
+what has not been verified.
 
 ## Brand assets
 
 Service logos in this application are the trademarks of their respective owners and are used
 solely to identify those services within the interface. Their presence implies no affiliation with
-or endorsement by those companies. Logos are bundled with the application and are never fetched at
-runtime, so using Keyring does not disclose which services you have accounts with.
+or endorsement by those companies. Every bundled asset, its licence and its attribution are
+recorded in [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
 
-## Security
+## Licence
 
-Found a vulnerability? Please report it privately rather than opening a public issue.
-`security@` — see `SECURITY.md`.
+[GNU Affero General Public License v3.0 or later](LICENSE).
 
-## License
+Copyright (C) 2026 Rafik.
 
-TBD before first public release.
+AGPL-3.0 includes a network clause: if you run a modified version and let other people interact
+with it over a network, you have to offer them the corresponding source. That does not apply to
+Trynta as it stands, because it is a desktop application that talks to no server of ours — but it
+will apply to the sync relay when one exists, and it is chosen deliberately with that in mind.
+
+Export control, trademarks, patents and the network clause are set out in
+[`docs/LEGAL-NOTES.md`](docs/LEGAL-NOTES.md), including what has *not* been determined.

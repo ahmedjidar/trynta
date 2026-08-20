@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Redacting error types for the store.
 //!
 //! CLAUDE.md §4.6: no secret ever reaches an error string. `StoreError` carries
@@ -46,12 +47,12 @@ pub enum StoreError {
     #[error("a database operation failed")]
     Database,
 
-    /// The file is not a Keyring vault, or its header row is missing.
-    #[error("this file is not a Keyring vault")]
+    /// The file is not a Trynta vault, or its header row is missing.
+    #[error("this file is not a Trynta vault")]
     NotAVault,
 
-    /// The vault was written by a newer version of Keyring.
-    #[error("this vault was written by a newer version of Keyring (schema {found}, this build supports {supported})")]
+    /// The vault was written by a newer version of Trynta.
+    #[error("this vault was written by a newer version of Trynta (schema {found}, this build supports {supported})")]
     UnsupportedSchema {
         /// Version found on disk.
         found: u32,
