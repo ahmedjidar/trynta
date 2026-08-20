@@ -191,3 +191,6 @@ AGPL-3.0 includes a network clause: if you run a modified version and let other 
 with it over a network, you have to offer them the corresponding source. That does not apply to
 Trynta as it stands, because it is a desktop application that talks to no server of ours — but it
 will apply to the sync relay when one exists, and it is chosen deliberately with that in mind.
+
+Export control, trademarks, patents and the network clause are set out in
+[`docs/LEGAL-NOTES.md`](docs/LEGAL-NOTES.md), including what has *not* been determined.
