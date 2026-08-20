@@ -31,7 +31,9 @@
     "icons:placeholder": "node scripts/make-placeholder-icon.mjs",
     "verify:v1": "node scripts/verify-v1.mjs",
     "icons:build": "tsx scripts/build-icon-map.ts",
-    "icons:report": "tsx scripts/build-icon-map.ts --report"
+    "icons:report": "tsx scripts/build-icon-map.ts --report",
+    "icons:brand": "node scripts/build-brand-icons.mjs",
+    "check:brand-icons": "node scripts/check-brand-icons.mjs"
   },
   "pnpm": {
     "//": "Postinstall scripts are denied by default. esbuild is allow-listed because Vite needs its platform binary; the WebDriver downloaders are not, since we drive Tauri, not browsers.",
