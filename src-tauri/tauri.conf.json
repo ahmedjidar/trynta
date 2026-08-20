@@ -103,7 +103,20 @@
         "silent": true
       },
       "nsis": {
-        "installMode": "currentUser"
+        "installMode": "currentUser",
+        "installerIcon": "icons/icon.ico",
+        "headerImage": "installer/nsis-header.bmp",
+        "sidebarImage": "installer/nsis-sidebar.bmp",
+        "uninstallerIcon": "icons/icon.ico",
+        "installerHooks": "installer/hooks.nsh",
+        "customLanguageFiles": {
+          "English": "installer/English.nsh"
+        },
+        "languages": ["English"]
+      },
+      "wix": {
+        "bannerPath": "installer/wix-banner.bmp",
+        "dialogImagePath": "installer/wix-dialog.bmp"
       }
     }
   },
