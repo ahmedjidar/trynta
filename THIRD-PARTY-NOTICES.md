@@ -26,10 +26,10 @@ favicon layer.
 
 ### Sources
 
-| Source               | Upstream                                              | Repository licence | Bundled from                                                          |
-| -------------------- | ----------------------------------------------------- | ------------------ | --------------------------------------------------------------------- |
-| **gilbarbara/logos** | https://github.com/gilbarbara/logos                   | CC0-1.0            | `logos/*.svg`, indexed by `logos.json`                                |
-| **thesvg.org**       | https://thesvg.org — https://github.com/thesvg/thesvg | MIT (the codebase) | `public/icons/<slug>/<variant>.svg`, indexed by `src/data/icons.json` |
+| Source               | Upstream                                                | Repository licence                    | Bundled from                                                          |
+| -------------------- | ------------------------------------------------------- | ------------------------------------- | --------------------------------------------------------------------- |
+| **gilbarbara/logos** | https://github.com/gilbarbara/logos                     | CC0-1.0                               | `logos/*.svg`, indexed by `logos.json`                                |
+| **thesvg.org**       | https://thesvg.org — https://github.com/glincker/thesvg | MIT (the codebase), © 2025 thesvg.org | `public/icons/<slug>/<variant>.svg`, indexed by `src/data/icons.json` |
 
 The two sets overlap on 908 brands. gilbarbara wins every overlap: its marks are hand-optimised and
 drawn square, which is the shape an identity tile needs.
@@ -42,46 +42,83 @@ that is the value as published upstream; it is reproduced faithfully rather than
 ### Licences of what actually ships
 
 Aggregated from `src-tauri/assets/icon-map.tsv`, which is the per-icon record: every row carries
-`source`, `variant`, `licence` and `brand_hex` for one match. That file is generated, committed, and
-compiled into the binary, so the attribution for any single icon is one `grep` away and stays correct
-when the sources change. Reproducing 3,817 rows here would be a copy that goes stale.
+`source`, `variant`, `licence` and `brand_hex` for one match. That file is generated, committed and
+compiled into the binary, so the attribution for any single icon is one `grep` away and stays
+correct when the sources change. Reproducing 3,817 rows here would be a copy that goes stale.
 
-| Licence                    | Icons |
-| -------------------------- | ----: |
-| CC0-1.0                    | 3,162 |
-| MIT                        |   335 |
-| Fair use / nominative use  |    60 |
-| Brand-use grant            |    55 |
-| Apache-2.0                 |    53 |
-| Trademark (identification) |    45 |
-| GPL / AGPL                 |    19 |
-| CC-BY-SA 4.0               |    12 |
-| Custom, per-brand grant    |    14 |
-| CC-BY (3.0 / 4.0)          |     7 |
-| MPL-2.0                    |     3 |
-| BSD-3-Clause               |     3 |
-| Unlicense                  |     2 |
-| LGPL-3.0                   |     1 |
-| Public domain              |     1 |
+**This table is generated from that file, not maintained by hand.** An earlier version was
+hand-maintained and drifted: its rows summed to 3,772 while the text beneath claimed 3,817, and it
+listed `Fair use` and `Fair Use` as though they were different things.
 
-Every copyleft and share-alike licence is broken out on its own row rather than folded into a
-grouped one. An earlier version of this table carried `Other permissive (MPL, BSD, Unlicense)` and
-a `Custom, per-brand grant` bucket that between them absorbed the single LGPL-3.0 mark and all
-three MPL-2.0 marks — both are copyleft, neither is permissive, and a notices file that hides that
-in a bucket labelled _permissive_ is worse than one that omits it. The rows sum to 3,817.
+| Licence                                   | Icons |
+| ----------------------------------------- | ----: |
+| CC0-1.0                                   | 3,197 |
+| MIT                                       |   336 |
+| **Fair use** (not a licence — see below)  |    66 |
+| Apache-2.0                                |    53 |
+| brand-use                                 |    53 |
+| **Trademark** (not a licence — see below) |    45 |
+| Custom                                    |    14 |
+| CC-BY-SA-4.0                              |    12 |
+| GPL-3.0                                   |     8 |
+| AGPL-3.0                                  |     7 |
+| CC-BY-4.0                                 |     6 |
+| Named per-brand written permission        |     5 |
+| BSD-3-Clause                              |     3 |
+| GPL-3.0-only                              |     3 |
+| MPL-2.0                                   |     3 |
+| Unlicense                                 |     2 |
+| CC-BY-3.0                                 |     1 |
+| GPL-3.0-or-later                          |     1 |
+| LGPL-3.0                                  |     1 |
+| PD                                        |     1 |
 
-Two things worth being precise about rather than papering over:
+**The rows sum to 3,817, which is every row in the map.** Regenerate with `pnpm icons:report`.
 
-- **Share-alike and copyleft marks are shipped as separate, unmodified-in-substance files.** The
-  build strips metadata, editor cruft and comments and normalises the viewBox; it never redraws,
-  recolours or merges a mark. Each file remains individually identifiable and individually licensed —
-  the application does not relicense them. That is the standard position for bundled assets, and it
-  is stated here as a position rather than as settled law: **confirm it before 1.0**. The six
-  entries whose licence was outright incompatible with the AGPL — CC BY-SA 2.5 and 3.0 — have been
-  dropped rather than argued about; see "Deliberately excluded". The 35 that remain (12 CC-BY-SA
-  4.0, 19 GPL/AGPL, 3 MPL-2.0, 1 LGPL-3.0) are each individually compatible with AGPL-3.0.
-- **A trademark is not a licence.** Every mark here remains its owner's, whatever the file's licence
-  says. Trynta uses them nominatively, to name a service the user already has an account with.
+Every copyleft and share-alike licence is on its own row rather than folded into a group. An even
+earlier version carried `Other permissive (MPL, BSD, Unlicense)`, a bucket that absorbed the single
+LGPL-3.0 mark and all three MPL-2.0 marks — both copyleft, neither permissive, and a notices file
+that hides that inside a row labelled _permissive_ is worse than one that omits it.
+
+#### 111 of these marks ship with no licence grant at all
+
+The two rows flagged above are not licences. They are a **legal position**, and it is worth stating
+that plainly rather than letting a tidy table imply otherwise:
+
+- **`Fair use` — 66 marks.** Fair use, and its nearer relative nominative use, is a _doctrine_. It
+  is a defence available to someone accused of infringing, not permission granted in advance by the
+  rights holder. Nobody gave us anything for these 66.
+- **`Trademark` — 45 marks.** The upstream manifest recorded the mark's trademark status where no
+  licence existed. That records who owns it. It grants nothing.
+
+So for 111 of the 3,817 marks shipped, **no rights holder has given permission**. They ship on the
+argument that using a company's own logo to identify that company's own service, inside a password
+manager where the user already holds an account with it, is nominative use: it identifies, it does
+not imply endorsement, and it uses no more of the mark than identification requires. Trynta states
+that position in this file, in the README and in the application itself.
+
+**That is an argument, not a settled question,** and it has not been tested by a lawyer or a court
+on these facts. It is the same argument every browser makes when it draws a favicon in a bookmark
+bar, which is why it is a reasonable one to take — not why it is guaranteed to hold. If a rights
+holder disagrees, the remedy is cheap and is documented in
+[`docs/LEGAL-NOTES.md`](docs/LEGAL-NOTES.md): remove that key from the map, rebuild, and the item
+falls back to a generated shape.
+
+The same is true, more weakly, of the 53 `brand-use` and 14 `Custom` rows and the 5 named written
+permissions. Those _are_ grants — a company publishing brand guidelines that permit identifying
+use, or an explicit written permission — but they are grants over the **file**, and a trademark
+remains its owner's whatever any file licence says.
+
+One more thing worth being precise about:
+
+- **Share-alike and copyleft marks ship as separate, unmodified-in-substance files.** The build
+  strips metadata, editor cruft and comments and normalises the viewBox; it never redraws, recolours
+  or merges a mark. Each file stays individually identifiable and individually licensed — the
+  application does not relicense them. That is the standard position for bundled assets, and it too
+  is a position rather than settled law: **confirm it before 1.0.** The six marks whose licence was
+  outright incompatible with the AGPL, CC BY-SA 2.5 and 3.0, were dropped rather than argued about;
+  see "Deliberately excluded". The 35 that remain — 12 CC-BY-SA 4.0, 19 GPL/AGPL, 3 MPL-2.0,
+  1 LGPL-3.0 — are each individually compatible with AGPL-3.0.
 
 ### Deliberately excluded
 
