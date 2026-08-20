@@ -1,0 +1,71 @@
+Trynta
+Copyright (C) 2026 Rafik
+
+This program is free software: you can redistribute it and/or modify it under the
+terms of the GNU Affero General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License along with
+this program.  If not, see <https://www.gnu.org/licenses/>.
+
+The full licence text is in the file LICENSE.
+
+
+WHY THIS FILE EXISTS
+--------------------
+
+The AGPL does not define or require a NOTICE file — that is an Apache-2.0
+convention, and none of the 425 Apache-2.0 licensed crates in this dependency tree
+ships one, so no obligation is inherited from them either.
+
+It exists because Trynta bundles third-party assets whose licences require an
+attribution to accompany the distribution: Creative Commons Attribution and
+Attribution-ShareAlike marks, the SIL Open Font License, MPL-2.0 components, and
+several per-brand permissions granted in writing. A single conventional file that a
+packager or a downstream distributor will look for is the cheapest way to make sure
+those attributions travel with the software rather than being left behind in a
+source tree nobody redistributes.
+
+
+ATTRIBUTION FOR BUNDLED THIRD-PARTY MATERIAL
+--------------------------------------------
+
+Complete per-asset attribution, licence and source URL for every third-party
+component is in:
+
+    THIRD-PARTY-NOTICES.md
+
+That file is the authoritative record and is kept in step with the build. In
+summary, this distribution includes:
+
+  * Brand icons from gilbarbara/logos (CC0-1.0) and thesvg.org (per-icon licences,
+    recorded individually in src-tauri/assets/icon-map.tsv). Service logos are the
+    trademarks of their respective owners, used solely to identify those services
+    within the interface. Their presence implies no affiliation with or endorsement
+    by those companies.
+
+  * Manrope, by Mikhail Sharanda, under the SIL Open Font License 1.1.
+
+  * The Mozilla CA root store, redistributed via the webpki-roots crate under
+    CDLA-Permissive-2.0.
+
+  * The Public Suffix List, by the Mozilla Foundation, under MPL-2.0.
+
+  * Rust crates and npm packages under MIT, Apache-2.0, BSD, ISC, Zlib, MPL-2.0,
+    Unicode-3.0 and CC0-1.0 terms.
+
+  * The EFF long wordlist (CC BY 3.0), when present. It is not vendored in this
+    repository; see THIRD-PARTY-NOTICES.md.
+
+
+A KNOWN GAP, STATED RATHER THAN HIDDEN
+--------------------------------------
+
+As of this writing the Windows installers produced by `pnpm tauri build` do not
+carry this file, LICENSE, or THIRD-PARTY-NOTICES.md — `bundle.licenseFile` and
+`bundle.resources` are unset in src-tauri/tauri.conf.json. Anyone redistributing a
+built installer should include all three alongside it until that is fixed.

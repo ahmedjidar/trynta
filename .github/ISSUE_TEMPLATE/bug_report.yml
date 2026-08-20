@@ -1,0 +1,53 @@
+name: Bug report
+description: Something does not work the way it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not report a security vulnerability here.** Use the private channel in
+        [SECURITY.md](../blob/main/SECURITY.md) instead.
+
+        **Never paste a real password, a real TOTP secret, or a real vault file** into an issue,
+        even a redacted one. If a reproduction needs data, generate it.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: And what you expected instead.
+    validations: { required: true }
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Unlock the vault
+        2. …
+    validations: { required: true }
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Windows
+        - macOS (note: never compiled — see MACOS-UNVERIFIED.md)
+    validations: { required: true }
+  - type: input
+    id: build
+    attributes:
+      label: Build
+      description: Version, or the commit you built from.
+    validations: { required: true }
+  - type: dropdown
+    id: how
+    attributes:
+      label: How did you run it
+      options:
+        - An installer (pnpm tauri build)
+        - Development (pnpm tauri dev)
+    validations: { required: true }
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Screenshots are welcome — check them for real data first.

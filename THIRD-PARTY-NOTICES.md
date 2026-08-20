@@ -234,3 +234,112 @@ dependency yet** — autofill and the §7.4 fix flow are the callers, and both a
 
 Note: the list is a build-time snapshot. It goes stale, and a stale list is a correctness problem
 for domain matching — bump the crate deliberately, on a schedule.
+
+---
+
+# Software dependencies — audited 2026-08-20
+
+The sections above cover **data and assets**. This one covers **code**, because an
+AGPL-3.0-or-later release makes dependency licence compatibility a distribution question rather
+than a hygiene one. `cargo deny check licenses` enforces an allow-list on every build; this is the
+audit behind that allow-list, plus the npm side, which `cargo deny` does not see.
+
+## Rust — 604 crates in the resolved graph
+
+Every licence in the tree, tallied from `cargo metadata --all-features`:
+
+| Family                                         | Crates | AGPL-3.0 compatible                                                                                      |
+| ---------------------------------------------- | -----: | -------------------------------------------------------------------------------------------------------- |
+| MIT, and MIT-or-Apache dual                    |    496 | Yes                                                                                                      |
+| Apache-2.0, incl. WITH LLVM-exception          |     71 | Yes — Apache-2.0 is compatible with GPLv3/AGPLv3 (not GPLv2)                                             |
+| BSD-2-Clause, BSD-3-Clause, BSD-1-Clause, 0BSD |     12 | Yes                                                                                                      |
+| ISC                                            |      6 | Yes                                                                                                      |
+| Zlib                                           |     25 | Yes                                                                                                      |
+| Unicode-3.0                                    |     19 | Yes                                                                                                      |
+| Unlicense, CC0-1.0, MIT-0                      |     15 | Yes                                                                                                      |
+| MPL-2.0                                        |      6 | Yes — MPL-2.0 §3.3 permits distribution under a Secondary Licence, which names the GPL family explicitly |
+| CDLA-Permissive-2.0                            |      2 | Yes — a permissive **data** licence with no copyleft                                                     |
+
+**No GPL-incompatible licence appears anywhere in the Rust dependency graph.** No crate lacks a
+licence field, and none relies on a `license-file` this audit could not read.
+
+The six MPL-2.0 crates are `cssparser`, `cssparser-macros`, `dtoa-short`, `selectors`,
+`nucleo-matcher` and `option-ext`. MPL-2.0 is file-level copyleft: modifying one of those files
+obliges publishing the modification. None of them is modified — they are consumed as published
+crates.
+
+The two CDLA-Permissive-2.0 entries are `webpki-roots` and `webpki-root-certs`, which are the
+Mozilla CA root store repackaged as data. See the Mozilla CA root store section above.
+
+**No Apache-2.0 dependency ships a `NOTICE` file.** All 425 were checked; Apache-2.0 §4(d) therefore
+creates no propagation obligation here. See [`NOTICE`](NOTICE) for why one exists anyway.
+
+## npm — 641 packages on disk, 6 of which ship
+
+Only six npm packages reach the distributed bundle. They are the `dependencies` in
+`package.json`; everything else is a `devDependency` used to build, lint or test, and none of it
+is distributed.
+
+| Shipped package         | Licence           |
+| ----------------------- | ----------------- |
+| `react`, `react-dom`    | MIT               |
+| `@tanstack/react-query` | MIT               |
+| `@tauri-apps/api`       | MIT OR Apache-2.0 |
+| `zustand`               | MIT               |
+| `lucide-react`          | ISC               |
+
+All five licences are permissive and AGPL-compatible.
+
+Five dev-only packages carry licences worth naming, none of which is distributed:
+
+| Package             | Licence                 | Reached via                  | Note                                                                                                                                            |
+| ------------------- | ----------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `jszip`             | MIT OR GPL-3.0-or-later | `webdriverio`                | Dual; MIT applies. Compatible either way.                                                                                                       |
+| `caniuse-lite`      | CC-BY-4.0               | `browserslist`               | Browser-support data used at build time.                                                                                                        |
+| `spdx-exceptions`   | CC-BY-3.0               | `spdx-expression-parse`      | A data list. CC-BY-3.0 is not GPL-compatible for _software_; not distributed, so no conflict arises.                                            |
+| `@promptbook/utils` | CC-BY-4.0               | `locate-app` → `@wdio/utils` | Transitive under the E2E runner.                                                                                                                |
+| `css-value`         | none declared           | `webdriverio`                | **No licence field and no licence file.** Dev-only, so nothing is distributed under unclear terms — but it is unclear terms, and worth knowing. |
+
+## Open licensing items
+
+1. **Six bundled icons are CC-BY-SA 2.5 or 3.0, which are not GPL-compatible.** Creative Commons
+   declared CC BY-SA **4.0** one-way compatible with GPLv3 in 2015; 2.5 and 3.0 were never covered
+   by that declaration, and their share-alike term conflicts with the AGPL's. The six are:
+
+   | Licence      | Domain         | Key        | Source |
+   | ------------ | -------------- | ---------- | ------ |
+   | CC-BY-SA-3.0 | `f-droid.org`  | `fdroid`   | thesvg |
+   | CC-BY-SA-2.5 | `gentoo.org`   | `gentoo`   | thesvg |
+   | CC-BY-SA-3.0 | `inkscape.org` | `inkscape` | thesvg |
+   | CC-BY-SA-3.0 | `jenkins.io`   | `jenkins`  | thesvg |
+   | CC-BY-SA-3.0 | `luanti.org`   | `luanti`   | thesvg |
+   | CC-BY-SA-2.5 | `redmine.org`  | `redmine`  | thesvg |
+
+   The position taken above — that each mark ships as a separate, individually licensed file and is
+   not relicensed by the application — is the standard one for bundled assets, and it is still
+   stated as a position rather than as settled law. **Resolve before 1.0.** The one-line fix, if the
+   answer is to drop them, is to add `CC-BY-SA-2.5` and `CC-BY-SA-3.0` to `FORBIDDEN_LICENCE` in
+   `scripts/build-icon-map.ts` and rerun `pnpm icons:build`; those six items fall back to a
+   generated mark. The other 35 share-alike and copyleft marks — 12 CC-BY-SA-4.0, 19 GPL/AGPL,
+   3 MPL-2.0, 1 LGPL-3.0 — are all compatible with AGPL-3.0 and are not affected.
+
+2. **The installers carry no licence text.** `bundle.licenseFile`, `bundle.resources`,
+   `bundle.copyright` and `bundle.publisher` are all unset in `src-tauri/tauri.conf.json`, so a
+   built `.msi` or `.exe` ships without `LICENSE`, `NOTICE` or this file. Several bundled assets —
+   CC-BY and CC-BY-SA marks, the SIL OFL typeface, MPL-2.0 components, and four per-brand written
+   permissions — require their attribution to accompany the distribution, and AGPL-3.0 §4 requires
+   the licence to accompany the conveyed work. **Fix before any public binary release.**
+
+3. **The EFF wordlist is not vendored**, so the passphrase generator reports itself unavailable.
+   See the wordlist section above.
+
+## How to reproduce this audit
+
+```bash
+cargo deny check licenses                                  # the enforced allow-list
+cargo metadata --format-version 1 --all-features            # every crate and its licence
+pnpm icons:report                                           # per-icon licence tally
+```
+
+`src-tauri/assets/icon-map.tsv` is the per-icon record: one row per shipped mark, carrying its
+source, variant and licence. Attribution for any single icon is one `grep` away.
