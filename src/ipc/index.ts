@@ -76,6 +76,9 @@ export {
   totpCopyCurrent,
   totpCurrent,
   totpParse,
+  tourMarkSeen,
+  tourReset,
+  tourState,
   updateCheck,
   updateChecksSetEnabled,
   updateInstall,
@@ -133,6 +136,8 @@ export type { ThemeRejectionDto } from './generated/ThemeRejectionDto';
 export type { TotpAlgorithmDto } from './generated/TotpAlgorithmDto';
 export type { TotpConfigInput } from './generated/TotpConfigInput';
 export type { TotpRejectionDto } from './generated/TotpRejectionDto';
+export type { TourKindDto } from './generated/TourKindDto';
+export type { TourStateDto } from './generated/TourStateDto';
 export type { UpdateCheckDto } from './generated/UpdateCheckDto';
 export type { UpdateInfoDto } from './generated/UpdateInfoDto';
 export type { UpdateStatusDto } from './generated/UpdateStatusDto';

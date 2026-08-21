@@ -33,6 +33,7 @@ pub mod security;
 pub mod settings;
 pub mod theme;
 pub mod totp;
+pub mod tour;
 pub mod updates;
 pub mod vaults;
 

@@ -34,6 +34,8 @@ import type { ThemeCatalogDto } from './generated/ThemeCatalogDto';
 import type { ThemeDto } from './generated/ThemeDto';
 import type { ThemeModeDto } from './generated/ThemeModeDto';
 import type { TotpCodeDto } from './generated/TotpCodeDto';
+import type { TourKindDto } from './generated/TourKindDto';
+import type { TourStateDto } from './generated/TourStateDto';
 import type { UpdateCheckDto } from './generated/UpdateCheckDto';
 import type { ActivityEventDto } from './generated/ActivityEventDto';
 import type { ItemDetailDto } from './generated/ItemDetailDto';
@@ -1001,4 +1003,60 @@ export function settingsGet(): Promise<SettingsDto> {
  */
 export function settingsSet(patch: SettingsPatch): Promise<SettingsDto> {
   return call<SettingsDto>('settings_set', { patch });
+}
+
+// ── Guided tour (SPEC-V1 §4.5, ADD-004 §⑦) ──────────────────────────────────
+
+/**
+ * Whether either first-run tour should run.
+ *
+ * Callable with the vault locked, or before one exists at all — the flags live in
+ * `app_state`, the pre-unlock plaintext carve-out, because the card this governs
+ * renders on the lock screen where there is no key to read anything else with.
+ *
+ * The booleans mean *"show it"*, not *"has it been seen"*: a debug build replays
+ * regardless of what is stored, and applying that policy once in Rust is what
+ * stops two callers applying it differently. `replay` reports which kind of build
+ * this is, for the settings copy.
+ *
+ * @throws {IpcError} `storage` if a vault file exists and `app_state` is
+ * unreadable. A missing vault file is not an error.
+ *
+ * @beta
+ */
+export function tourState(): Promise<TourStateDto> {
+  return call<TourStateDto>('tour_state');
+}
+
+/**
+ * Record that a tour has been seen.
+ *
+ * @param which - `unlock` for the lock-screen card, `app` for the sequence.
+ * @returns `false` when there is no vault file yet, so the flag had nowhere to be
+ * written. Not an error — it is the normal state on a fresh install before the
+ * vault is created. Callers keep the card down from their own state for the rest
+ * of the session and mark again once a vault exists.
+ *
+ * @throws {IpcError} `storage` if a vault file exists and the write fails.
+ *
+ * @beta
+ */
+export function tourMarkSeen(which: TourKindDto): Promise<boolean> {
+  return call<boolean>('tour_mark_seen', { which });
+}
+
+/**
+ * Clear both flags, so the tour runs again.
+ *
+ * Both together: the lock-screen card and the sequence are one explanation split
+ * across the unlock boundary, and replaying half of it is not a state anyone
+ * asked for. The sequence can start immediately; the lock-screen card returns the
+ * next time the vault is locked.
+ *
+ * @throws {IpcError} `noVault`, `storage`.
+ *
+ * @beta
+ */
+export function tourReset(): Promise<void> {
+  return callVoid('tour_reset');
 }

@@ -202,6 +202,12 @@ fn app_state_permits_exactly_the_keys_the_spec_lists() {
         // ADD-004: SPEC-V1 §7.7's "disableable" toggle. Added by a spec change,
         // which is what this test is here to force.
         "update_checks_enabled",
+        // ADD-004 §⑦: the two first-run tour flags. The unlock one has to be
+        // legible on the lock screen, which is the whole reason §4.5 exists;
+        // the app one is here so a backup restore cannot leave the pair
+        // half-seen, since app_state is deliberately not carried by a restore.
+        "tour_unlock_seen",
+        "tour_app_seen",
     ];
     let actual: Vec<&str> = AppStateKey::all().iter().map(|k| k.as_str()).collect();
     assert_eq!(actual, expected);

@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! `app_state` — the pre-unlock plaintext carve-out (SPEC-V1 §4.5).
 //!
-//! Theme, biometric-enabled and unlock backoff have to be readable *before* the
-//! vault is unlocked, so they live here in the clear. **Nothing else does.**
+//! Theme, biometric-enabled, unlock backoff and the first-run tour flags have to
+//! be readable *before* the vault is unlocked, so they live here in the clear.
+//! **Nothing else does.**
 //!
 //! §4.5 calls the permitted list exhaustive and says adding a key requires a
 //! spec change. That is a security boundary, not a convenience bucket, so it is
@@ -63,6 +64,30 @@ pub enum AppStateKey {
     /// suppress an update check, which is a nuisance, and cannot cause an unsigned
     /// artefact to be installed — that is the signature's job, not this flag's.
     UpdateChecksEnabled,
+    /// Whether the pre-unlock master-password explanation has been shown
+    /// (SPEC-V1 §4.5, ADD-004 §⑦).
+    ///
+    /// Here rather than in the encrypted settings for the same reason as the
+    /// theme: the card it governs renders on the **lock screen**, before there
+    /// is a key to read anything with. A flag stored inside the vault could
+    /// only be consulted after the moment it decides.
+    ///
+    /// Not load-bearing. An attacker who sets it suppresses one explanatory
+    /// card; an attacker who clears it causes one to be shown again. Neither is
+    /// an authorization decision, and neither reveals anything a `stat` of the
+    /// file did not already reveal — that this device has run Trynta.
+    TourUnlockSeen,
+    /// Whether the in-app card sequence has been completed or skipped
+    /// (SPEC-V1 §4.5, ADD-004 §⑦).
+    ///
+    /// This one *could* have lived in the encrypted settings — it is only ever
+    /// read after unlock. It is here anyway, next to its pair, because two
+    /// halves of one feature stored under two different threat models is how
+    /// you end up with a tour that has been half-seen: the settings blob is
+    /// carried by a backup restore (§7.8) and `app_state` deliberately is not,
+    /// so splitting them would make "restore a backup" replay one card and not
+    /// the other four.
+    TourAppSeen,
 }
 
 impl AppStateKey {
@@ -81,12 +106,14 @@ impl AppStateKey {
             Self::LastBreachCheckAt => "last_breach_check_at",
             Self::LastUpdateCheckAt => "last_update_check_at",
             Self::UpdateChecksEnabled => "update_checks_enabled",
+            Self::TourUnlockSeen => "tour_unlock_seen",
+            Self::TourAppSeen => "tour_app_seen",
         }
     }
 
     /// Every permitted key. Used by the test that pins the list to §4.5.
     #[must_use]
-    pub const fn all() -> [Self; 11] {
+    pub const fn all() -> [Self; 13] {
         [
             Self::ThemeId,
             Self::ThemeMode,
@@ -99,6 +126,8 @@ impl AppStateKey {
             Self::LastBreachCheckAt,
             Self::LastUpdateCheckAt,
             Self::UpdateChecksEnabled,
+            Self::TourUnlockSeen,
+            Self::TourAppSeen,
         ]
     }
 }

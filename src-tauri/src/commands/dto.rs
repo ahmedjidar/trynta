@@ -1893,3 +1893,42 @@ pub struct BackupPreviewDto {
     /// state. Not a secret either way — no `fs:` permission is granted.
     pub path: String,
 }
+
+// ── Guided tour (SPEC-V1 §4.5, ADD-004 §⑦) ──────────────────────────────────
+
+/// Which of the two tours a call is about.
+///
+/// Two flags rather than one because they have different lifecycles and
+/// different readers: the unlock card is decided on the lock screen with no key
+/// in hand, the sequence after the vault is open. A single "onboarding done"
+/// flag would tie them together and make the pre-unlock half unreachable.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub enum TourKindDto {
+    /// The master-password card on the lock screen.
+    Unlock,
+    /// The four-card sequence inside the app.
+    App,
+}
+
+/// Whether each tour should run, and whether this build replays them.
+///
+/// The booleans answer *"should I show it"*, not *"has it been seen"*. Those
+/// differ in a debug build, and putting the raw flag on the wire would make
+/// every caller re-apply the replay policy — which is how one of them ends up
+/// applying it differently.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../src/ipc/generated/")]
+#[serde(rename_all = "camelCase")]
+pub struct TourStateDto {
+    /// Show the master-password card on the lock screen.
+    pub show_unlock: bool,
+    /// Show the four-card sequence after unlocking.
+    pub show_app: bool,
+    /// This build ignores the stored flags and replays on every launch.
+    ///
+    /// Reported so the settings screen can say so rather than offering a
+    /// "replay the tour" button whose effect is already unconditional.
+    pub replay: bool,
+}
