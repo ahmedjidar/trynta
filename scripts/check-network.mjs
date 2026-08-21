@@ -20,12 +20,18 @@
 // Comments are stripped before scanning, because the modules that hold the sanctioned
 // requests document at length what they do and do not do, and a check that flagged its
 // own rationale would push people to stop writing it down.
+//
+// The rules themselves live in `lib/network-rules.mjs` so they can be tested against
+// snippets rather than only against this repository — see `lib/network-rules.test.mjs`.
+// This file keeps the walk, the allow-list and the reporting, and keeps running
+// unconditionally, so there is no arrangement in which the check becomes a no-op.
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
 import { stripComments } from './lib/strip-comments.mjs';
+import { scanSource } from './lib/network-rules.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -39,105 +45,30 @@ const SANCTIONED = new Map([
   [join('src-tauri', 'src', 'commands', 'updates.rs'), 'the signed update check (SPEC-V1 §7.7)'],
 ]);
 
+/**
+ * The three files that define or test the rules, and are therefore not judged by
+ * them.
+ *
+ * The first two name the forbidden hosts and spell out the shapes of the requests
+ * they forbid; a file that defines a rule cannot also be judged by it. The third is
+ * the rules' test suite, which has to *contain* a real favicon probe, a real
+ * `fetch()` and a real CDN host in order to assert that each is still caught — the
+ * fixtures are the point of the file.
+ *
+ * An explicit list rather than a directory exclusion, so adding a fourth is a
+ * visible edit in this file rather than a file dropped into a folder. Each is a
+ * hole in the scan and each is here on purpose; nothing else may join them without
+ * the same justification.
+ */
+const SELF = new Set([
+  join('scripts', 'check-network.mjs'),
+  join('scripts', 'lib', 'network-rules.mjs'),
+  join('scripts', 'lib', 'network-rules.test.mjs'),
+]);
+
 const SCAN_DIRS = ['src', 'src-tauri/src', 'crates', 'e2e', 'scripts'];
 const SCAN_EXT = new Set(['.rs', '.ts', '.tsx', '.js', '.jsx', '.mjs', '.css', '.html']);
 const SKIP_DIRS = new Set(['node_modules', 'dist', 'target', 'coverage', '.tsbuild', 'generated']);
-
-/**
- * Hosts that must never appear in shipped source.
- *
- * Split across an array and joined so this file does not trip its own check — the
- * point of the list is that the *literal* must not exist in code, and writing it here
- * as one string would be the thing it forbids.
- */
-const FORBIDDEN_HOSTS = [
-  ['google', '.com/s2/favicons'], // what the HO-001 prototype used
-  ['www.google', '.com/s2'],
-  ['favicon', '.yandex.net'],
-  ['icons.duckduckgo', '.com'],
-  ['logo.clearbit', '.com'],
-  ['gstatic', '.com'],
-  ['fonts.googleapis', '.com'], // font-src 'self'; a webfont must be bundled
-  ['fonts.gstatic', '.com'],
-  ['cdn.jsdelivr', '.net'],
-  ['unpkg', '.com'],
-  ['cdnjs.cloudflare', '.com'],
-].map((parts) => parts.join(''));
-
-/**
- * Patterns that mean "this code can make a request", scoped by language.
- *
- * The scoping is not tidiness. `fetch` is a network call in TypeScript and an ordinary
- * method name in Rust — `RangeSource::fetch` is the trait the HIBP transport
- * implements, and flagging it would have taught everyone to ignore this check on its
- * first run, which is how a guard stops guarding.
- */
-const RUST = new Set(['.rs']);
-const WEB = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.html']);
-
-const CLIENTS = [
-  { name: 'ureq client', re: /\bureq\s*::/, exts: RUST },
-  { name: 'reqwest', re: /\breqwest\s*::/, exts: RUST },
-  { name: 'hyper client', re: /\bhyper\s*::\s*Client/, exts: RUST },
-  { name: 'std TcpStream', re: /\bTcpStream\s*::\s*connect/, exts: RUST },
-  { name: 'fetch()', re: /(?<![\w.])fetch\s*\(/, exts: WEB },
-  { name: 'XMLHttpRequest', re: /\bXMLHttpRequest\b/, exts: WEB },
-  { name: 'EventSource', re: /\bnew\s+EventSource\b/, exts: WEB },
-  { name: 'WebSocket', re: /\bnew\s+WebSocket\b/, exts: WEB },
-  { name: 'navigator.sendBeacon', re: /\bsendBeacon\s*\(/, exts: WEB },
-  { name: 'tauri http plugin', re: /tauri[-_]plugin[-_]http/, exts: new Set([...RUST, ...WEB]) },
-
-  // ── ADD-001: no icon URL is ever constructed at runtime ────────────────────
-  //
-  // The clients above catch code that *makes* a request. These catch code that *hands a
-  // URL to the platform* and lets it make the request — which is how the favicon leak
-  // arrives in practice: not `fetch()`, but `<img src={`https://${domain}/favicon.ico`}>`.
-  // A URL in an `<img>` is still a packet on the wire, and it still names the service.
-  //
-  // Web files only. A Rust string containing a URL is a fixture, an error message or the
-  // theme validator's own rejection test; the two files that genuinely make requests are
-  // on the sanctioned list, and the host list above applies to them regardless.
-  //
-  // The bundled tiles pass because they are root-relative — `/icons/<key>.svg`, resolved
-  // against the app's own origin under `img-src 'self'`. `IconDto` carries a bundle key
-  // and never a domain, so there is nothing in the webview to build a remote URL from
-  // even by accident; these rules exist so that stays true.
-  { name: 'absolute URL in web source', re: /\bhttps?:\/\//, exts: WEB, shipped: true },
-  {
-    name: 'protocol-relative URL in a src/href',
-    re: /\b(?:src|href)\s*=\s*\{?\s*[`"']\s*\/\//,
-    exts: WEB,
-    shipped: true,
-  },
-  {
-    name: 'favicon probe',
-    re: /favicon\.(?:ico|png|svg|jpg)/i,
-    exts: new Set([...RUST, ...WEB]),
-  },
-  {
-    name: 'well-known probe',
-    re: /\.well-known\/(?:change-password|security\.txt)/i,
-    exts: new Set([...RUST, ...WEB]),
-  },
-];
-
-/**
- * `@import url(...)` and remote `url()` — **stylesheets only**.
- *
- * Not applied to Rust or TypeScript, and the reason is a test that would otherwise
- * fail this check for doing its job: `theme_import`'s fixtures contain
- * `url(https://attacker.example)` precisely to assert the validator rejects it. A
- * remote URL inside a Rust string is not a stylesheet, and flagging it would mean the
- * only way to pass is to stop testing the attack.
- *
- * Real remote CSS is still caught, in CSS, and known hosts are caught everywhere by
- * `FORBIDDEN_HOSTS` regardless of language.
- */
-const STYLESHEET = new Set(['.css', '.html']);
-const CSS_REMOTE = [
-  { name: 'remote @import', re: /@import\s+(?:url\()?['"]?https?:/i },
-  { name: 'remote url()', re: /url\(\s*['"]?(?:https?:)?\/\//i },
-];
 
 function walk(dir, out = []) {
   let entries;
@@ -158,12 +89,15 @@ function walk(dir, out = []) {
 const findings = [];
 let scanned = 0;
 const sanctionedSeen = new Set();
+const selfSeen = new Set();
 
 for (const dir of SCAN_DIRS) {
   for (const file of walk(join(ROOT, ...dir.split('/')))) {
     const rel = relative(ROOT, file);
-    // This script names the forbidden hosts by definition.
-    if (rel === join('scripts', 'check-network.mjs')) continue;
+    if (SELF.has(rel)) {
+      selfSeen.add(rel);
+      continue;
+    }
 
     scanned += 1;
     const source = readFileSync(file, 'utf8');
@@ -177,31 +111,10 @@ for (const dir of SCAN_DIRS) {
     // them — a CDN host is wrong in a build script too, because build scripts get copied.
     const isShipped = rel.startsWith(`src${sep}`) && !rel.startsWith(`src-tauri${sep}`);
 
-    code.forEach((line, i) => {
-      const at = `${rel}:${i + 1}`;
-      const shown = (original[i] ?? '').trim().slice(0, 90);
-
-      for (const host of FORBIDDEN_HOSTS) {
-        if (line.includes(host)) {
-          // No exemption, sanctioned or not. HIBP and the update endpoint are not
-          // on this list; a CDN or favicon host in either of them is still a bug.
-          findings.push(`${at}  remote host  ${host}   ${shown}`);
-        }
-      }
-
-      if (STYLESHEET.has(ext)) {
-        for (const { name, re } of CSS_REMOTE) {
-          if (re.test(line)) findings.push(`${at}  ${name}   ${shown}`);
-        }
-      }
-
-      if (isSanctioned) return;
-      for (const { name, re, exts, shipped } of CLIENTS) {
-        if (!exts.has(ext)) continue;
-        if (shipped === true && !isShipped) continue;
-        if (re.test(line)) findings.push(`${at}  ${name}   ${shown}`);
-      }
-    });
+    for (const { line, rule, detail } of scanSource({ code, ext, isShipped, isSanctioned })) {
+      const shown = (original[line - 1] ?? '').trim().slice(0, 90);
+      findings.push(`${rel}:${line}  ${rule}  ${detail}   ${shown}`);
+    }
 
     if (isSanctioned) sanctionedSeen.add(rel);
   }
@@ -223,9 +136,21 @@ for (const [file, purpose] of SANCTIONED) {
   }
 }
 
+// The same reasoning applied to the self-exclusions. An exclusion for a file that
+// no longer exists is a hole waiting for something to be renamed into it, and it is
+// silent — the check keeps passing either way, which is exactly why it needs saying.
+for (const file of SELF) {
+  if (!selfSeen.has(file)) {
+    findings.push(
+      `${file}  missing  this file is excluded from the scan because it defines or ` +
+        `tests the rules, but was not found. Remove the exclusion or restore the file.`,
+    );
+  }
+}
+
 console.log(
   `check:network — scanned ${scanned} files, ${SANCTIONED.size} sanctioned ` +
-    `(HIBP range queries, the signed update check)`,
+    `(HIBP range queries, the signed update check), ${SELF.size} self-excluded`,
 );
 
 if (findings.length > 0) {
