@@ -73,10 +73,12 @@ pub enum AppError {
     DataDirectory,
     /// A feature's bundled data is not present in this build.
     ///
-    /// Today: the EFF wordlist, whose licence THIRD-PARTY-NOTICES.md still
-    /// records as unconfirmed. Reported rather than worked around, because the
-    /// alternative is generating passphrases from a short list while claiming the
-    /// entropy of a complete one.
+    /// Nothing reports this today. It existed for the EFF wordlist, which was
+    /// unvendored for three runs while its licence was unconfirmed, and is now
+    /// bundled — but the variant stays, because the reason it existed has not
+    /// gone away: `passphrase` still refuses any list that is not exactly 7,776
+    /// distinct entries. Generating from a short list while reporting the
+    /// entropy of a complete one is the failure this refuses to have.
     FeatureUnavailable,
     /// A storage operation failed. No detail crosses the boundary.
     Storage,

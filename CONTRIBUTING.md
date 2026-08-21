@@ -27,9 +27,9 @@ pnpm install
 pnpm tauri dev
 ```
 
-The passphrase generator needs the EFF long wordlist, which is not vendored for licensing reasons.
-[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) says where to get it and where to put it.
-Without it, that one feature reports itself unavailable — everything else works.
+Everything the app needs is in the repository; there is nothing to download separately. The EFF
+long wordlist the passphrase generator uses is vendored and checked against its published hash by
+`pnpm check:wordlist`.
 
 ### Windows is the only platform anyone can verify
 

@@ -148,9 +148,9 @@ pnpm tauri dev            # run in development
 pnpm tauri build          # produce an installer
 ```
 
-The passphrase generator needs the EFF long wordlist, which is not vendored — see
-[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) for where to put it. Without it that one
-feature reports itself unavailable rather than generating from a short list.
+Everything is bundled; there is nothing to fetch or drop in. The EFF long wordlist the passphrase
+generator uses is vendored and verified against eff.org by hash — see
+[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
 
 ### Tests and the gate
 

@@ -7,12 +7,14 @@ directory, which carry their own terms.
 Software dependencies are covered separately by `cargo deny check licenses` and the allow-list in
 `deny.toml`; this file is for **data and assets** shipped inside the binary.
 
-> Status: **three sections are live** — the Mozilla CA root store, compiled in since run 2, and the
-> Manrope typeface and brand icons, vendored in run 3. Everything else is a placeholder for an asset that has not
-> been vendored, and **an asset may not ship before its licence line is filled in.** ADD-001 and
-> SPEC-V1 §7.4 both make that a precondition, not a follow-up. A section headed "run 3" with a
-> blank licence field is not bundled; check the dependency or the assets directory rather than
-> trusting the heading.
+> Status: **every asset below is vendored and live** — the Mozilla CA root store since run 2, the
+> Manrope typeface and brand icons in run 3, and the EFF wordlist as of 2026-08-21. Nothing here is
+> a placeholder any more.
+>
+> The rule that produced those placeholders still stands: **an asset may not ship before its
+> licence line is filled in.** ADD-001 and SPEC-V1 §7.4 both make that a precondition rather than a
+> follow-up, which is why the passphrase generator spent three runs reporting itself unavailable
+> instead of generating from an unlicensed list.
 
 ---
 
@@ -179,20 +181,67 @@ Three cuts, each on a stated basis:
 3. Locally generated geometric mark, seeded from the registrable domain. No third-party asset, no
    notice required.
 
-## EFF long wordlist — run 3
+## EFF long wordlist — live
 
-Used by the passphrase generator (SPEC-V1 §7.3). 7,776 words, bundled, never fetched.
+Used by the passphrase generator (SPEC-V1 §7.3). 7,776 words, bundled in the binary, never
+fetched.
 
-| Field   | Value                                                                                                                                 |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Source  | _to be filled in when the list is vendored_                                                                                           |
-| Licence | _to be confirmed: the EFF publishes the list under CC BY 3.0 US — record the exact terms and attribution string here before shipping_ |
-| Path    | `src-tauri/assets/eff_large_wordlist.txt`, one entry per line as `<5 dice digits>\t<word>`                                            |
+| Field     | Value                                                                                                                                           |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Name      | EFF's Long Wordlist for random passphrases (`eff_large_wordlist.txt`)                                                                           |
+| Author    | Joseph Bonneau, for the Electronic Frontier Foundation                                                                                          |
+| Source    | https://www.eff.org/files/2016/07/18/eff_large_wordlist.txt                                                                                     |
+| Announced | https://www.eff.org/deeplinks/2016/07/new-wordlists-random-passphrases (19 July 2016)                                                           |
+| Licence   | Creative Commons Attribution — see the note below on which version                                                                              |
+| Path      | `src-tauri/assets/eff_large_wordlist.txt`, 7,776 lines of `<5 dice digits>` TAB `<word>`                                                        |
+| Verified  | sha256 `addd35536511597a02fa0a9ff1e5284677b8883b83e986e43f15a3db996b903e`, 108,800 bytes, byte-for-byte identical to the file served by eff.org |
 
-Not yet vendored. `services::generator::passphrase` is implemented and refuses any list that is not
-exactly 7,776 entries, so the feature fails closed rather than quietly generating weaker
-passphrases; `pnpm check:wordlist` reports the file as absent today and validates it strictly
-(count, distinctness, lowercase a–z) the moment it lands.
+### Attribution
+
+> EFF's Long Wordlist, by Joseph Bonneau for the Electronic Frontier Foundation
+> (https://www.eff.org/deeplinks/2016/07/new-wordlists-random-passphrases), used under a
+> Creative Commons Attribution licence. Unmodified.
+
+The file is vendored **unmodified** — the hash above is checked against the published one, so this
+is a verifiable claim rather than an assertion.
+
+### Which Creative Commons version, and why this file says both
+
+Two sources disagree and neither is obviously stale, so both are recorded rather than one being
+picked quietly:
+
+- **CC BY 3.0 US** is what the ecosystem cites almost universally — Debian's `diceware` package,
+  EFF's own `EFForg/eff_diceware` gem, and most reimplementations — usually alongside "copyright
+  Joseph Bonneau and EFF". It was plausibly EFF's site default in 2016 when the list was published.
+- **CC BY 4.0 International** is what https://www.eff.org/copyright states today: _"Any and all
+  original material on the EFF website may be freely distributed at will under the Creative Commons
+  Attribution 4.0 International License (CC-BY), unless otherwise noted."_ Neither the wordlist file
+  nor its announcement page notes otherwise, so on the face of it the site-wide default governs.
+
+**Nothing turns on it for us.** Both are plain attribution licences with no share-alike and no
+field-of-use restriction; the obligation either way is to credit the source and say whether the
+work was modified, which the block above does. Both are compatible with AGPL-3.0-or-later — CC BY
+4.0 is one-way compatible with GPLv3 by Creative Commons' own 2015 declaration, and CC BY 3.0
+imposes only attribution, which GPLv3 §7(b) expressly permits as an additional term.
+
+It is recorded rather than resolved because resolving it would mean asking EFF, and the answer
+would not change what this file has to say.
+
+### What the check does and does not protect
+
+`pnpm check:wordlist` asserts the list is exactly 7,776 entries and that every entry is distinct.
+Those two properties are the entire basis of the entropy figure: bits per word is
+log2(distinct entries), so a short or duplicated list silently costs entropy while the number the
+UI shows stays the same.
+
+It also constrains the character class to lowercase a–z with hyphens between letters. **That is a
+corruption check, not an entropy one**, and the distinction matters because an earlier version of
+the check got it wrong. Four entries in the genuine list are hyphenated — `drop-down` (line 2009),
+`felt-tip` (2528), `t-shirt` (6640), `yo-yo` (7748) — and the check rejected the real file,
+claiming that non-alphabetic entries make the generator overstate its entropy. They do not: all
+7,776 entries remain distinct with the hyphens present, so the figure is log2(7776) = 12.925 bits
+per word either way. A leading, trailing or doubled hyphen is still refused, because the published
+list contains none and their presence would mean the file had been mangled rather than downloaded.
 
 ## Two-factor directory — run 3, live
 
@@ -375,8 +424,9 @@ Five dev-only packages carry licences worth naming, none of which is distributed
    than by trusting the configuration: it lists four files — the executable plus all three
    documents.
 
-3. **The EFF wordlist is not vendored**, so the passphrase generator reports itself unavailable.
-   See the wordlist section above.
+3. ~~**The EFF wordlist is not vendored.**~~ **Resolved 2026-08-21.** Vendored and verified
+   byte-for-byte against eff.org; the passphrase generator is live. The only thing left open is
+   which Creative Commons version governs, which changes no obligation — see the wordlist section.
 
 ## How to reproduce this audit
 
