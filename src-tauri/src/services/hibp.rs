@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! The HIBP range transport — one of exactly three outbound requests (CLAUDE.md §4.7).
+//! The HIBP range transport — one of exactly two outbound requests (CLAUDE.md §4.7).
 //!
 //! Everything privacy-relevant about a breach check is decided in
 //! [`crate::services::breach`]: the SHA-1 split, which five characters may leave

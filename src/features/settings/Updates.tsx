@@ -8,7 +8,7 @@
  *
  * ## Why the copy is this blunt
  *
- * An update check is one of exactly three outbound requests the whole product makes
+ * An update check is one of exactly two outbound requests the whole product makes
  * (CLAUDE.md §4.7), and it is the only one that happens without the user asking. §7.5
  * requires *"a plain statement of exactly what leaves the device"*, so the endpoint's view
  * of the request — IP, version, platform — is stated on the surface that performs it, not

@@ -165,7 +165,7 @@ pub fn security_report_run(state: State<'_, AppState>) -> Result<SecurityReportD
 
 /// Refresh the HIBP range cache (SPEC-V1 §7.4).
 ///
-/// This is the *only* command that talks to HIBP, and one of exactly three
+/// This is the *only* command that talks to HIBP, and one of exactly two
 /// outbound requests in the product (CLAUDE.md §4.7). Everything about what leaves
 /// the machine is in [`crate::services::hibp`].
 ///

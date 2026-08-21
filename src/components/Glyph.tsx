@@ -4,8 +4,8 @@
  *
  * The design specifies Lucide icons and loads them from a CDN
  * (`unpkg.com/lucide@…`). That is a runtime network request, so it is out: CLAUDE.md
- * §4.7 permits exactly three and neither of the other two is an icon. `check:network`
- * fails the build on that host.
+ * §4.7 permits exactly two — an HIBP range query and the signed update manifest — and
+ * an icon is neither. `check:network` fails the build on that host.
  *
  * `lucide-react` is the same icon set as an npm dependency, so the glyphs ship inside
  * the bundle and nothing is fetched. It is a pure-render dependency — no I/O, no

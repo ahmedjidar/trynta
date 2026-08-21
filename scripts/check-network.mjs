@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// CLAUDE.md §4.7 / ADD-001 / SPEC-V1 §11 AC14: exactly three outbound requests exist
-// in this product, and adding a fourth is a spec change.
+// CLAUDE.md §4.7 / ADD-001 / SPEC-V1 §11 AC14: exactly two outbound requests exist
+// in this product, and adding a third is a spec change.
 //
 //   (a) HIBP range queries — k-anonymous, 5 hex characters, `Add-Padding: true`
 //   (b) the signed update manifest check
-//   (c) nothing else
+//
+// and nothing else — which is a statement about the absence of requests
+// rather than a third one.
 //
 // ADD-001's verification list asks for this in so many words: *"Grep the codebase: no
 // icon URL is constructed at runtime, ever."* This is that grep, run in CI.
@@ -30,7 +32,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 /**
  * The only files permitted to reach the network, and what each is for.
  *
- * Anything not on this list that names an HTTP client is a fourth request.
+ * Anything not on this list that names an HTTP client is a third request.
  */
 const SANCTIONED = new Map([
   [join('src-tauri', 'src', 'services', 'hibp.rs'), 'HIBP range queries (SPEC-V1 §7.4)'],
@@ -230,9 +232,10 @@ if (findings.length > 0) {
   console.error(`\n${findings.length} problem(s):\n`);
   for (const f of findings) console.error(`  ${f}`);
   console.error(
-    '\nExactly three outbound requests exist in this product and the third is ' +
-      '"nothing else" (CLAUDE.md §4.7). Icons are bundled and never fetched ' +
-      '(ADD-001). A fourth request is a spec change, not a patch.',
+    '\nExactly two outbound requests exist in this product — an HIBP range ' +
+      'query and the signed update manifest check (CLAUDE.md §4.7). Icons are ' +
+      'bundled and never fetched (ADD-001). A third request is a spec change, ' +
+      'not a patch.',
   );
   process.exit(1);
 }
