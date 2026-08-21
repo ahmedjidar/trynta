@@ -190,6 +190,16 @@ export function LockScreen({ exists, onUnlocked }: LockScreenProps) {
           </>
         )}
 
+        {/* HO-002's pre-unlock notice, placed where the handoff places it: in
+            normal flow directly after the field it describes and before the
+            submit button, so the beak reaches the field. `mt-3` stands in for the
+            handoff's `margin-top: 11px` — one pixel out, and the nearest step on
+            the 4pt scale, because a raw length here would be the only hardcoded
+            spacing outside the token layer. */}
+        <div className="mt-3">
+          <Notice />
+        </div>
+
         <Button
           type="submit"
           block
@@ -245,12 +255,6 @@ export function LockScreen({ exists, onUnlocked }: LockScreenProps) {
         >
           {mismatch ? 'Those do not match.' : (error ?? '')}
         </p>
-
-        {/* HO-002's pre-unlock notice, in normal flow after the controls it
-            describes. Last in the DOM so Tab reaches its close button after the
-            form rather than in the middle of it, and below the error line so a
-            message never has to appear between the field and its own card. */}
-        <Notice />
       </form>
     </div>
   );
