@@ -120,7 +120,11 @@ export function Generator({ onCopied, onFailed }: GeneratorProps) {
               // The slider is a character count; a passphrase is counted in words. Four
               // characters per word keeps one control meaningful for both.
               words: Math.max(3, Math.min(12, Math.round(length / 4))),
-              separator: '-',
+              // A space. Four EFF words are themselves hyphenated, so a hyphen
+              // separator makes word boundaries ambiguous when the phrase is read
+              // aloud or retyped — and the separator adds no entropy either way.
+              // See the note on `PassphraseOptions::default` in services/generator.rs.
+              separator: ' ',
               capitalise: false,
               numericSuffix: false,
             })

@@ -408,7 +408,22 @@ impl Default for PassphraseOptions {
     fn default() -> Self {
         Self {
             words: DEFAULT_WORDS,
-            separator: "-".to_owned(),
+            // A space, not a hyphen, and the reason is the wordlist rather than taste.
+            //
+            // Four of the EFF list's 7,776 entries contain a hyphen — `drop-down`,
+            // `felt-tip`, `t-shirt`, `yo-yo` — so a hyphen separator appears both
+            // between words and inside them. About one four-word passphrase in 486 comes
+            // out like `caloric-clapper-felt-tip-uncouth`: five segments, four words, and
+            // no way to tell which is which by looking. `t-shirt-superhero-going-surface`
+            // puts the ambiguity in the first token.
+            //
+            // That costs the one thing a passphrase is for. Its whole advantage over a
+            // random string is that a person can read it aloud, carry it across a room
+            // and type it back, and a separator that also occurs inside words removes
+            // exactly that. The trade is free: the separator contributes zero bits —
+            // `passphrase_entropy_bits` ignores it, and the attacker knows the scheme —
+            // so nothing is given up in exchange.
+            separator: " ".to_owned(),
             capitalise: false,
             numeric_suffix: false,
         }
