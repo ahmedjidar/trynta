@@ -18,16 +18,16 @@ there rather than repeating it.
 
 ## The document set, and what each one is
 
-| Document    | What it is                                                                                           | Where its substance lives in this repo                                                                                                                                                                                                            |
-| ----------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **SPEC-V1** | The V1 product and security specification. Numbered sections; §11 is the acceptance criteria.        | The acceptance criteria are executable: [`tests/acceptance/`](../tests/acceptance) and [`scripts/verify-v1.mjs`](../scripts/verify-v1.mjs), both frozen. Security invariants: [`SECURITY.md`](../SECURITY.md) and [`CLAUDE.md`](../CLAUDE.md) §4. |
-| **SPEC-V2** | Sharing and multi-owner credentials. **Not implemented.**                                            | Nothing. No code implements it; the X25519 keypair is generated and reserved for it.                                                                                                                                                              |
-| **SPEC-V3** | Sync relay. **Not implemented.**                                                                     | Nothing.                                                                                                                                                                                                                                          |
-| **ADD-001** | Brand icons: bundled only, never fetched.                                                            | [`THIRD-PARTY-NOTICES.md`](../THIRD-PARTY-NOTICES.md) and [`scripts/build-icon-map.ts`](../scripts/build-icon-map.ts), whose header carries the full rationale. Summarised below.                                                                 |
-| **ADD-002** | Scaffolding review: dependency and crate-selection decisions.                                        | [`deny.toml`](../deny.toml), `Cargo.toml` comments, [`THIRD-PARTY-NOTICES.md`](../THIRD-PARTY-NOTICES.md). Summarised below.                                                                                                                      |
-| **ADD-003** | Run-1 checkpoint decisions: crate layout, backoff, backup format.                                    | Summarised below.                                                                                                                                                                                                                                 |
-| **ADD-004** | Run-2 checkpoint decisions: `app_cache`, key-id reservations, backup body layout, migration pinning. | Summarised below. **This one had no tracked explanation before.**                                                                                                                                                                                 |
-| **ADD-005** | Platform policy: Windows verified, macOS unverified.                                                 | [`SECURITY.md`](../SECURITY.md), [`MACOS-UNVERIFIED.md`](../MACOS-UNVERIFIED.md), [`CLAUDE.md`](../CLAUDE.md) §6. Summarised below.                                                                                                               |
+| Document    | What it is                                                                                                                      | Where its substance lives in this repo                                                                                                                                                                                                            |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **SPEC-V1** | The V1 product and security specification. Numbered sections; §11 is the acceptance criteria.                                   | The acceptance criteria are executable: [`tests/acceptance/`](../tests/acceptance) and [`scripts/verify-v1.mjs`](../scripts/verify-v1.mjs), both frozen. Security invariants: [`SECURITY.md`](../SECURITY.md) and [`CLAUDE.md`](../CLAUDE.md) §4. |
+| **SPEC-V2** | Sharing and multi-owner credentials. **Not implemented.**                                                                       | Nothing. No code implements it; the X25519 keypair is generated and reserved for it.                                                                                                                                                              |
+| **SPEC-V3** | Sync relay. **Not implemented.**                                                                                                | Nothing.                                                                                                                                                                                                                                          |
+| **ADD-001** | Brand icons: bundled only, never fetched.                                                                                       | [`THIRD-PARTY-NOTICES.md`](../THIRD-PARTY-NOTICES.md) and [`scripts/build-icon-map.ts`](../scripts/build-icon-map.ts), whose header carries the full rationale. Summarised below.                                                                 |
+| **ADD-002** | Scaffolding review: dependency and crate-selection decisions.                                                                   | [`deny.toml`](../deny.toml), `Cargo.toml` comments, [`THIRD-PARTY-NOTICES.md`](../THIRD-PARTY-NOTICES.md). Summarised below.                                                                                                                      |
+| **ADD-003** | Run-1 checkpoint decisions: crate layout, backoff, backup format.                                                               | Summarised below.                                                                                                                                                                                                                                 |
+| **ADD-004** | Run-2 checkpoint decisions: `app_cache`, key-id reservations, backup body layout, migration pinning, the `app_state` additions. | Summarised below. **This one had no tracked explanation before.**                                                                                                                                                                                 |
+| **ADD-005** | Platform policy: Windows verified, macOS unverified.                                                                            | [`SECURITY.md`](../SECURITY.md), [`MACOS-UNVERIFIED.md`](../MACOS-UNVERIFIED.md), [`CLAUDE.md`](../CLAUDE.md) §6. Summarised below.                                                                                                               |
 
 **Addendums override the specs.** Where ADD-005 and SPEC-V1 §8 disagree about platform parity,
 ADD-005 wins — see below.
@@ -126,6 +126,24 @@ version bump and a forward migration with a test.
 **⑤ `update_checks_enabled` lives in `app_state`.** In the clear, with the theme, because the
 updater has to know whether it may run before the vault is unlocked. It reveals nothing about vault
 contents.
+
+**⑦ The two guided-tour flags live in `app_state` too** (added 2026-08-21). `tour_unlock_seen` and
+`tour_app_seen` record whether the first-run explanation has been shown. The first has no
+alternative: the card it governs renders on the lock screen, so a flag inside the vault would only
+be legible after the moment it decides. The second is only ever read after unlock and could have
+gone in `app_cache`; it is beside its pair because a backup restore carries the settings blob and
+deliberately does not carry `app_state`, so splitting them would make a restore replay one card and
+not the other four. Neither is load-bearing, and both fail towards _showing_ — an absent or corrupt
+value reads as not-seen, because one extra card costs a user nothing and a suppressed one costs
+them the sentence saying their master password cannot be recovered. See
+[`crates/keyring-store/src/app_state.rs`](../crates/keyring-store/src/app_state.rs) and
+[`src-tauri/src/services/tour.rs`](../src-tauri/src/services/tour.rs).
+
+Whether the tour replays is decided by the **build profile**, not by configuration: `pnpm tauri dev`
+shows it every launch, a release build shows it once ever, and the switch is
+`cfg!(debug_assertions)`. An environment variable would have worked on the day it was written and
+then rotted — one left set in a shell profile or a launcher turns a shipped binary into one that
+nags forever, with nothing in the artefact to say so.
 
 ## ADD-005 — Windows is verified, macOS is not
 

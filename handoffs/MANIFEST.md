@@ -7,6 +7,7 @@ the design it implements.
 | ------ | ------------------------------------------------------------------ | ------------------------------------------ | ---------- | ------------------------------ | ----------- |
 | HO-001 | Shell, list, detail, generator, security, settings, palette, lock  | Claude Design DSL prototype + components.md | 2026-08-17 | —                              | superseded  |
 | HO-002 | The same surfaces, as a working React + TypeScript + Tailwind app  | `keyring-tsx/` source tree                  | 2026-08-18 | HO-001, for visual fidelity     | partial     |
+| HO-002g | Guided tour: pre-unlock notice and the four-card anchored sequence | `guided_tour/guided-tour/` — CSS, JS, and four documents | 2026-08-21 | the tour's engineering-designed first pass | full |
 
 **HO-001 — superseded, kept.** It is what the run-1 to run-3 UI was built against, and its
 `components.md` and `contrast-report.md` remain the reference for anything HO-002 does not draw:
@@ -28,6 +29,25 @@ around Manrope's metrics. Two woff2 subsets (40 KB total, SIL OFL 1.1) are vendo
 
 Not ported, deliberately: `PeopleView`, `ShareSheet`, and the share/roles/link rows inside the
 settings and detail surfaces. Those are SPEC-V2/V3.
+
+**HO-002g — the guided tour, and it replaced a first pass rather than amending one.** The tour was
+built once from the written brief before any design existed, and that version is gone: its card,
+its placement module, its motion tokens and its keyframes were deleted, not adjusted. What ships is
+the handoff's — `guided-tour.css` vendored byte-identical (prettier-ignored so `diff` against
+`handoffs/` stays a real check), its DOM and class names reproduced exactly, and
+`GuidedTour.place()` ported line for line into `src/features/tour/place.ts`, which is the function
+ANCHORING.md says is exported so it can be unit-tested.
+
+Four values had no home in the token layer and were added to it rather than duplicated beside it,
+which is what HO-002g's own `tokens.css` asks for: **`--pop`** (elevation's missing middle tier —
+`--shadow-window` is a modal shadow and makes a 300px floating card read as a detached window),
+**`--ease-accel`** (genuinely absent: nothing in the product left deliberately), **`--duration-move`**
+(340ms, a card crossing the window rather than a control changing state) and **`--duration-micro`**
+(180ms, and the one duration deliberately outside the reduced-motion collapse — see below). The
+handoff's other twelve colour names and four motion names already existed here under different
+spellings and are aliased in `src/features/tour/guided-tour.tokens.css`, a file containing not one
+literal value. The mapping is exact rather than approximate because HO-002g's own demo declares
+this product's palette verbatim; it was drawn against these tokens.
 
 ## What changed from HO-002 during the port, and why
 
