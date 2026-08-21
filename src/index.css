@@ -12,6 +12,13 @@
  * contract, scrollbars, and the data-attribute rules that stand in for inline styles —
  * see `theme/dynamic.css` for why those cannot be inline.
  *
+ * The one exception is the guided tour, and it is an exception because it is a
+ * delivered component rather than a surface: `guided-tour.css` is HO-002's file,
+ * vendored byte-identical so it can be diffed against the handoff, and
+ * `guided-tour.tokens.css` maps the names it expects onto this token layer
+ * without introducing a single value of its own. Aliases first, then the
+ * component, as INTEGRATION.md §1 requires.
+ *
  * Zero hardcoded colour anywhere below the token layer. `pnpm check:tokens` enforces it
  * and exempts `src/theme/tokens.css` alone.
  */
@@ -21,3 +28,5 @@
 @import './theme/tailwind.css';
 @import './theme/base.css';
 @import './theme/dynamic.css';
+@import './features/tour/guided-tour.tokens.css';
+@import './features/tour/guided-tour.css';

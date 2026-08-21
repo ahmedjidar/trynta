@@ -179,7 +179,10 @@ export function Generator({ onCopied, onFailed }: GeneratorProps) {
           Every password is generated on this device. Nothing leaves it unencrypted.
         </p>
 
-        <div className="bg-surface-raised shadow-card mt-6 rounded-lg p-5">
+        {/* The guided tour's step 2 points here: the value and the entropy
+            read-out are exactly what its copy describes, and the controls below
+            are not, so a card placed underneath covers nothing it explains. */}
+        <div data-tour="generator" className="bg-surface-raised shadow-card mt-6 rounded-lg p-5">
           <output
             className="text-secret-xl block min-h-16 font-mono font-medium tracking-tight break-all"
             data-selectable

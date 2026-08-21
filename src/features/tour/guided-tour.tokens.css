@@ -1,0 +1,116 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/*
+ * The guided-tour handoff's token contract, mapped onto this app's token layer.
+ *
+ * HO-002's `guided-tour.css` is vendored verbatim and reads twelve colour names
+ * and five motion names that it deliberately does not define — README.md calls
+ * it a token contract and INTEGRATION.md §1 says to alias, never to hardcode:
+ *
+ *   > Every name you are missing gets an alias, not a hardcoded value.
+ *
+ * So this file is pure indirection. **There is not one literal value in it.**
+ * Every declaration is a `var()` pointing into `src/theme/tokens.css`, which
+ * remains the single place in the codebase where a colour, a duration or a
+ * curve is actually written down. Change a token and the tour follows; there is
+ * no second palette to keep in step.
+ *
+ * The colour mapping is exact rather than approximate, and that is not luck:
+ * the handoff's own demo declares this product's palette verbatim
+ * (`#9DA5F5`, `#0B0E14`, `#F5F6FA` …), so it was drawn against these tokens.
+ *
+ * Four of the five motion values map onto the existing scale exactly, which is
+ * the outcome MOTION.md hoped for — "the only way the tour can be provably on
+ * the same curve as the rest of the UI". Three had no home and were added to
+ * the token layer instead of here, where their provenance is recorded:
+ * `--pop`, `--ease-accel`, `--duration-move` and `--duration-micro`.
+ */
+
+:root {
+  /* ── Surfaces and lines ─────────────────────────────────────────────────── */
+  --panel: var(--surface-panel);
+  --line: var(--border-hairline);
+  --line-2: var(--border-strong);
+  --hover: var(--surface-hover);
+
+  /* ── Text ───────────────────────────────────────────────────────────────── */
+  --text: var(--text-primary);
+  --text-2: var(--text-secondary);
+  --text-3: var(--text-muted);
+
+  /* ── Accent ─────────────────────────────────────────────────────────────── */
+  --accent-hi: var(--accent-hover);
+  --accent-fg: var(--text-on-accent);
+  --accent-soft: var(--accent-subtle);
+
+  /* `--accent` needs no alias: the handoff and this app already agree on the
+     name as well as the value. */
+
+  /* ── Status ─────────────────────────────────────────────────────────────── */
+  /* `--warn`, never `--danger`. COPY.md: nothing has gone wrong on the
+     pre-unlock card; an unrecoverable master password is how the product works. */
+  --warn: var(--status-warning);
+
+  /* ── Motion ─────────────────────────────────────────────────────────────── */
+  --ease-decel: var(--ease-spring);
+  --dur-in: var(--duration-slow);
+  --dur-out: var(--duration-quick);
+  --dur-move: var(--duration-move);
+  --dur-swap: var(--duration-moderate);
+  --dur-micro: var(--duration-micro);
+
+  /* `--ease-accel` and `--pop` are read under their handoff names directly,
+     because the token layer adopted those names when it took the values. */
+}
+
+/*
+ * One override, and it is a conflict between two reduced-motion policies rather
+ * than a style choice.
+ *
+ * `theme/base.css` collapses every animation and transition in the document to
+ * 0.01ms with `!important` under `prefers-reduced-motion`. That is right for the
+ * rest of the app, where every duration comes from a token and the token layer
+ * has already been clamped — the blanket rule is a belt for anything that names
+ * a duration inline.
+ *
+ * The tour names durations inline **on purpose**. HO-002's MOTION.md is explicit
+ * that its reduced-motion variant swaps the *values* rather than switching
+ * animation off, and gives the reason: a bare `animation: none` mid-entrance
+ * leaves the card stuck at an 8px offset and 97% scale, permanently. Its own
+ * media block therefore points every animation at an opacity-only keyframe at
+ * 120ms in and 100ms out, and leaves hover and focus alone.
+ *
+ * Under the blanket rule those become 0.01ms and the considered variant is
+ * indistinguishable from no variant at all. So the tour re-asserts its own
+ * numbers, scoped to its own class names, and nothing else in the app is
+ * touched. The values below are HO-002's, not new ones.
+ *
+ * **Inside `@layer base`, and that is load-bearing rather than tidy.** For
+ * `!important` declarations the cascade inverts its layer order and treats
+ * unlayered styles as the *last* layer — so an unlayered `!important` loses to
+ * one inside a layer. The first version of this block sat outside any layer,
+ * looked correct, and was overridden in full; the computed durations were still
+ * 0.01ms. Measured in a real window, not deduced. Inside the same layer the two
+ * rules are peers again and `.gt-card--enter` beats `*` on specificity, which is
+ * how it should have been won in the first place.
+ */
+@layer base {
+  @media (prefers-reduced-motion: reduce) {
+    .gt-card--enter,
+    .gt-notice {
+      animation-duration: 120ms !important;
+    }
+
+    .gt-card--exit,
+    .gt-notice--exit,
+    .gt-swap--a,
+    .gt-swap--b {
+      animation-duration: 100ms !important;
+    }
+
+    .gt-close,
+    .gt-skip,
+    .gt-cta {
+      transition-duration: var(--duration-micro) !important;
+    }
+  }
+}

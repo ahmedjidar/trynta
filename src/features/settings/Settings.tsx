@@ -26,9 +26,10 @@
  * ## The statement at the bottom is not filler
  *
  * §7.5 asks for *"a plain statement of exactly what leaves the device"*. There are exactly
- * three permitted outbound requests (CLAUDE.md §4.7) and one of them is "nothing else", so
- * the list is short and checkable — which is the point of writing it where a user can read
- * it rather than only in a spec.
+ * two permitted outbound requests (CLAUDE.md §4.7) — the HIBP range query and the signed
+ * update manifest — so the list is short and checkable, which is the point of writing it
+ * where a user can read it rather than only in a spec. The third item below is "nothing
+ * else", which is a statement about the absence of requests rather than one of them.
  */
 
 import { useCallback, useState } from 'react';
@@ -50,6 +51,7 @@ import {
   themeImportFile,
 } from '../../ipc';
 import { ReauthPrompt } from '../account/ReauthPrompt';
+import { useTour } from '../tour/store';
 import { ImportedThemes } from './ImportedThemes';
 import { ThemeFormat } from './ThemeFormat';
 import type { SettingsDto, SettingsPatch } from '../../ipc';
@@ -156,6 +158,9 @@ export function Settings({
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
+  const tourReplays = useTour((s) => s.replay);
+  const restartTour = useTour((s) => s.restart);
+  const [replaying, setReplaying] = useState(false);
 
   const patch = useCallback(
     (next: SettingsPatch) => {
@@ -444,6 +449,10 @@ export function Settings({
                 tabIndex={0}
                 data-focus-ring
                 aria-label="Backup and restore"
+                // The guided tour's step 4 points here. Backup lives one level
+                // inside this row, so the step selects Settings and rings the row
+                // that opens it rather than driving two navigations deep.
+                data-tour="backup"
               >
                 <RowText
                   name="Backup and restore"
@@ -489,6 +498,42 @@ export function Settings({
                     patch({ updateChecksEnabled: !settings.updateChecksEnabled });
                   }}
                 />
+              </GroupedRow>
+            </GroupedList>
+          </section>
+
+          <section className="mt-7">
+            <SectionLabel>Help</SectionLabel>
+            <GroupedList className="mt-2">
+              <GroupedRow className="min-h-[60px] py-2.5">
+                <RowText
+                  name="Guided tour"
+                  description={
+                    tourReplays
+                      ? 'This is a development build, so the tour runs on every launch regardless of this button.'
+                      : 'Shows the four introduction cards again now, and the master-password card the next time the vault is locked.'
+                  }
+                />
+                <Button
+                  variant="outline"
+                  disabled={replaying}
+                  onClick={() => {
+                    setReplaying(true);
+                    restartTour().then(
+                      () => {
+                        setReplaying(false);
+                        // No toast: the tour itself appears, which is a louder
+                        // confirmation than a pill saying it will.
+                      },
+                      () => {
+                        setReplaying(false);
+                        onFailed('Could not reset the tour');
+                      },
+                    );
+                  }}
+                >
+                  Replay the tour
+                </Button>
               </GroupedRow>
             </GroupedList>
           </section>

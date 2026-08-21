@@ -28,7 +28,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 
 import { cn } from '../lib/cn';
 import { isWindowMaximized, onWindowResized } from '../ipc';
@@ -36,9 +36,17 @@ import { isWindowMaximized, onWindowResized } from '../ipc';
 export interface WindowFrameProps {
   /** The window's contents. Absent for the one frame before the vault state is known. */
   children?: ReactNode;
+  /**
+   * The frame element, for the guided tour's positioning context.
+   *
+   * HO-002 INTEGRATION.md §2: the tour is bounded by the app's chrome, not the
+   * viewport, and its frame must be `position: relative` — which this already is,
+   * along with the `overflow: hidden` the handoff calls recommended.
+   */
+  frameRef?: Ref<HTMLDivElement> | undefined;
 }
 
-export function WindowFrame({ children }: WindowFrameProps) {
+export function WindowFrame({ children, frameRef }: WindowFrameProps) {
   const [maximized, setMaximized] = useState(false);
 
   useEffect(() => {
@@ -65,6 +73,7 @@ export function WindowFrame({ children }: WindowFrameProps) {
 
   return (
     <div
+      ref={frameRef}
       data-maximized={maximized ? '' : undefined}
       className={cn(
         'bg-surface-app text-text-primary relative flex h-full w-full flex-col overflow-hidden',

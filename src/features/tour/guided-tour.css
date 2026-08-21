@@ -1,0 +1,251 @@
+/* guided-tour — component styles.
+ *
+ * Every colour, radius and shadow here is a var(). The module ships no palette of its
+ * own: it borrows yours. tokens.css defines the five values a typical app is missing.
+ * If your app already has them under different names, alias them and delete tokens.css.
+ */
+
+/* ---------------------------------------------------------------- layer */
+
+.gt-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 5;              /* above content, below modals and the lock screen */
+  pointer-events: none;    /* the app stays usable behind the tour */
+}
+
+.gt-ring {
+  position: absolute;
+  box-shadow: 0 0 0 1.5px var(--accent), 0 0 0 7px var(--accent-soft);
+  transition:
+    left var(--dur-move) var(--ease-decel),
+    top var(--dur-move) var(--ease-decel),
+    width var(--dur-move) var(--ease-decel),
+    height var(--dur-move) var(--ease-decel),
+    opacity var(--dur-out) var(--ease-accel);
+}
+
+.gt-ring--exit { opacity: 0; }
+
+/* ----------------------------------------------------------------- card */
+
+.gt-card,
+.gt-notice {
+  position: absolute;
+  width: 300px;
+  box-sizing: border-box;
+  background: var(--panel);
+  border-radius: 16px;
+  box-shadow: var(--pop);
+  color: var(--text);
+  pointer-events: auto;
+  text-align: left;
+}
+
+.gt-notice {
+  position: relative;
+  width: auto;
+  animation: gt-in-y var(--dur-in) var(--ease-decel) 240ms both;
+}
+
+.gt-notice--exit { animation: gt-out var(--dur-out) var(--ease-accel) both; }
+
+/* The card only animates its arrival and its departure. Between steps it *moves*. */
+.gt-card--enter[data-side="right"] { animation: gt-in-x var(--dur-in) var(--ease-decel) both; }
+.gt-card--enter[data-side="left"]  { animation: gt-in-x-rev var(--dur-in) var(--ease-decel) both; }
+.gt-card--enter[data-side="bottom"] { animation: gt-in-y var(--dur-in) var(--ease-decel) both; }
+.gt-card--enter[data-side="top"]    { animation: gt-in-y-rev var(--dur-in) var(--ease-decel) both; }
+
+.gt-card--settled {
+  animation: none;
+  transition: left var(--dur-move) var(--ease-decel), top var(--dur-move) var(--ease-decel);
+}
+
+.gt-card--exit { animation: gt-out var(--dur-out) var(--ease-accel) both; }
+
+/* ----------------------------------------------------------------- beak */
+
+.gt-beak {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: var(--panel);
+  transform: rotate(45deg);
+  transition: left var(--dur-move) var(--ease-decel), top var(--dur-move) var(--ease-decel);
+}
+
+/* Only the two outward-facing edges carry the hairline, so it never crosses the card. */
+[data-side="right"]  > .gt-beak { border-left: .5px solid var(--line-2); border-bottom: .5px solid var(--line-2); }
+[data-side="left"]   > .gt-beak { border-right: .5px solid var(--line-2); border-top: .5px solid var(--line-2); }
+[data-side="bottom"] > .gt-beak { border-left: .5px solid var(--line-2); border-top: .5px solid var(--line-2); }
+[data-side="top"]    > .gt-beak { border-right: .5px solid var(--line-2); border-bottom: .5px solid var(--line-2); }
+
+/* The notice is in normal flow, so its beak is centred rather than computed. */
+.gt-notice[data-side="bottom"] > .gt-beak { top: -7px; left: 50%; margin-left: -7px; }
+.gt-notice[data-side="top"]    > .gt-beak { top: auto; bottom: -7px; left: 50%; margin-left: -7px; }
+.gt-notice[data-side="right"]  > .gt-beak { left: -7px; top: 22px; }
+.gt-notice[data-side="left"]   > .gt-beak { left: auto; right: -7px; top: 22px; }
+
+/* -------------------------------------------------------------- content */
+
+.gt-swap,
+.gt-notice-inner { position: relative; padding: 14px 16px; }
+
+.gt-swap--a { animation: gt-swap-a var(--dur-swap) var(--ease-decel) both; }
+.gt-swap--b { animation: gt-swap-b var(--dur-swap) var(--ease-decel) both; }
+
+.gt-head { display: flex; align-items: center; gap: 8px; height: 20px; }
+
+.gt-eyebrow {
+  flex: 1;
+  min-width: 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.gt-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 19px;
+  margin: 5px 0 0;
+  color: var(--text);
+}
+
+.gt-body {
+  font-size: 12.5px;
+  line-height: 19px;
+  margin: 5px 0 0;
+  color: var(--text-2);
+  text-wrap: pretty;
+}
+
+.gt-warn {
+  display: flex;
+  gap: 8px;
+  margin-top: 11px;
+  padding-top: 11px;
+  border-top: 1px solid var(--line);
+}
+
+.gt-warn-icon { flex: 0 0 14px; color: var(--warn); margin-top: 2px; }
+.gt-warn-icon svg { width: 14px; height: 14px; display: block; }
+.gt-warn-text { font-size: 12px; line-height: 18px; color: var(--warn); text-wrap: pretty; }
+
+/* ------------------------------------------------------------- controls */
+
+.gt-close {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  margin: -3px -4px -3px 0;
+  padding: 0;
+  border: none;
+  outline: none;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    background var(--dur-micro) ease,
+    color var(--dur-micro) ease,
+    box-shadow var(--dur-micro) ease,
+    transform 120ms ease;
+}
+
+.gt-close svg { width: 13px; height: 13px; display: block; }
+.gt-close:hover { background: var(--hover); color: var(--text-2); }
+.gt-close:focus-visible { box-shadow: 0 0 0 3.5px var(--accent-soft); color: var(--text-2); }
+.gt-close:active { transform: scale(.92); }
+
+.gt-foot { display: flex; align-items: center; margin-top: 12px; }
+
+.gt-dots { display: flex; align-items: center; gap: 5px; flex: 1; }
+
+.gt-dot {
+  height: 5px;
+  width: 5px;
+  border-radius: 3px;
+  background: var(--line-2);
+  transition: width var(--dur-swap) var(--ease-decel), background-color var(--dur-swap) ease;
+}
+
+.gt-dot--past { background: var(--accent); }
+.gt-dot--on { width: 16px; background: var(--accent); }
+
+.gt-skip,
+.gt-cta {
+  height: 28px;
+  border: none;
+  outline: none;
+  border-radius: 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: background var(--dur-micro) ease, color var(--dur-micro) ease, transform 120ms ease;
+}
+
+.gt-skip { padding: 0 11px; margin-right: 2px; background: transparent; color: var(--text-2); }
+.gt-skip:hover { background: var(--hover); color: var(--text); }
+.gt-skip:focus-visible { box-shadow: 0 0 0 3.5px var(--accent-soft); }
+
+.gt-cta {
+  padding: 0 15px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  box-shadow: 0 4px 14px var(--accent-soft);
+}
+
+.gt-cta:hover { background: var(--accent-hi); }
+.gt-cta:focus-visible { box-shadow: 0 0 0 3.5px var(--accent-soft); }
+.gt-cta:active { transform: scale(.96); }
+
+/* ------------------------------------------------------------ keyframes */
+
+@keyframes gt-in-x     { from { opacity: 0; transform: translateX(-8px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes gt-in-x-rev { from { opacity: 0; transform: translateX(8px) scale(.97); }  to { opacity: 1; transform: none; } }
+@keyframes gt-in-y     { from { opacity: 0; transform: translateY(-8px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes gt-in-y-rev { from { opacity: 0; transform: translateY(8px) scale(.97); }  to { opacity: 1; transform: none; } }
+@keyframes gt-out      { from { opacity: 1; transform: none; } to { opacity: 0; transform: scale(.98); } }
+@keyframes gt-fade-in  { from { opacity: 0; } to { opacity: 1; } }
+
+/* Two identical keyframe sets. Alternating between them is what restarts the
+   crossfade on a step change without remounting the element. */
+@keyframes gt-swap-a { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+@keyframes gt-swap-b { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+
+/* --------------------------------------------------------- reduced motion
+   The values change; the animation is not merely switched off. A bare
+   `animation: none` would leave a mid-flight transform stuck on the card. */
+
+@media (prefers-reduced-motion: reduce) {
+  .gt-card--enter,
+  .gt-card--enter[data-side="right"],
+  .gt-card--enter[data-side="left"],
+  .gt-card--enter[data-side="bottom"],
+  .gt-card--enter[data-side="top"] { animation: gt-fade-in 120ms linear both; }
+
+  .gt-notice { animation: gt-fade-in 120ms linear 200ms both; }
+
+  .gt-card--exit,
+  .gt-notice--exit { animation: gt-out 100ms linear both; }
+
+  .gt-swap--a,
+  .gt-swap--b { animation: gt-fade-in 100ms linear both; }
+
+  .gt-card--settled,
+  .gt-ring,
+  .gt-beak,
+  .gt-dot { transition: none; }
+
+  .gt-close:active,
+  .gt-cta:active { transform: none; }
+}

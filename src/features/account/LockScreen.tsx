@@ -24,6 +24,12 @@
  *
  * ## First run
  *
+ * On the very first launch this also carries HO-002's pre-unlock notice
+ * (`features/tour`). It is a block element in normal flow rather than a floating
+ * card — the handoff's own instruction, and the right one here: this surface has
+ * nothing else on it for a floating card to be beside. It does not take focus
+ * away from the password field.
+ *
  * The design has no create-vault screen (recorded in handoffs/MANIFEST.md). Rather than
  * improvise a layout this reuses the lock screen's exactly and adds one confirm row,
  * because a vault created from a single unconfirmed field loses every password to one typo
@@ -33,6 +39,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 
 import { BrandMark } from '../../components/BrandMark';
+import { Notice } from '../tour/Notice';
 import { Button } from '../../components/Button';
 import { IpcError } from '../../ipc';
 import { accountCreate, accountUnlock, accountUnlockBiometric, biometricReady } from '../../ipc';
@@ -114,12 +121,20 @@ export function LockScreen({ exists, onUnlocked }: LockScreenProps) {
 
   return (
     <div
-      className="animate-lock-in bg-surface-app absolute inset-0 z-[7] flex items-center justify-center"
+      // A scroll pane, and `my-auto` on the form rather than `items-center` on
+      // this. The two look identical while everything fits and differ when it
+      // does not: `align-items: center` clips the *top* of an overflowing child,
+      // so at the window's own minimum height (620px, `tauri.conf.json`) the mark
+      // went off the top and the last line of the first-run card off the bottom.
+      // An auto margin resolves to zero in that case and the column simply
+      // scrolls. Measured at 940x620 before and after.
+      data-scroll-pane
+      className="animate-lock-in bg-surface-app absolute inset-0 z-[7] flex justify-center overflow-y-auto"
       role="dialog"
       aria-modal="true"
       aria-labelledby="lock-title"
     >
-      <form className="w-[296px] text-center" onSubmit={submit}>
+      <form className="my-auto w-[296px] shrink-0 py-6 text-center" onSubmit={submit}>
         {/* The mark stands on its own here rather than sitting on a coloured tile:
             the lock screen is the one surface with nothing else on it, and a badge
             around a logo is what you do when the logo is a letter. */}
@@ -230,6 +245,12 @@ export function LockScreen({ exists, onUnlocked }: LockScreenProps) {
         >
           {mismatch ? 'Those do not match.' : (error ?? '')}
         </p>
+
+        {/* HO-002's pre-unlock notice, in normal flow after the controls it
+            describes. Last in the DOM so Tab reaches its close button after the
+            form rather than in the middle of it, and below the error line so a
+            message never has to appear between the field and its own card. */}
+        <Notice />
       </form>
     </div>
   );

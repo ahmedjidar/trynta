@@ -160,6 +160,10 @@ export function ItemList({ items, risks, vaultNames, onCopy, onNew, modifierKey 
 
   return (
     <section
+      // The guided tour's step 1 points here (HO-002). The whole column rather
+      // than its header: ANCHORING.md's rule is that the ring should read as
+      // "this thing", and the thing the card describes is the list.
+      data-tour="items"
       className="border-hairline bg-surface-raised flex w-[clamp(var(--width-list),28%,440px)] shrink-0 flex-col border-r"
       aria-label="Items"
     >

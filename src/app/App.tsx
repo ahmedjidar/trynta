@@ -29,7 +29,7 @@
  * 'safe'"* applied to the surfaces that only borrow the result.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { Sidebar } from './Sidebar';
@@ -55,6 +55,8 @@ import { Vaults } from '../features/settings/Vaults';
 import { Updates } from '../features/settings/Updates';
 import { ItemDetail } from '../features/items/ItemDetail';
 import { ItemList } from '../features/items/ItemList';
+import { GuidedTour } from '../features/tour/GuidedTour';
+import { useTour } from '../features/tour/store';
 import { NewItemSheet } from '../features/items/NewItemSheet';
 import {
   useAllItems,
@@ -80,6 +82,15 @@ import type {
   VaultSummaryDto,
 } from '../ipc';
 import { useThemeStore } from '../theme/store';
+
+/**
+ * How long after unlocking the first tour card appears.
+ *
+ * Matches `--duration-slow`, the pane entry. A card that arrives on the same
+ * frame as the vault reads as something the unlock opened; one that arrives
+ * after the pane has settled reads as a separate, dismissible thing.
+ */
+const TOUR_START_MS = 260;
 
 /**
  * One client for the app's lifetime.
@@ -122,6 +133,9 @@ function Shell() {
   const forgetThemes = useThemeStore((s) => s.forget);
   const surface = useNavigation((s) => s.surface);
   const clearCache = useClearCache();
+  const loadTour = useTour((s) => s.load);
+  const showTour = useTour((s) => s.showApp);
+  const markUnlockSeen = useTour((s) => s.markUnlockSeen);
 
   const [platform, setPlatform] = useState({ modifierKey: 'Ctrl', os: 'windows' });
   const [toast, setToast] = useState<string | null>(null);
@@ -129,6 +143,10 @@ function Shell() {
   const [settings, setSettings] = useState<SettingsDto | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [tourArmed, setTourArmed] = useState(false);
+  // The tour's positioning context. HO-002 bounds the card by the app's chrome
+  // rather than the viewport, so it needs the frame element itself.
+  const frame = useRef<HTMLDivElement>(null);
   const lockBarDrag = useDragRegion();
 
   const unlocked = account?.state === 'unlocked';
@@ -163,6 +181,30 @@ function Shell() {
   const onFailed = useCallback((message: string) => {
     setToast(message);
   }, []);
+
+  useEffect(() => {
+    // Read once, at mount, and deliberately before unlock: the lock-screen card
+    // has to be decided while the vault is still closed, which is the whole
+    // reason its flag lives in `app_state` (SPEC-V1 §4.5).
+    void loadTour();
+  }, [loadTour]);
+
+  useEffect(() => {
+    // INTEGRATION.md §6: never before the app has painted its real content. The
+    // handoff's notice carries a 240ms entrance delay of its own for the same
+    // reason; the sequence is positioned rather than in flow, so its wait has to
+    // happen out here where the anchors are.
+    if (!unlocked) return undefined;
+    const timer = setTimeout(() => {
+      setTourArmed(true);
+    }, TOUR_START_MS);
+    // Disarmed on the way out, so a lock followed by an unlock waits again
+    // rather than flashing a card into the first frame of the reopened vault.
+    return () => {
+      clearTimeout(timer);
+      setTourArmed(false);
+    };
+  }, [unlocked]);
 
   useEffect(() => {
     // Reveal the window only once the theme has been applied. The window is created
@@ -322,6 +364,11 @@ function Shell() {
             // Clearing makes them refetch against an open vault instead of serving
             // their cached rejection.
             clearCache();
+            // The master-password card's moment has passed whether it was read or
+            // dismissed, and this is the first point a vault file is guaranteed to
+            // exist for the flag to be written to — on a fresh install there was
+            // nowhere to put it a moment ago.
+            markUnlockSeen();
             setAccount(next);
           }}
         />
@@ -330,7 +377,7 @@ function Shell() {
   }
 
   return (
-    <WindowFrame>
+    <WindowFrame frameRef={frame}>
       <TitleBar
         onOpenPalette={() => {
           setPaletteOpen(true);
@@ -405,6 +452,17 @@ function Shell() {
             setPaletteOpen(false);
           }}
           onLock={onLock}
+          modifierKey={platform.modifierKey}
+        />
+      ) : null}
+
+      {/* Suppressed rather than ended while a modal is open: the card would sit
+          under the sheet with no way to reach it, and a sheet the user opened for
+          an unrelated reason must not count as skipping the tour. */}
+      {showTour && tourArmed ? (
+        <GuidedTour
+          frame={frame}
+          paused={sheetOpen || paletteOpen}
           modifierKey={platform.modifierKey}
         />
       ) : null}

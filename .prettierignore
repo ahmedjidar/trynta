@@ -19,6 +19,13 @@ handoffs/HO-*
 # source has to be a byte comparison for that claim to mean anything.
 src/theme/tokens.css
 
+# HO-002's guided-tour component stylesheet, vendored byte-identical so that
+# `diff` against handoffs/HO-002-keyring-tsx/guided_tour/ is a real check rather
+# than a claim. Same reasoning as the token layer above: prettier's changes here
+# would all be equivalent, which is precisely what would make the drift invisible.
+# The alias layer beside it (guided-tour.tokens.css) is ours and is formatted.
+src/features/tour/guided-tour.css
+
 # Documents owned by their authors, not by a formatter.
 CLAUDE.md
 README.md

@@ -116,6 +116,15 @@
   --shadow-focus-ring:         0 0 0 3.5px var(--accent-subtle);
   --shadow-card-outline:       0 0 0 1px var(--border-hairline);
 
+  /* Elevation's missing middle tier, from the guided-tour handoff (HO-002).
+     `--shadow-window` is a modal shadow and makes a 300px floating card read as
+     a detached window; `--shadow-hairline` makes it read as flat page furniture.
+     Popovers, menus and the command palette want this too. Verbatim from
+     handoffs/HO-002-keyring-tsx/guided_tour/guided-tour/tokens.css. */
+  --pop:                       0 0 0 .5px rgba(255, 255, 255, .09),
+                               0 2px 6px rgba(0, 0, 0, .4),
+                               0 14px 40px rgba(0, 0, 0, .62);
+
   /* ------------------------------------------------------------------ BLUR */
   --blur-vibrancy:             saturate(180%) blur(28px); /* chrome, sidebar */
   --blur-veil:                 blur(8px);                 /* modal scrim     */
@@ -311,6 +320,21 @@
   --ease-standard:             ease;
   --ease-linear:               linear;
   --ease-spring:               cubic-bezier(.32, .72, 0, 1); /* Apple curve  */
+  /* The accelerating curve, from the guided-tour handoff (HO-002). Genuinely
+     absent before: nothing in the product left deliberately. A dismissal should
+     accelerate away rather than ease to a stop like an arrival. */
+  --ease-accel:                cubic-bezier(.4, 0, 1, 1);
+
+  /* Travel between two anchored positions (HO-002). Longer than any existing
+     step because it is a card crossing the window, not a control changing state. */
+  --duration-move:             .34s;
+
+  /* Hover and focus feedback inside the guided tour, and the one duration
+     deliberately outside the reduced-motion collapse below. HO-002's MOTION.md:
+     "Hover and focus feedback is unchanged. Those are 180ms colour changes;
+     suppressing them costs affordance and buys nothing." Same value as
+     `--duration-base`, spelled separately so the clamp cannot reach it. */
+  --duration-micro:            .18s;
 
   --press-scale:               .97;
   --press-scale-sm:            .96;
@@ -367,6 +391,10 @@
   --shadow-knob:               0 0 0 .5px rgba(0, 0, 0, .05),
                                0 2px 5px rgba(0, 0, 0, .16);
   --shadow-inner-top:          inset 0 1px 0 rgba(255, 255, 255, .7);
+
+  --pop:                       0 0 0 .5px rgba(17, 19, 24, .08),
+                               0 2px 6px rgba(17, 19, 24, .06),
+                               0 14px 36px rgba(17, 19, 24, .13);
 }
 
 /* --------------------------------------------------------------------------
@@ -377,7 +405,10 @@
     --duration-instant: .01ms; --duration-fast: .01ms;  --duration-quick: .01ms;
     --duration-base:    .01ms; --duration-moderate: .01ms; --duration-slow: .01ms;
     --duration-slower:  .01ms; --duration-toast: .01ms; --duration-meter: .01ms;
-    --duration-lock:    .01ms; --stagger-meter: 0ms;
+    --duration-lock:    .01ms; --duration-move: .01ms;  --stagger-meter: 0ms;
+    /* `--duration-micro` is deliberately absent: HO-002 keeps hover and focus
+       feedback at full length under reduced motion, because suppressing a 180ms
+       colour change costs affordance and buys nothing. */
     --press-scale: 1; --press-scale-sm: 1; --press-scale-icon: 1;
   }
 }

@@ -125,16 +125,27 @@ export function SecurityReport({ report, items, onCheckNow, canCheck }: Security
           </div>
         </header>
 
-        {report.score === null ? (
-          <p className="text-body text-text-muted mt-6">
-            {/* §7.4: N == 0 is null, "not 0, not 100". Saying so beats a zero that reads as
-                a catastrophic score. */}
-            Not enough data to score. Add a login and the report will have something to measure.
-          </p>
-        ) : (
-          <>
+        {/* The guided tour's step 3 points at whichever of these two the report is
+            showing. Around the conditional rather than inside it, because a
+            first-run vault is empty and `score === null`: an anchor on the stat
+            cards alone does not exist for the one user the tour is for, and a
+            missing anchor leaves the ring on the previous step's target. A
+            wrapper rather than a prop on `StatCards`, so the tour does not follow
+            that component onto every screen that draws it. */}
+        <div data-tour="security">
+          {report.score === null ? (
+            <p className="text-body text-text-muted mt-6">
+              {/* §7.4: N == 0 is null, "not 0, not 100". Saying so beats a zero that reads as
+                  a catastrophic score. */}
+              Not enough data to score. Add a login and the report will have something to measure.
+            </p>
+          ) : (
             <StatCards className="mt-6" stats={stats} />
+          )}
+        </div>
 
+        {report.score === null ? null : (
+          <>
             {report.breakdown === null ? null : (
               <>
                 <h2 className="text-micro tracking-label text-text-muted mt-8 flex h-6 items-end font-bold uppercase">
