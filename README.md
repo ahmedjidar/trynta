@@ -196,7 +196,7 @@ recorded in [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
 
 [GNU Affero General Public License v3.0 or later](LICENSE).
 
-Copyright (C) 2026 Rafik.
+Copyright (C) 2026 Ahmed Amin.
 
 AGPL-3.0 includes a network clause: if you run a modified version and let other people interact
 with it over a network, you have to offer them the corresponding source. That does not apply to

@@ -76,8 +76,8 @@
     "category": "Utility",
     "shortDescription": "A password manager for credentials that belong to more than one person.",
     "longDescription": "A local-first, end-to-end encrypted password manager. Everything that touches a secret is in Rust; brand icons are bundled and never fetched. Pre-1.0 and unaudited.",
-    "copyright": "Copyright (C) 2026 Rafik. Licensed under AGPL-3.0-or-later.",
-    "publisher": "Rafik",
+    "copyright": "Copyright (C) 2026 Ahmed Amin. Licensed under AGPL-3.0-or-later.",
+    "publisher": "Ahmed Amin",
     "licenseFile": "../LICENSE",
     "resources": {
       "../LICENSE": "LICENSE",

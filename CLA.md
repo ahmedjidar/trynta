@@ -2,7 +2,7 @@
 
 **Version 1.0**
 
-Thank you for your interest in contributing to Trynta ("the Project"), maintained by Rafik ("the
+Thank you for your interest in contributing to Trynta ("the Project"), maintained by Ahmed Amin ("the
 Maintainer").
 
 This agreement clarifies the intellectual-property licence granted with contributions from any
