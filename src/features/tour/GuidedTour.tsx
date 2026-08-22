@@ -59,7 +59,9 @@ import type { RefObject } from 'react';
 
 import { cn } from '../../lib/cn';
 import { APP_TOUR } from './content';
+import type { TourStep } from './content';
 import { CARD_W, place } from './place';
+import type { Side } from './place';
 import { XMark } from './Notice';
 import { useTour } from './store';
 import { useNavigation } from '../../app/navigation';
@@ -74,6 +76,24 @@ const OUT_MS_REDUCED = 110;
 
 /** `--row-toolbar`. The title bar the card must never tuck under. */
 const TOP_INSET_FALLBACK = 52;
+
+/**
+ * How long a freshly opened step keeps re-reading its anchor, and how many still
+ * frames end that early.
+ *
+ * A surface arrives under `animate-pane-in`, which slides it up four pixels over
+ * `--duration-moderate`. Placement runs on frame two, about 30ms in, so a ring
+ * written once and left alone lands four pixels low: the top row of a stat grid
+ * finishes flush against the inside of the ring instead of four pixels in from it.
+ * Neither observer below can see it — the pane translates, it does not resize and
+ * it does not change the tree.
+ *
+ * So the anchor is re-read every frame until it holds still. Twenty-odd frames of
+ * four `getBoundingClientRect` calls, once per step, and it ends as soon as the
+ * rect stops moving rather than running the clock out.
+ */
+const SETTLE_WATCH_MS = 360;
+const SETTLE_STILL_FRAMES = 3;
 
 function prefersReducedMotion(): boolean {
   return (
@@ -130,12 +150,98 @@ function revealInContainer(anchor: Element): void {
   pane.scrollTo({ top: pane.scrollTop + (box.top - paneBox.top) - headroom, behavior: 'instant' });
 }
 
+/** An anchor's box as a comparable string: has it moved, or resized, since? */
+function rectKey(target: Element | null): string {
+  if (target === null) return '';
+  const r = target.getBoundingClientRect();
+  return `${String(r.left)},${String(r.top)},${String(r.width)},${String(r.height)}`;
+}
+
 /** A length token off the root, in px, for the arithmetic that needs a number. */
 function lengthToken(name: string, fallback: number): number {
   if (typeof globalThis.getComputedStyle !== 'function') return fallback;
   const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   const parsed = Number.parseFloat(raw);
   return raw.endsWith('px') && Number.isFinite(parsed) ? parsed : fallback;
+}
+
+/** The three elements a placement writes to. */
+interface TourNodes {
+  readonly card: HTMLDivElement;
+  readonly ring: HTMLDivElement;
+  readonly beak: HTMLDivElement;
+}
+
+/**
+ * Measure the step's anchor and write every position — HO-002's `_place`, with the
+ * zoom divided out and the ring sized from the anchor's own border box.
+ *
+ * Returns the side the card ended up on, or `null` when the anchor is not in the
+ * layout. The caller leaves the card where it was in that case: there is nothing
+ * honest to point at, and moving it would only move the beak somewhere equally
+ * arbitrary.
+ *
+ * `reveal` scrolls the anchor into view. True when the step opens or the anchor is
+ * new, false on a re-measure — re-asserting the scroll every time the pane mutates
+ * would drag the view back under someone who scrolled away to read.
+ *
+ * At module scope rather than in a `useCallback`, because it reads nothing from the
+ * component but the nodes it is handed and one effect is its only caller.
+ */
+function measureAndPlace(
+  host: HTMLElement,
+  nodes: TourNodes,
+  step: TourStep,
+  reveal: boolean,
+): Side | null {
+  const target = host.querySelector(`[data-tour="${step.anchor}"]`);
+  if (!target) return null;
+
+  if (reveal) revealInContainer(target);
+
+  const zoom = frameZoom(host);
+  const css = (value: number) => value / zoom;
+
+  const frameRect = host.getBoundingClientRect();
+  // The anchor's border box, which is the whole subject: every step's anchor is a
+  // wrapper, so a stat grid that has wrapped to two rows measures both rows here
+  // and the ring gets all of it. `place` never sizes the ring; it positions the
+  // card, and it is handed the same rect.
+  const anchorRect = target.getBoundingClientRect();
+  const a = {
+    l: css(anchorRect.left - frameRect.left),
+    t: css(anchorRect.top - frameRect.top),
+    w: css(anchorRect.width),
+    h: css(anchorRect.height),
+  };
+  const size = { w: css(frameRect.width), h: css(frameRect.height) };
+  const ch = Math.round(css(nodes.card.getBoundingClientRect().height)) || 176;
+
+  const p = place(a, size, CARD_W, ch, step.side, lengthToken('--row-toolbar', TOP_INSET_FALLBACK));
+
+  nodes.card.style.left = `${String(p.left)}px`;
+  nodes.card.style.top = `${String(p.top)}px`;
+
+  // Transform origin on the beak, so the entrance grows out of the thing the card
+  // points at rather than out of its own centre. MOTION.md calls this "most of the
+  // reason the anchoring reads as intentional".
+  if (p.side === 'right' || p.side === 'left') {
+    nodes.card.style.transformOrigin = `${p.side === 'right' ? '0px' : `${String(CARD_W)}px`} ${String(p.beak)}px`;
+    nodes.beak.style.left = p.side === 'right' ? '-7px' : `${String(CARD_W - 7)}px`;
+    nodes.beak.style.top = `${String(p.beak - 7)}px`;
+  } else {
+    nodes.card.style.transformOrigin = `${String(p.beak)}px ${p.side === 'bottom' ? '0px' : `${String(ch)}px`}`;
+    nodes.beak.style.left = `${String(p.beak - 7)}px`;
+    nodes.beak.style.top = p.side === 'bottom' ? '-7px' : `${String(ch - 7)}px`;
+  }
+
+  nodes.ring.style.left = `${String(Math.round(a.l - step.ringPad))}px`;
+  nodes.ring.style.top = `${String(Math.round(a.t - step.ringPad))}px`;
+  nodes.ring.style.width = `${String(Math.round(a.w + step.ringPad * 2))}px`;
+  nodes.ring.style.height = `${String(Math.round(a.h + step.ringPad * 2))}px`;
+  nodes.ring.style.borderRadius = `${String(step.ringRadius)}px`;
+
+  return p.side;
 }
 
 export interface GuidedTourProps {
@@ -184,105 +290,154 @@ export function GuidedTour({ frame, paused, modifierKey }: GuidedTourProps) {
   const current = APP_TOUR[step];
   const last = step === APP_TOUR.length - 1;
 
-  /** Measure and write every position. HO-002's `_place`, with the zoom divided out. */
-  const reposition = useCallback(() => {
-    const host = frame.current;
-    const node = card.current;
-    const ringNode = ring.current;
-    const beakNode = beak.current;
-    if (!host || !node || !ringNode || !beakNode || !current) return;
-
-    const target = host.querySelector(`[data-tour="${current.anchor}"]`);
-    if (!target) {
-      // The anchor is not in the layout. HO-002 warns and leaves the card where
-      // it was; there is nothing honest to point at and moving it would only
-      // move the beak somewhere equally arbitrary. Every step's anchor is
-      // unconditional in its own surface, so this is a bug rather than a state.
-      return;
-    }
-
-    revealInContainer(target);
-
-    const zoom = frameZoom(host);
-    const css = (value: number) => value / zoom;
-
-    const frameRect = host.getBoundingClientRect();
-    const anchorRect = target.getBoundingClientRect();
-    const a = {
-      l: css(anchorRect.left - frameRect.left),
-      t: css(anchorRect.top - frameRect.top),
-      w: css(anchorRect.width),
-      h: css(anchorRect.height),
-    };
-    const size = { w: css(frameRect.width), h: css(frameRect.height) };
-    const ch = Math.round(css(node.getBoundingClientRect().height)) || 176;
-
-    const p = place(
-      a,
-      size,
-      CARD_W,
-      ch,
-      current.side,
-      lengthToken('--row-toolbar', TOP_INSET_FALLBACK),
-    );
-
-    node.style.left = `${String(p.left)}px`;
-    node.style.top = `${String(p.top)}px`;
-    setSide(p.side);
-
-    // Transform origin on the beak, so the entrance grows out of the thing the
-    // card points at rather than out of its own centre. MOTION.md calls this
-    // "most of the reason the anchoring reads as intentional".
-    if (p.side === 'right' || p.side === 'left') {
-      node.style.transformOrigin = `${p.side === 'right' ? '0px' : `${String(CARD_W)}px`} ${String(p.beak)}px`;
-      beakNode.style.left = p.side === 'right' ? '-7px' : `${String(CARD_W - 7)}px`;
-      beakNode.style.top = `${String(p.beak - 7)}px`;
-    } else {
-      node.style.transformOrigin = `${String(p.beak)}px ${p.side === 'bottom' ? '0px' : `${String(ch)}px`}`;
-      beakNode.style.left = `${String(p.beak - 7)}px`;
-      beakNode.style.top = p.side === 'bottom' ? '-7px' : `${String(ch - 7)}px`;
-    }
-
-    ringNode.style.left = `${String(Math.round(a.l - current.ringPad))}px`;
-    ringNode.style.top = `${String(Math.round(a.t - current.ringPad))}px`;
-    ringNode.style.width = `${String(Math.round(a.w + current.ringPad * 2))}px`;
-    ringNode.style.height = `${String(Math.round(a.h + current.ringPad * 2))}px`;
-    ringNode.style.borderRadius = `${String(current.ringRadius)}px`;
-  }, [frame, current]);
-
   /** Select the view this step describes, before anything is measured. */
   useLayoutEffect(() => {
     if (paused || !current) return;
     go(current.surface);
   }, [paused, current, go]);
 
-  // Two frames, exactly as HO-002 does it: the view swap above has to land in
-  // the layout before the anchor can be measured.
+  /**
+   * Place the card and the ring, and keep them placed for as long as the step is open.
+   *
+   * HO-002 measures once, on the second frame after the step changes. That is right
+   * for its demo, where every anchor is in the layout from the first paint and never
+   * moves afterwards. It is not enough here, and step 3 is the proof: the security
+   * pane renders an empty `<section>` while `security_report_run` is in flight, so
+   * `[data-tour="security"]` does not exist on the frame the measurement happens.
+   * `measureAndPlace` returns `null` — correctly, there is nothing to point at — the
+   * stat cards arrive about 120ms later, and under the old code nothing re-measured.
+   *
+   * The ring was then still on step 2's box, which is close enough to the first row
+   * of five stat cards to be misread as a ring that lost the second row. It never
+   * measured a row. It never measured the grid at all.
+   *
+   * So the first placement still waits two frames for the view swap to land, and
+   * after that:
+   *
+   * - a `ResizeObserver` on the anchor follows its box — a second grid row arriving,
+   *   a card growing a line when the window narrows, fonts settling;
+   * - a `MutationObserver` on the frame follows the anchor itself — appearing late,
+   *   being replaced by React, or being pushed down the pane by content rendering
+   *   above it, none of which changes the anchor's own size;
+   * - and for the first {@link SETTLE_WATCH_MS} after the step opens or its anchor
+   *   arrives, the anchor is re-read every frame until it holds still, because a
+   *   surface arrives translating and neither observer can see a translate.
+   *
+   * The mutation callback coalesces onto one frame, and neither observer watches
+   * attributes, so the inline styles a placement writes cannot feed back into them.
+   */
   useEffect(() => {
-    if (paused) return undefined;
+    const host = frame.current;
+    if (paused || !current || !host) return undefined;
+
+    const selector = `[data-tour="${current.anchor}"]`;
+    let observed: Element | null = null;
+    let queued = 0;
+    let watch = 0;
+    let placed = '';
+    // Declared before `sync` so the two can refer to each other without a
+    // use-before-define; neither runs until the first frame, by which point both
+    // are bound.
+    let size: ResizeObserver | null = null;
+
+    /** Re-place, and re-point the size observer if the anchor is a different node. */
+    const sync = (reveal: boolean) => {
+      const node = card.current;
+      const ringNode = ring.current;
+      const beakNode = beak.current;
+      if (!node || !ringNode || !beakNode) return;
+
+      const target = host.querySelector(selector);
+      if (target !== observed) {
+        if (observed !== null) size?.unobserve(observed);
+        observed = target;
+        if (target !== null) size?.observe(target);
+      }
+
+      placed = rectKey(target);
+      const chosen = measureAndPlace(
+        host,
+        { card: node, ring: ringNode, beak: beakNode },
+        current,
+        reveal,
+      );
+      if (chosen !== null) setSide(chosen);
+    };
+
+    /**
+     * Re-place every frame until the anchor's box stops changing.
+     *
+     * Called at the two moments the subject is new — the step opening and the
+     * anchor arriving — which are the two moments it is most likely to still be
+     * moving. A const rather than a hoisted `function`, so it can close over
+     * `sync` and so TypeScript keeps the non-null narrowing on `host`.
+     */
+    const watchUntilStill = () => {
+      if (watch !== 0) return;
+      const deadline = performance.now() + SETTLE_WATCH_MS;
+      let still = 0;
+      const tick = (now: number) => {
+        const key = rectKey(host.querySelector(selector));
+        if (key === placed) {
+          still += 1;
+        } else {
+          still = 0;
+          sync(false);
+        }
+        watch = still >= SETTLE_STILL_FRAMES || now >= deadline ? 0 : requestAnimationFrame(tick);
+      };
+      watch = requestAnimationFrame(tick);
+    };
+
+    size =
+      typeof ResizeObserver === 'function'
+        ? new ResizeObserver(() => {
+            sync(false);
+          })
+        : null;
+
+    const tree =
+      typeof MutationObserver === 'function'
+        ? new MutationObserver(() => {
+            if (queued !== 0) return;
+            // A new anchor earns a scroll into view; one that merely moved does not,
+            // or the pane would jump under someone reading it.
+            const arriving = observed === null || !observed.isConnected;
+            queued = requestAnimationFrame(() => {
+              queued = 0;
+              sync(arriving);
+              if (arriving) watchUntilStill();
+            });
+          })
+        : null;
+    tree?.observe(host, { childList: true, subtree: true });
+
+    const onResize = () => {
+      // The frame changed, not the anchor: `place` clamps against the frame, so the
+      // card can need moving even when the anchor's box is identical.
+      sync(false);
+    };
+    globalThis.addEventListener('resize', onResize);
+
     let inner = 0;
     const outer = requestAnimationFrame(() => {
       inner = requestAnimationFrame(() => {
-        reposition();
+        sync(true);
+        watchUntilStill();
         cta.current?.focus({ preventScroll: true });
       });
     });
+
     return () => {
       cancelAnimationFrame(outer);
       cancelAnimationFrame(inner);
-    };
-  }, [paused, step, reposition]);
-
-  useEffect(() => {
-    if (paused) return undefined;
-    const onResize = () => {
-      reposition();
-    };
-    globalThis.addEventListener('resize', onResize);
-    return () => {
+      if (queued !== 0) cancelAnimationFrame(queued);
+      if (watch !== 0) cancelAnimationFrame(watch);
+      tree?.disconnect();
+      size?.disconnect();
       globalThis.removeEventListener('resize', onResize);
     };
-  }, [paused, reposition]);
+  }, [paused, current, frame]);
 
   // Freeze the entrance so a step change moves the card instead of replaying it.
   useEffect(() => {

@@ -17,7 +17,7 @@
 
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRef } from 'react';
 
 import { APP_TOUR } from './content';
@@ -51,12 +51,97 @@ function start(step = 0) {
   return view;
 }
 
+/**
+ * A declared box.
+ *
+ * happy-dom lays nothing out, so every rect is zero unless it is stated. That is
+ * fine here: the ring's geometry is arithmetic on the anchor's rect, and the
+ * arithmetic is the thing under test.
+ */
+function withRect(el: Element, box: { left: number; top: number; width: number; height: number }) {
+  el.getBoundingClientRect = () => ({
+    ...box,
+    x: box.left,
+    y: box.top,
+    right: box.left + box.width,
+    bottom: box.top + box.height,
+    toJSON: () => box,
+  });
+}
+
+/** A `ResizeObserver` that can be fired on demand; happy-dom has no layout to observe. */
+class SpyResizeObserver {
+  static last: SpyResizeObserver | null = null;
+  observed: Element[] = [];
+  private readonly ran: () => void;
+
+  constructor(callback: () => void) {
+    this.ran = callback;
+    SpyResizeObserver.last = this;
+  }
+
+  observe(el: Element) {
+    this.observed.push(el);
+  }
+
+  unobserve(el: Element) {
+    this.observed = this.observed.filter((x) => x !== el);
+  }
+
+  disconnect() {
+    this.observed = [];
+  }
+
+  fire() {
+    this.ran();
+  }
+}
+
+/** `step` 2 is the security report, whose ring pad is 4 and radius 16. */
+const SECURITY = 2;
+
+/** Mount the sequence on the security step with the anchors the test provides. */
+function startOnSecurity() {
+  useTour.setState({
+    ready: true,
+    showUnlock: false,
+    showApp: true,
+    replay: false,
+    step: SECURITY,
+  });
+  useNavigation.setState({ surface: 'security' });
+  const frame = createRef<HTMLDivElement>();
+  const view = render(
+    <div ref={frame}>
+      <GuidedTour frame={frame} paused={false} modifierKey="Ctrl" />
+    </div>,
+  );
+  const ring = view.container.querySelector('.gt-ring');
+  if (!(ring instanceof HTMLElement)) throw new Error('no ring');
+  return { frame, ring };
+}
+
+/** An anchor for the security step, with a stated box. */
+function securityAnchor(box: { left: number; top: number; width: number; height: number }) {
+  const el = document.createElement('div');
+  el.setAttribute('data-tour', 'security');
+  withRect(el, box);
+  return el;
+}
+
 describe('GuidedTour', () => {
   beforeEach(() => {
     tourMarkSeen.mockReset();
     tourMarkSeen.mockResolvedValue(true);
     tourReset.mockReset();
     tourReset.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    // One test replaces the global ResizeObserver; undo it here rather than at the
+    // end of that test, so a failure part-way through cannot leak it into the rest.
+    vi.unstubAllGlobals();
+    SpyResizeObserver.last = null;
   });
 
   it('opens on the first card, with the position in words', () => {
@@ -185,6 +270,60 @@ describe('GuidedTour', () => {
     start();
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Next' })).toHaveFocus();
+    });
+  });
+
+  /**
+   * The two ways step 3's ring lost the second row of stat cards.
+   *
+   * The security pane renders an empty section while `security_report_run` is in
+   * flight, so its anchor is not in the layout on the frame the placement runs —
+   * measured at about 120ms of daylight between the two. Placement correctly
+   * declines to point at nothing; what it used to do was never come back.
+   */
+  it('measures an anchor that only arrives after the step opens', async () => {
+    const { frame, ring } = startOnSecurity();
+
+    // Nothing to point at yet, so nothing is written: the ring keeps its place.
+    await waitFor(() => {
+      expect(ring.style.height).toBe('');
+    });
+
+    const late = securityAnchor({ left: 100, top: 200, width: 400, height: 300 });
+    frame.current?.append(late);
+
+    // 4px of pad on each side, from the step's own `ringPad`.
+    await waitFor(() => {
+      expect(ring.style.height).toBe('308px');
+    });
+    expect(ring.style.top).toBe('196px');
+    expect(ring.style.left).toBe('96px');
+    expect(ring.style.width).toBe('408px');
+  });
+
+  it('re-measures when the anchor grows a row under it', async () => {
+    vi.stubGlobal('ResizeObserver', SpyResizeObserver);
+    const { frame, ring } = startOnSecurity();
+    const anchor = securityAnchor({ left: 100, top: 200, width: 400, height: 150 });
+    frame.current?.append(anchor);
+
+    await waitFor(() => {
+      expect(ring.style.height).toBe('158px');
+    });
+
+    // Past the settle watch, so what follows can only be the ResizeObserver.
+    await new Promise((resolve) => setTimeout(resolve, 420));
+
+    const observer = SpyResizeObserver.last;
+    if (observer === null) throw new Error('no ResizeObserver was constructed');
+    expect(observer.observed).toContain(anchor);
+
+    // A second row of stat cards: same anchor, twice the height.
+    withRect(anchor, { left: 100, top: 200, width: 400, height: 300 });
+    observer.fire();
+
+    await waitFor(() => {
+      expect(ring.style.height).toBe('308px');
     });
   });
 });
