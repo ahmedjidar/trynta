@@ -1,0 +1,1083 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* ==========================================================================
+   Trynta — marketing site
+   HO-003's design system, as plain CSS.
+
+   The handoff ships a Tailwind v4 `@theme`. The site is required to be static
+   HTML and CSS with no framework, so this is that theme translated: same names,
+   same values, no build step and no utility engine. Every declaration below
+   traces to a token, and the comment on each says which.
+
+   ## Where the values come from
+
+   `src/theme/tokens.css` is the desktop app's token layer and the source for
+   all of this. It is *not* imported: the site is served standalone and the app's
+   file carries the whole dark palette, the row heights, the component sizes and
+   the z-index scale, none of which a web page has any use for. What is copied is
+   the light palette and the scales the page actually draws with — and every one
+   is checked against the app's file by `scripts/check-site-tokens.mjs`, which
+   fails the build if the two drift.
+
+   Where a light token fails WCAG AA in real use, the corrected value from
+   HO-003's `reference/a11y.css` is used instead of the raw one, with the finding
+   noted. Those four are the only intentional differences from the app.
+
+   The site is LIGHT ONLY. There is no dark page, so there is no dark palette.
+   ========================================================================== */
+
+/* ------------------------------------------------------------------ TOKENS */
+
+:root {
+  /* ── Type ────────────────────────────────────────────────────────────── */
+  --font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --text-micro: 11px; /* --text-micro   */
+  --text-badge: 10.5px; /* --text-badge   */
+  --text-chip: 11.5px; /* --text-chip    */
+  --text-caption: 12px; /* --text-caption */
+  --text-control: 12.5px; /* --text-control */
+  --text-body: 13px; /* --text-body    */
+  --text-lead: 15px; /* --text-heading */
+  --text-title: 20px; /* --text-title   */
+  --text-display: 28px; /* --text-display */
+  --text-hero: 40px; /* --text-metric  */
+
+  --leading-micro: 20px;
+  --leading-caption: 16px;
+  --leading-body: 20px;
+  --leading-lead: 24px;
+  --leading-title: 22px;
+  --leading-display: 34px;
+  --leading-hero: 46px;
+
+  --weight-regular: 500; /* --weight-regular */
+  --weight-medium: 600; /* --weight-medium  */
+  --weight-bold: 700; /* --weight-bold    */
+  --weight-heavy: 800; /* --weight-heavy   */
+
+  --tracking-label: 0.06em; /* --tracking-label   */
+  --tracking-badge: 0.04em; /* --tracking-badge   */
+  --tracking-tight: -0.01em; /* --tracking-tight   */
+  --tracking-title: -0.015em; /* --tracking-title   */
+  --tracking-display: -0.028em; /* --tracking-display */
+  --tracking-hero: -0.03em; /* --tracking-metric  */
+
+  /* ── Colour · the app's light theme ──────────────────────────────────── */
+  --app: #f6f7fa; /* --surface-app     */
+  --panel: #ffffff; /* --surface-panel   */
+  --raised: #fafbfd; /* --surface-raised  */
+  --hover: rgba(17, 19, 24, 0.04); /* --surface-hover   */
+  --selected: rgba(92, 101, 235, 0.1); /* --surface-selected */
+
+  --ink: #111318; /* --text-primary    */
+  --ink-2: #5a6070; /* --text-secondary  */
+  /* a11y.css finding 2 — the raw #8B91A1 measures 2.76–3.15:1 and fails even the
+     large-text allowance on --surface-app. #6A7086 is 4.59:1 there. */
+  --ink-3: #6a7086;
+  --on-accent: #ffffff; /* --text-on-accent  */
+
+  --hairline: rgba(17, 19, 24, 0.07); /* --border-hairline */
+  --strong: rgba(17, 19, 24, 0.12); /* --border-strong   */
+
+  --accent: #5c65eb; /* --accent · FILLS ONLY */
+  --accent-hover: #4a53de; /* --accent-hover        */
+  /* a11y.css finding 5 — the fill accent is 4.34:1 on --surface-app. This is
+     5.47:1 there. Text and links only; the two must not be collapsed. */
+  --accent-text: #4a53de;
+  --accent-subtle: rgba(92, 101, 235, 0.11); /* --accent-subtle */
+
+  /* a11y.css finding 6 — raw #B37A0B is 3.68:1 on panel. This is 4.85:1. */
+  --warn: #8a5e08;
+  /* a11y.css finding 7 — raw #D2453B is 3.99:1 in its own subtle fill. 5.16:1. */
+  --danger: #b8352b;
+
+  /* ── Radius ──────────────────────────────────────────────────────────── */
+  --radius-xs: 5px; /* --radius-xs     */
+  --radius-sm: 7px; /* --radius-sm     */
+  --radius-md: 9px; /* --radius-md     */
+  --radius-lg: 12px; /* --radius-lg     */
+  --radius-xl: 16px; /* --radius-xl     */
+  --radius-2xl: 18px; /* --radius-2xl    */
+  --radius-window: 20px; /* --radius-window */
+  --radius-full: 999px; /* --radius-full   */
+
+  /* ── Elevation ───────────────────────────────────────────────────────── */
+  /* Deliberately shallow. Nothing on the page carries a shadow larger than the
+     app window itself, and most carry none at all. */
+  --shadow-hairline: 0 0 0 0.5px rgba(17, 19, 24, 0.07); /* --shadow-hairline */
+  --shadow-lift: 0 0.5px 1px rgba(17, 19, 24, 0.05); /* --shadow-lift     */
+  --shadow-outline: 0 0 0 1px rgba(17, 19, 24, 0.07); /* --shadow-card-outline */
+  --shadow-accent: 0 4px 14px rgba(92, 101, 235, 0.11); /* --shadow-accent-glow */
+  --shadow-accent-lg: 0 6px 18px rgba(92, 101, 235, 0.11); /* --shadow-accent-glow-lg */
+  --shadow-window:
+    0 0 0 0.5px rgba(17, 19, 24, 0.07), 0 2px 8px rgba(17, 19, 24, 0.05),
+    0 32px 80px rgba(17, 19, 24, 0.15); /* --shadow-window */
+  /* a11y.css finding 1 — a single-colour halo measures 1.09:1 against white, below
+     the 3:1 non-text threshold. Two-tone: a surface gap, then the accent edge. */
+  --shadow-focus: 0 0 0 2px #ffffff, 0 0 0 4px #5c65eb;
+
+  /* ── Motion ──────────────────────────────────────────────────────────── */
+  --ease-standard: ease; /* --ease-standard */
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1); /* --ease-spring · the app's curve */
+  --duration-instant: 120ms; /* --duration-instant  */
+  --duration-base: 180ms; /* --duration-base     */
+  --duration-moderate: 200ms; /* --duration-moderate */
+  --duration-slow: 260ms; /* --duration-slow     */
+
+  /* ── Layout ──────────────────────────────────────────────────────────── */
+  --measure: 880px; /* --measure-pane-wide · the content column */
+  --prose: 62ch; /* --measure-prose     · every paragraph    */
+  --window: 1360px; /* --window-width      · the screenshot cap */
+  --gutter: 24px;
+  --row-header: 52px; /* --row-toolbar · matches the app's title bar */
+}
+
+/* ------------------------------------------------------------------ FONTS */
+/* Self-hosted, and the same two subsets the app bundles. A page arguing that
+   bundled icons are worth it because fetching them discloses your accounts
+   cannot then hand every visitor's IP to a font CDN in order to draw the
+   sentence. Manrope by Mikhail Sharanda, SIL Open Font License 1.1. */
+
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('../assets/fonts/manrope-latin.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('../assets/fonts/manrope-latin-ext.woff2') format('woff2');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+/* ------------------------------------------------------------------- BASE */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light;
+  scroll-behavior: smooth;
+  /* On html as well as body: an embedding context that forces a transparent body
+     would otherwise show white through. */
+  background: var(--app);
+}
+
+body {
+  margin: 0;
+  background: var(--app);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-body);
+  letter-spacing: var(--tracking-tight);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+p,
+figure {
+  margin: 0;
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+a {
+  color: var(--accent-text);
+  text-decoration: none;
+  transition: color var(--duration-base) var(--ease-standard);
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+code,
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  color: var(--ink);
+}
+
+/* The CTAs carry their elevation in a box-shadow, which would otherwise beat a
+   ring while `outline: none` still applied — leaving them with no indicator at
+   all. Weighted on box-shadow, and `!important` for that reason alone. */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus) !important;
+  border-radius: var(--radius-xs);
+}
+
+::selection {
+  background: var(--selected);
+}
+
+/* ----------------------------------------------------------------- LAYOUT */
+
+.wrap {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding-inline: var(--gutter);
+}
+
+.prose {
+  max-width: var(--prose);
+  text-wrap: pretty;
+}
+
+section {
+  padding-top: 80px;
+}
+
+.lede {
+  margin-top: 12px;
+  font-size: var(--text-lead);
+  line-height: var(--leading-lead);
+  color: var(--ink-2);
+}
+
+h1 {
+  font-size: var(--text-hero);
+  line-height: var(--leading-hero);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-hero);
+}
+
+h2 {
+  font-size: var(--text-display);
+  line-height: var(--leading-display);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-display);
+}
+
+h3 {
+  font-size: var(--text-title);
+  line-height: var(--leading-title);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-title);
+}
+
+.eyebrow {
+  font-size: var(--text-micro);
+  line-height: var(--leading-micro);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.muted {
+  color: var(--ink-3);
+}
+
+.caption {
+  font-size: var(--text-caption);
+  line-height: var(--leading-caption);
+  color: var(--ink-3);
+}
+
+.nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* A handful of spacing helpers, so no element carries an inline style. Named
+   for the step on the 4pt scale rather than for where they happen to be used. */
+.mt-4 {
+  margin-top: 16px;
+}
+
+.mt-7 {
+  margin-top: 28px;
+}
+
+.mt-10 {
+  margin-top: 40px;
+}
+
+/* A page whose h1 is a section heading rather than a wordmark. */
+.h-page {
+  font-size: var(--text-display);
+  line-height: var(--leading-display);
+  letter-spacing: var(--tracking-display);
+}
+
+/* The lede paragraph under a release heading in the changelog. */
+.rel-lede {
+  margin-bottom: 16px;
+  color: var(--ink-2);
+}
+
+/* The changelog page opens straight into the timeline. */
+.hero--tight {
+  padding-bottom: 0;
+}
+
+/* ----------------------------------------------------------------- HEADER */
+/* Solid, not blurred. Blurring a sticky bar recomposites it on every scroll
+   frame and stutters on integrated graphics. */
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  height: var(--row-header);
+  background: var(--panel);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.site-header .wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+}
+
+.wordmark {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-weight: var(--weight-bold);
+  transition: opacity var(--duration-base) var(--ease-standard);
+}
+
+.wordmark:hover {
+  color: var(--ink);
+  opacity: 0.7;
+}
+
+.wordmark svg {
+  width: 26px;
+  height: 18px;
+  color: var(--accent);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.header-link {
+  padding: 4px 8px;
+  font-size: var(--text-control);
+  font-weight: var(--weight-medium);
+  color: var(--ink-2);
+}
+
+.header-link:hover {
+  color: var(--ink);
+}
+
+.gh-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid var(--strong);
+  border-radius: var(--radius-full);
+  font-size: var(--text-chip);
+  font-weight: var(--weight-medium);
+  color: var(--ink-2);
+  transition:
+    background-color var(--duration-base) var(--ease-standard),
+    color var(--duration-base) var(--ease-standard);
+}
+
+.gh-pill:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+.gh-pill svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* ------------------------------------------------------------------- HERO */
+
+.hero {
+  padding-top: 96px;
+  padding-bottom: 80px;
+}
+
+.hero-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-2xl);
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: var(--shadow-accent-lg);
+}
+
+.hero-mark svg {
+  width: 34px;
+  height: 24px;
+}
+
+.hero h1 {
+  margin-top: 24px;
+}
+
+.hero .lede {
+  margin-top: 12px;
+}
+
+.cta-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 24px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-tight);
+  white-space: nowrap;
+  transition:
+    background-color var(--duration-base) var(--ease-standard),
+    color var(--duration-base) var(--ease-standard),
+    transform var(--duration-instant) var(--ease-standard);
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: var(--shadow-accent);
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+  color: var(--on-accent);
+}
+
+.btn-secondary {
+  padding: 0 20px;
+  background: var(--panel);
+  border: 1px solid var(--strong);
+  color: var(--ink-2);
+  box-shadow: var(--shadow-lift);
+}
+
+.btn-secondary:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+.btn-small {
+  height: 32px;
+  padding: 0 16px;
+  font-size: var(--text-control);
+}
+
+.btn-small:active {
+  transform: scale(0.96);
+}
+
+/* The caveat line. Amber, above the fold, in the same type size as everything
+   else on the page — the point is that it is not a footnote. */
+.caveat {
+  display: flex;
+  gap: 12px;
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--hairline);
+  color: var(--warn);
+}
+
+.caveat svg {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+}
+
+/* ------------------------------------------------------------- SCREENSHOT */
+
+.shot {
+  padding-top: 0;
+  padding-bottom: 80px;
+}
+
+.shot-frame {
+  max-width: var(--window);
+  margin: 0 auto;
+  padding-inline: var(--gutter);
+}
+
+.shot-frame img {
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-window);
+  box-shadow: var(--shadow-window);
+}
+
+.shot-frame figcaption {
+  max-width: var(--measure);
+  margin: 16px auto 0;
+}
+
+/* ---------------------------------------------------------- SPECIFICATION */
+/* A disclosure list, not a card grid. One row open at a time. */
+
+.band {
+  background: var(--panel);
+  border-block: 1px solid var(--hairline);
+  padding-bottom: 80px;
+}
+
+.spec-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 28px;
+  border-block: 1px solid var(--hairline);
+  padding-block: 4px;
+}
+
+.spec-head {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 4px 16px;
+  width: 100%;
+  padding: 12px 8px;
+  border: 0;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.spec-name {
+  flex: 0 0 auto;
+  width: 100%;
+  font-size: var(--text-micro);
+  line-height: var(--leading-micro);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-2);
+  transition: color var(--duration-base) var(--ease-standard);
+}
+
+.spec-head:hover .spec-name {
+  color: var(--ink);
+}
+
+/* Amber marks a limit, not an absence. Four rows carry it. */
+.spec-name.is-limit {
+  color: var(--warn);
+}
+
+.spec-value {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  width: 100%;
+}
+
+/* Teaser and body are the same size, weight, colour and leading. An earlier
+   version made the open text larger and it read as a different component
+   opening rather than the same sentence finishing. */
+.spec-teaser,
+.spec-body {
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  color: var(--ink-2);
+}
+
+.spec-teaser {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  transition: opacity var(--duration-base) var(--ease-standard);
+}
+
+/* When a row opens the teaser leaves the flow, which promotes the body's first
+   line to be the value column's first line — so it sits level with the property
+   name at any width and any text length. A measured offset breaks on rewrap. */
+.spec-row[data-open='true'] .spec-teaser {
+  position: absolute;
+  inset: 0 0 auto 0;
+  opacity: 0;
+}
+
+.spec-detail {
+  display: block;
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height var(--duration-slow) var(--ease-spring);
+}
+
+.spec-inner {
+  display: block;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    opacity var(--duration-moderate) var(--ease-standard),
+    transform var(--duration-moderate) var(--ease-spring);
+}
+
+.spec-row[data-open='true'] .spec-inner {
+  opacity: 1;
+  transform: none;
+}
+
+.spec-source {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.spec-chev {
+  position: absolute;
+  top: 12px;
+  right: 8px;
+  display: flex;
+  flex: 0 0 auto;
+  color: var(--ink-3);
+  transition:
+    transform var(--duration-slow) var(--ease-spring),
+    color var(--duration-base) var(--ease-standard);
+}
+
+.spec-chev svg {
+  width: 15px;
+  height: 15px;
+}
+
+.spec-row[data-open='true'] .spec-chev {
+  transform: rotate(180deg);
+}
+
+/* --------------------------------------------------------------- DOWNLOAD */
+/* Grouped rows. The container is hairline-coloured and the 1px gaps between
+   rows read as dividers, so no row needs a border of its own. */
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+  margin-top: 24px;
+  border-radius: var(--radius-lg);
+  background: var(--hairline);
+  box-shadow: var(--shadow-outline);
+}
+
+.group-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 20px;
+  background: var(--panel);
+}
+
+.group-row .head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.group-row .name {
+  font-size: var(--text-lead);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-title);
+}
+
+.group-row .req {
+  margin-top: 4px;
+  font-size: var(--text-caption);
+  line-height: var(--leading-caption);
+  color: var(--ink-2);
+}
+
+.group-row .actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.badge {
+  padding: 0 6px;
+  border-radius: var(--radius-xs);
+  font-size: var(--text-badge);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-badge);
+  line-height: 17px;
+  text-transform: uppercase;
+}
+
+.badge-accent {
+  background: var(--accent-subtle);
+  color: var(--accent-text);
+}
+
+.badge-quiet {
+  background: var(--hover);
+  color: var(--ink-3);
+}
+
+.badge-danger {
+  background: rgba(248, 113, 113, 0.13); /* --status-danger-subtle */
+  color: var(--danger);
+}
+
+.note {
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--raised);
+}
+
+.note p + p {
+  margin-top: 12px;
+}
+
+.note .prose {
+  color: var(--ink-2);
+}
+
+/* ------------------------------------------------- TIMELINE (roadmap etc.) */
+/* Each entry carries its own left border. A single absolutely-positioned track
+   would stretch to the container's full height and leave a tail hanging below
+   the last node; per-entry borders terminate correctly at any content length. */
+
+.timeline {
+  padding-left: 4px;
+  margin-top: 24px;
+}
+
+.tl-entry {
+  position: relative;
+  padding-left: 24px;
+  padding-bottom: 32px;
+  border-left: 1px solid var(--strong);
+}
+
+.tl-entry:last-child {
+  border-left-color: transparent;
+  padding-bottom: 0;
+}
+
+.tl-node {
+  position: absolute;
+  top: 5px;
+  left: -5px;
+  box-sizing: border-box;
+  width: 9px;
+  height: 9px;
+  border-radius: var(--radius-full);
+  /* A ring in the page colour, so the node punches through the line. */
+  box-shadow: 0 0 0 4px var(--app);
+}
+
+.tl-node.is-done {
+  background: var(--accent);
+}
+
+.tl-node.is-now {
+  background: var(--app);
+  border: 2px solid var(--accent);
+}
+
+.tl-node.is-later {
+  background: var(--app);
+  border: 2px solid var(--strong);
+}
+
+.tl-node.is-security {
+  background: var(--danger);
+}
+
+.tl-entry .eyebrow.is-accent {
+  color: var(--accent-text);
+}
+
+.tl-entry h3 {
+  margin-top: 8px;
+}
+
+.tl-entry h3.is-quiet {
+  color: var(--ink-2);
+}
+
+.tl-entry p {
+  margin-top: 8px;
+  font-size: var(--text-lead);
+  line-height: var(--leading-lead);
+  color: var(--ink-2);
+}
+
+/* -------------------------------------------------------------- CHANGELOG */
+
+.rel-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 16px;
+}
+
+.rel-version {
+  font-size: var(--text-title);
+  line-height: var(--leading-title);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-title);
+}
+
+.rel-entries {
+  display: flex;
+  flex-direction: column;
+}
+
+.rel-entry {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  padding-block: 14px;
+  border-top: 1px solid var(--hairline);
+}
+
+.rel-entries .rel-entry:last-child {
+  border-bottom: 1px solid var(--hairline);
+}
+
+.rel-type {
+  font-size: var(--text-micro);
+  line-height: var(--leading-micro);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.rel-type.is-security {
+  color: var(--danger);
+}
+
+.rel-type.is-removed {
+  color: var(--warn);
+}
+
+.rel-text {
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+/* ----------------------------------------------------------------- FOOTER */
+
+.site-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: var(--measure);
+  margin: 80px auto 0;
+  padding: 24px var(--gutter) 48px;
+  border-top: 1px solid var(--hairline);
+  font-size: var(--text-caption);
+  line-height: var(--leading-caption);
+  color: var(--ink-3);
+}
+
+.site-footer a {
+  color: var(--ink-2);
+}
+
+.site-footer a:hover {
+  color: var(--ink);
+}
+
+/* ----------------------------------------------------------------- MOTION */
+/* One 260ms rise on the hero, staggered 40ms. Nothing else on the page
+   animates on load, and nothing anywhere animates on scroll. */
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rise {
+  animation: rise-in var(--duration-slow) var(--ease-spring) both;
+}
+
+.rise-1 {
+  animation-delay: 40ms;
+}
+
+.rise-2 {
+  animation-delay: 80ms;
+}
+
+.rise-3 {
+  animation-delay: 120ms;
+}
+
+.rise-4 {
+  animation-delay: 160ms;
+}
+
+/* Collapses durations rather than removing the animations, so end states still
+   apply and the hero cannot be stranded at opacity 0. One blanket rule, so
+   anything added later inherits it. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ------------------------------------------------------------- WIDER THAN 640 */
+/* The design's own breakpoint. Below it every horizontal arrangement stacks. */
+
+@media (min-width: 640px) {
+  .cta-row {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .spec-head {
+    flex-wrap: nowrap;
+    padding: 14px 10px;
+  }
+
+  .spec-name {
+    width: 148px;
+  }
+
+  .spec-chev {
+    position: static;
+    align-self: center;
+  }
+
+  .group-row {
+    flex-direction: row;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .group-row .body {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .rel-entry {
+    grid-template-columns: 148px 1fr;
+    gap: 24px;
+  }
+
+  .site-footer {
+    flex-direction: row;
+    align-items: center;
+    gap: 20px;
+  }
+}
+
+@media (max-width: 719px) {
+  :root {
+    --gutter: 20px;
+  }
+
+  section {
+    padding-top: 48px;
+  }
+
+  .hero {
+    padding-top: 56px;
+  }
+
+  h1 {
+    font-size: var(--text-display);
+    line-height: var(--leading-display);
+    letter-spacing: var(--tracking-display);
+  }
+
+  .shot,
+  .band {
+    padding-bottom: 48px;
+  }
+
+  .shot-frame img {
+    border-radius: var(--radius-lg);
+  }
+
+  .site-footer {
+    margin-top: 48px;
+  }
+}

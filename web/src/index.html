@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Trynta — a local-first password manager for Windows</title>
+    <meta
+      name="description"
+      content="Local-first, end-to-end encrypted password manager for Windows. Pre-1.0, never audited, open source under AGPL-3.0."
+    />
+    <link rel="icon" href="assets/brand/mark-accent.svg" />
+    <link rel="stylesheet" href="css/site.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap">
+        <a class="wordmark" href="index.html">
+          <svg viewBox="0 0 122 76" aria-hidden="true">
+            <g fill="none" stroke="currentColor" stroke-width="11">
+              <path d="M 53.38 66.63 A 32.5 32.5 0 1 1 66.63 53.38" />
+              <path d="M 68.62 9.37 A 32.5 32.5 0 1 1 55.37 22.62" />
+            </g>
+          </svg>
+          <span>Trynta</span>
+        </a>
+        <span class="spacer"></span>
+        <a class="header-link" href="#download">Download</a>
+        <a class="gh-pill" href="https://github.com/ahmedjidar/trynta">
+          <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <path
+              d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
+            />
+          </svg>
+          <span>Source</span>
+          <!--BUILD:STARS--><!--/BUILD:STARS-->
+        </a>
+      </div>
+    </header>
+
+    <!-- =============================================================== HERO -->
+    <section class="hero wrap">
+      <div class="rise hero-mark">
+        <svg viewBox="0 0 122 76" aria-hidden="true">
+          <g fill="none" stroke="currentColor" stroke-width="11">
+            <path d="M 53.38 66.63 A 32.5 32.5 0 1 1 66.63 53.38" />
+            <path d="M 68.62 9.37 A 32.5 32.5 0 1 1 55.37 22.62" />
+          </g>
+        </svg>
+      </div>
+      <h1 class="rise rise-1">Trynta</h1>
+      <p class="rise rise-2 lede prose">
+        A local-first, end-to-end encrypted password manager for Windows. The vault is one file on
+        your disk, and the key that opens it is derived on your machine and held nowhere else.
+      </p>
+
+      <div class="rise rise-3 cta-row">
+        <a class="btn btn-primary" href="https://github.com/ahmedjidar/trynta/releases/latest">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.9"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path
+              d="M12 3v12m0 0 4.5-4.5M12 15l-4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"
+            />
+          </svg>
+          Download for Windows
+        </a>
+        <a class="btn btn-secondary" href="https://github.com/ahmedjidar/trynta">
+          <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <path
+              d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
+            />
+          </svg>
+          Read the source
+          <!--BUILD:STARS_CTA--><!--/BUILD:STARS_CTA-->
+        </a>
+      </div>
+
+      <div class="rise rise-4 caveat">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 7.5V13" stroke-linecap="round" />
+          <circle cx="12" cy="16.4" r="1" fill="currentColor" stroke="none" />
+        </svg>
+        <p class="prose">
+          Pre-1.0, never audited, Windows only, and the feature it exists for is not built. Don’t
+          put credentials you actually rely on in it yet.
+        </p>
+      </div>
+    </section>
+
+    <!-- ========================================================= SCREENSHOT -->
+    <section class="shot">
+      <figure class="shot-frame">
+        <img
+          src="assets/shots/app-dark.png"
+          width="1440"
+          height="920"
+          alt="Trynta on Windows 11: a vault list on the left with bundled brand marks, and a selected GitHub login on the right showing the username, a masked password, a strength meter and a one-time code counting down."
+        />
+        <figcaption class="caption prose">
+          Trynta
+          <!--BUILD:VERSION--><!--/BUILD:VERSION-->
+          on Windows 11. Every brand mark on this screen was drawn from the application’s own files
+          — rendering it made no network request. The vault is synthetic: those addresses are on a
+          reserved domain that cannot resolve.
+        </figcaption>
+      </figure>
+    </section>
+
+    <!-- ====================================================== SPECIFICATION -->
+    <section class="band">
+      <div class="wrap">
+        <h2>Specification</h2>
+        <p class="lede prose">
+          Ten properties, each naming the file to read if you would rather check than take our word
+          for it. Four of them say <strong>none</strong>, <strong>unsigned</strong> or
+          <strong>Windows only</strong>. Those are the ones worth opening first.
+        </p>
+
+        <div class="spec-list">
+          <!-- 1 -->
+          <div class="spec-row" data-open="true">
+            <button type="button" class="spec-head" aria-expanded="true" aria-controls="spec-0">
+              <span class="spec-name">Vault at rest</span>
+              <span class="spec-value">
+                <span class="spec-teaser"
+                  >One encrypted file on disk, decrypted only in memory.</span
+                >
+                <span class="spec-detail">
+                  <span class="spec-inner" id="spec-0">
+                    <span class="spec-body prose">
+                      One SQLite file, with every secret field sealed in its own envelope.
+                      XChaCha20-Poly1305 for the envelopes; the key is derived from your master
+                      password by Argon2id at 64 MiB, three passes and four lanes, calibrated to the
+                      machine and recorded in the vault header. Items are encrypted under per-item
+                      keys, wrapped by per-vault keys, wrapped by keys derived from that password.
+                    </span>
+                    <span class="spec-source">
+                      <span class="eyebrow">Source</span>
+                      <span class="mono">crates/keyring-crypto/src/envelope.rs</span>
+                    </span>
+                  </span>
+                </span>
+              </span>
+              <span class="spec-chev">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </button>
+          </div>
+
+          <!-- 2 -->
+          <div class="spec-row" data-open="false">
+            <button type="button" class="spec-head" aria-expanded="false" aria-controls="spec-1">
+              <span class="spec-name">Accounts</span>
+              <span class="spec-value">
+                <span class="spec-teaser">None. No sign-up, no server, no telemetry.</span>
+                <span class="spec-detail">
+                  <span class="spec-inner" id="spec-1">
+                    <span class="spec-body prose">
+                      None. There is no sign-up, no account system, no server and no telemetry, and
+                      no payment or licence code anywhere in the repository. Nothing to breach at
+                      our end, because there is no our end.
+                    </span>
+                    <span class="spec-source">
+                      <span class="eyebrow">Source</span>
+                      <span class="mono">scripts/check-network.mjs</span>
+                    </span>
+                  </span>
+                </span>
+              </span>
+              <span class="spec-chev">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </button>
+          </div>
+
+          <!-- 3 -->
+          <div class="spec-row" data-open="false">
+            <button type="button" class="spec-head" aria-expanded="false" aria-controls="spec-2">
+              <span class="spec-name">Keys in memory</span>
+              <span class="spec-value">
+                <span class="spec-teaser"
+                  >Pinned out of the page file, and zeroed when they drop.</span
+                >
+                <span class="spec-detail">
+                  <span class="spec-inner" id="spec-2">
+                    <span class="spec-body prose">
+                      The three 32-byte keys a live session holds are pinned with
+                      <span class="mono">VirtualLock</span> at unlock, so they are kept out of the
+                      page file, and every key and plaintext buffer is zeroed when it drops. The
+                      Argon2 working buffer is a documented exception — it is far larger than the
+                      lockable working set. Locking pins an address rather than a value, and a
+                      hibernation image is a full memory dump whatever is locked.
+                    </span>
+                    <span class="spec-source">
+                      <span class="eyebrow">Source</span>
+                      <span class="mono">src-tauri/src/platform/memory.rs</span>
+                    </span>
+                  </span>
+                </span>
+              </span>
+              <span class="spec-chev">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </button>
+          </div>
+
+          <!-- 4 -->
+          <div class="spec-row" data-open="false">
+            <button type="button" class="spec-head" aria-expanded="false" aria-controls="spec-3">
+              <span class="spec-name">Clipboard</span>
+              <span class="spec-value">
+                <span class="spec-teaser"
+                  >The plaintext never reaches the interface that asked for it.</span
+                >
+                <span class="spec-detail">
+                  <span class="spec-inner" id="spec-3">
+                    <span class="spec-body prose">
+                      Copying decrypts in Rust and writes the system clipboard directly, so the
+                      value never enters the webview that draws the interface. It is cleared after
+                      thirty seconds by default, and only if what is on the clipboard is still what
+                      Trynta put there.
+                    </span>
+                    <span class="spec-source">
+                      <span class="eyebrow">Source</span>
+                      <span class="mono">src-tauri/src/platform/windows/clipboard.rs</span>
+                    </span>
+                  </span>
+                </span>
+              </span>
+              <span class="spec-chev">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </button>
+          </div>
+
+          <!-- 5 -->
+          <div class="spec-row" data-open="false">
+            <button type="button" class="spec-head" aria-expanded="false" aria-controls="spec-4">
+              <span class="spec-name">Brand icons</span>
+              <span class="spec-value">
+                <span class="spec-teaser">Bundled. Drawing a vault makes no request at all.</span>
+                <span class="spec-detail">
+                  <span class="spec-inner" id="spec-4">
+                    <span class="spec-body prose">
+                      3,772 marks ship inside the application and are matched on the registrable
+                      domain through the Public Suffix List. Nothing is fetched, ever. A favicon
+                      request per entry would announce, in the clear, every service you hold an
+                      account with — which is worth more to an observer than most single passwords.
+                    </span>
+                    <span class="spec-source">
+                      <span class="eyebrow">Source</span>
+                      <span class="mono">src-tauri/src/services/icons.rs</span>
+                    </span>
+                  </span>
+                </span>
+              </span>
+              <span class="spec-chev">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </button>
+          </div>
+
+          <!-- 6 -->
+          <div class="spec-row" data-open="false">
+            <button type="button" class="spec-head" aria-expanded="false" aria-controls="spec-5">
+              <span class="spec-name">Breach checks</span>
+              <span class="spec-value">
+                <span class="spec-teaser">Five characters leave, at most once a day.</span>
+                <span class="spec-detail">
+                  <span class="spec-inner" id="spec-5">
+                    <span class="spec-body prose">
+                      Trynta sends the first five characters of a password’s SHA-1 hash to the Have
+                      I Been Pwned range API, with padding requested so the response length reveals
+                      nothing, and matches the result locally. The password never leaves, nor does
+                      the rest of the hash, nor which item it belongs to. This and the signed update
+                      check are the only two requests the whole product makes.
+                    </span>
+                    <span class="spec-source">
+                      <span class="eyebrow">Source</span>
+                      <span class="mono">src-tauri/src/services/hibp.rs</span>
+                    </span>
+                  </span>
+                </span>
+              </span>
+              <span class="spec-chev">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </button>
+          </div>
+
+          <!-- 7 -->
+          <div class="spec-row" data-open="false">
+            <button type="button" class="spec-head" aria-expanded="false" aria-controls="spec-6">
+              <span class="spec-name is-limit">Sharing</span>
+              <span class="spec-value">
+                <span class="spec-teaser"
+                  >None. It is the reason the project exists, and it is not built.</span
+                >
+                <span class="spec-detail">
+                  <span class="spec-inner" id="spec-6">
+                    <span class="spec-body prose">
+                      None. Multi-owner credentials — two people co-owning one login, both able to
+                      use and edit it, neither depending on the other being online — are the reason
+                      this project exists, and they do not exist yet. An X25519 keypair is generated
+                      and stored for them. No key agreement is performed anywhere.
+                    </span>
+                    <span class="spec-source">
+                      <span class="eyebrow">Source</span>
+                      <span class="mono">crates/keyring-crypto/src/keys.rs</span>
+                    </span>
+                  </span>
+                </span>
+              </span>
+              <span class="spec-chev">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </button>
+          </div>
+
+          <!-- 8 -->
+          <div class="spec-row" data-open="false">
+            <button type="button" class="spec-head" aria-expanded="false" aria-controls="spec-7">
+              <span class="spec-name is-limit">Platforms</span>
+              <span class="spec-value">
+                <span class="spec-teaser"
+                  >Windows only. The macOS target has not been compiled since August.</span
+                >
+                <span class="spec-detail">
+                  <span class="spec-inner" id="spec-7">
+                    <span class="spec-body prose">
+                      Windows is the only verified platform; every push runs the full acceptance
+                      gate on it. The macOS target compiled and passed that same gate once, on 17
+                      August 2026, and nothing macOS has been compiled since — so there is no build
+                      to give you and no claim worth making about one. It reverts when there is
+                      Apple hardware to check it on.
+                    </span>
+                    <span class="spec-source">
+                      <span class="eyebrow">Source</span>
+                      <span class="mono">MACOS-UNVERIFIED.md</span>
+                    </span>
+                  </span>
+                </span>
+              </span>
+              <span class="spec-chev">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </button>
+          </div>
+
+          <!-- 9 -->
+          <div class="spec-row" data-open="false">
+            <button type="button" class="spec-head" aria-expanded="false" aria-controls="spec-8">
+              <span class="spec-name is-limit">External review</span>
+              <span class="spec-value">
+                <span class="spec-teaser"
+                  >None. Nobody outside the project has read the cryptography.</span
+                >
+                <span class="spec-detail">
+                  <span class="spec-inner" id="spec-8">
+                    <span class="spec-body prose">
+                      None. No third party has reviewed the cryptography, the storage format or the
+                      platform code. The primitives are standard, pinned to one RustCrypto
+                      generation and used the documented way, with known-answer tests against
+                      published vectors — which is not the same thing as having been checked by
+                      somebody else.
+                    </span>
+                    <span class="spec-source">
+                      <span class="eyebrow">Source</span>
+                      <span class="mono">SECURITY.md</span>
+                    </span>
+                  </span>
+                </span>
+              </span>
+              <span class="spec-chev">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </button>
+          </div>
+
+          <!-- 10 -->
+          <div class="spec-row" data-open="false">
+            <button type="button" class="spec-head" aria-expanded="false" aria-controls="spec-9">
+              <span class="spec-name is-limit">Code signing</span>
+              <span class="spec-value">
+                <span class="spec-teaser"
+                  >Unsigned. SmartScreen will report an unknown publisher.</span
+                >
+                <span class="spec-detail">
+                  <span class="spec-inner" id="spec-9">
+                    <span class="spec-body prose">
+                      The installer is not signed, so Windows SmartScreen warns about it and lists
+                      the publisher as unknown. That warning is accurate. The SHA-256 of every
+                      artefact is published beside it on the release page; compare it before you run
+                      anything.
+                    </span>
+                    <span class="spec-source">
+                      <span class="eyebrow">Source</span>
+                      <span class="mono">.github/workflows/ci.yml</span>
+                    </span>
+                  </span>
+                </span>
+              </span>
+              <span class="spec-chev">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================== DOWNLOAD -->
+    <section id="download" class="wrap">
+      <h2>Download</h2>
+      <p class="lede prose">
+        Version
+        <!--BUILD:VERSION--><!--/BUILD:VERSION-->. Every artefact is built by the release workflow
+        from a tagged commit, and the SHA-256 of each is listed on the release page.
+      </p>
+
+      <div class="group">
+        <div class="group-row">
+          <div class="body">
+            <div class="head">
+              <span class="name">Windows</span>
+              <span class="badge badge-accent">Available</span>
+            </div>
+            <div class="req">Windows 10 build 1809 or later · x64 · WebView2 runtime</div>
+          </div>
+          <div class="actions">
+            <a class="header-link" href="https://github.com/ahmedjidar/trynta/releases/latest"
+              >.exe installer</a
+            >
+            <a
+              class="btn btn-primary btn-small"
+              href="https://github.com/ahmedjidar/trynta/releases/latest"
+              >Download .msi</a
+            >
+          </div>
+        </div>
+        <div class="group-row">
+          <div class="body">
+            <div class="head">
+              <span class="name muted">macOS</span>
+              <span class="badge badge-quiet">Unverified</span>
+            </div>
+            <div class="req">
+              The target compiled once, in August. Nothing macOS has been built since, so there is
+              no artefact to hand you.
+            </div>
+          </div>
+          <div class="actions muted">Not available</div>
+        </div>
+      </div>
+
+      <div class="note">
+        <div class="eyebrow">What Windows will say</div>
+        <p class="prose">
+          The installer is unsigned, so SmartScreen shows a blue dialog reading
+          <span class="mono">Windows protected your PC</span> with the publisher listed as
+          <span class="mono">Unknown publisher</span>. Getting past it takes
+          <span class="mono">More info → Run anyway</span>.
+        </p>
+        <p class="prose">
+          That warning is accurate and you should not wave it away on our say-so. Compare the
+          SHA-256 on the release page against the file you downloaded first. A certificate is on the
+          list, behind things that matter more.
+        </p>
+      </div>
+
+      <p class="mt-4">
+        <a href="https://github.com/ahmedjidar/trynta/releases/latest"
+          ><strong>Release notes →</strong></a
+        >
+      </p>
+    </section>
+
+    <!-- ============================================================ ROADMAP -->
+    <section class="wrap">
+      <h2>Roadmap</h2>
+      <div class="timeline">
+        <div class="tl-entry">
+          <div class="tl-node is-done"></div>
+          <div class="eyebrow is-accent">Shipped</div>
+          <h3>V1 · The local vault</h3>
+          <p class="prose">
+            Logins, secure notes, cards and identities in an encrypted local file. A generator with
+            a real entropy figure, one-time codes, a report that finds weak, reused and breached
+            passwords, encrypted backups under their own passphrase, and unlock with Windows Hello.
+            This is what you can download today.
+          </p>
+        </div>
+
+        <div class="tl-entry">
+          <div class="tl-node is-now"></div>
+          <div class="eyebrow is-accent">Next</div>
+          <h3>V2 · Multi-owner credentials</h3>
+          <p class="prose">
+            Two people co-owning one login through a mutually confirmed invite: both see it, both
+            can use it, both can edit it, and neither depends on the other staying online. Item keys
+            wrapped to each owner’s public key, so nothing in the middle ever holds plaintext. The
+            keypair is generated and reserved. None of the rest is written.
+          </p>
+        </div>
+
+        <div class="tl-entry">
+          <div class="tl-node is-later"></div>
+          <div class="eyebrow">Further out</div>
+          <h3 class="is-quiet">V3 · Sync and autofill</h3>
+          <p class="prose">
+            Optional end-to-end encrypted sync through a relay you can run yourself, and browser
+            autofill that matches on the registrable domain rather than a substring. Both depend on
+            the V2 key exchange existing first, so neither has a shape yet.
+          </p>
+        </div>
+      </div>
+      <p class="caption mt-7">
+        No dates. This is worked on in evenings, and a date would be a guess dressed up as a
+        commitment.
+      </p>
+    </section>
+
+    <!-- ========================================================== CHANGELOG -->
+    <section class="wrap">
+      <div class="section-head">
+        <h2>Changelog</h2>
+        <span class="spacer"></span>
+        <a href="changelog.html"><strong>Full changelog →</strong></a>
+      </div>
+      <!--BUILD:LATEST_RELEASE--><!--/BUILD:LATEST_RELEASE-->
+    </section>
+
+    <footer class="site-footer">
+      <a href="https://github.com/ahmedjidar/trynta/blob/main/LICENSE">AGPL-3.0-or-later</a>
+      <a href="https://github.com/ahmedjidar/trynta">Source</a>
+      <a href="https://github.com/ahmedjidar/trynta/security/advisories/new"
+        >Report a vulnerability</a
+      >
+      <span class="spacer"></span>
+      <span>© 2026 Rafik</span>
+    </footer>
+
+    <script src="js/spec.js"></script>
+  </body>
+</html>

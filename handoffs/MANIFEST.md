@@ -8,6 +8,7 @@ the design it implements.
 | HO-001 | Shell, list, detail, generator, security, settings, palette, lock  | Claude Design DSL prototype + components.md | 2026-08-17 | —                              | superseded  |
 | HO-002 | The same surfaces, as a working React + TypeScript + Tailwind app  | `keyring-tsx/` source tree                  | 2026-08-18 | HO-001, for visual fidelity     | partial     |
 | HO-002g | Guided tour: pre-unlock notice and the four-card anchored sequence | `guided_tour/guided-tour/` — CSS, JS, and four documents | 2026-08-21 | the tour's engineering-designed first pass | full |
+| HO-003 | The marketing site: landing page and changelog | `design_handoff_trynta_site/` — Tailwind v4 theme, two pages, one script, four documents | 2026-08-22 | — | full, as plain CSS |
 
 **HO-001 — superseded, kept.** It is what the run-1 to run-3 UI was built against, and its
 `components.md` and `contrast-report.md` remain the reference for anything HO-002 does not draw:
@@ -17,8 +18,8 @@ the row-height table, the accessibility gap list, and the five contrast findings
 **HO-002 — partial.** Every surface it covers is ported: shell, sidebar, item list, item detail
 (with edit mode), generator, security report, settings, lock screen, command palette, new-item
 sheet, toast. Also built and reachable, without a design because HO-002 draws neither: the updater
-surface and backup/restore, both in HO-002's own settings vocabulary — raised below as HO-003
-requests.
+surface and backup/restore, both in HO-002's own settings vocabulary — raised below as an
+outstanding request.
 
 **The typeface is now bundled.** `--font-sans` names Manrope first and nothing shipped it, so every
 string in the product was rendering in the platform UI font — the same string measured 151.85px
@@ -29,6 +30,28 @@ around Manrope's metrics. Two woff2 subsets (40 KB total, SIL OFL 1.1) are vendo
 
 Not ported, deliberately: `PeopleView`, `ShareSheet`, and the share/roles/link rows inside the
 settings and detail surfaces. Those are SPEC-V2/V3.
+
+**HO-003 — the marketing site, ported to plain CSS, with every claim rewritten.**
+
+Its layout, structure and visual design are taken wholesale: the section order, the disclosure
+list, the grouped download rows, the two vertical timelines, the hero entrance and the motion
+table. Three things are deliberately different.
+
+*It is plain CSS, not Tailwind.* The handoff's `css/theme.css` is a Tailwind v4 `@theme`, and the
+site is required to be static HTML and CSS with no framework. `web/src/css/site.css` is that theme
+translated name for name and value for value, with the token it mirrors named on each line.
+`scripts/check-site-tokens.mjs` compares 55 of those values against `src/theme/tokens.css` on every
+run and fails on drift, including if one of the four WCAG corrections is reverted to its raw token.
+
+*The hero screenshot is dark, and it is real.* The handoff shipped a light screenshot of the app
+under macOS chrome and its own known-gaps list says to recapture on Windows before launch. That is
+done: `web/src/assets/shots/app-dark.png` is `docs/screenshots/dark-item.png`, taken from the
+running application on Windows 11 against a synthetic vault.
+
+*Every string is rewritten.* HO-003's copy was written without access to the codebase and its
+`CONTENT.md` says so plainly — the changelog is "invented", the version, star count and file size
+are placeholders, and the source paths are guesses. The rules in `CONTENT.md` are followed; the
+facts are not. What changed and why is set out in the commit that adds `web/`.
 
 **HO-002g — the guided tour, and it replaced a first pass rather than amending one.** The tour was
 built once from the written brief before any design existed, and that version is gone: its card,
@@ -401,7 +424,11 @@ item. Worth confirming that is intended, or drawing the affordance.
 
 ---
 
-## Outstanding request — HO-003
+## Outstanding request — two undesigned surfaces
+
+*This section used to be headed "HO-003". That label now belongs to the marketing site, which was
+delivered on 2026-08-22, so the request is named for what it asks for instead. Nothing about the
+request itself has changed.*
 
 Two surfaces the product needs and no handoff draws. Both are built in HO-002's own settings
 vocabulary — section labels, grouped rows, a raised card for a statement — rather than with an

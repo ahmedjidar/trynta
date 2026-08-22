@@ -99,3 +99,7 @@ yarn-debug.log*
 yarn-error.log*
 # TypeScript project-references build output
 /.tsbuild/
+
+# The marketing site's build output. Assembled by `pnpm build:site` from
+# `web/src` plus CHANGELOG.md; nothing in it is written by hand.
+web/dist/
