@@ -19,22 +19,17 @@
 // build that phoned an API to render that sentence would be a smaller version of
 // the same mistake.
 //
-// ## The star count
+// ## There is no star count
 //
-// The one value that genuinely lives elsewhere, and this script does not fetch it
-// either. It is read from `TRYNTA_STARS` and omitted when that is unset:
+// The page links to the repository and does not say how many stars it has. Three
+// ways to produce one were tried and all three are gone. A browser fetch hands
+// every visitor's IP to a third party in order to draw a number, on a page whose
+// argument is that Trynta bundles brand icons rather than do exactly that. A
+// build-time fetch would have made `check:network` count three outbound call
+// sites in a repository whose pages claim two. And a build variable leaves a slot
+// that is empty whenever nobody remembers to set it, which is worse than no slot.
 //
-//     TRYNTA_STARS=$(gh api repos/ahmedjidar/trynta --jq .stargazers_count) pnpm build:site
-//
-// Not baked in the browser, for the reason above. Not fetched *here* either, and
-// that is deliberate rather than fussy: `check:network` counts the outbound call
-// sites in this repository and the answer is exactly two, both in the product,
-// both sanctioned. A third in a build script would make the sentence the page
-// prints about itself slightly untrue, and the page's whole argument is that its
-// sentences are checkable.
-//
-// When the variable is unset the count is omitted and the link renders without
-// it. Never a stale number and never an invented one.
+// The link says Source.
 //
 // ## Output
 //
@@ -44,7 +39,6 @@
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import process from 'node:process';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = join(ROOT, 'web', 'src');
@@ -240,14 +234,6 @@ ${renderEntries(r)}
     .join('\n');
 }
 
-/** The star count from the environment, or nothing. Never a guess. */
-function stars() {
-  const raw = process.env.TRYNTA_STARS;
-  if (raw === undefined || raw.trim() === '') return null;
-  const n = Number.parseInt(raw, 10);
-  return Number.isFinite(n) && n >= 0 ? n : null;
-}
-
 /**
  * Replace the contents of every `<!--BUILD:NAME-->…<!--/BUILD:NAME-->` pair.
  *
@@ -275,7 +261,6 @@ function fill(html, name, replacement) {
 // ── build ───────────────────────────────────────────────────────────────────
 
 const [v, md] = await Promise.all([version(), readFile(join(ROOT, 'CHANGELOG.md'), 'utf8')]);
-const starCount = stars();
 
 const releases = parseChangelog(md);
 if (releases.length === 0) {
@@ -283,13 +268,6 @@ if (releases.length === 0) {
     'build:site — CHANGELOG.md parsed to no releases; both changelog blocks will say so',
   );
 }
-
-const starMarkup =
-  starCount === null ? '' : `<span class="nums">${starCount.toLocaleString('en-GB')}</span>`;
-const starCta =
-  starCount === null
-    ? ''
-    : `<span class="muted nums">★ ${starCount.toLocaleString('en-GB')}</span>`;
 
 await rm(OUT, { recursive: true, force: true });
 await mkdir(OUT, { recursive: true });
@@ -299,8 +277,6 @@ await cp(join(SRC, 'js'), join(OUT, 'js'), { recursive: true });
 
 for (const page of ['index.html', 'changelog.html']) {
   let html = await readFile(join(SRC, page), 'utf8');
-  html = fill(html, 'STARS', starMarkup);
-  html = fill(html, 'STARS_CTA', starCta);
   html = fill(html, 'VERSION', releases[0]?.version ?? v);
   html = fill(html, 'LATEST_RELEASE', `\n${renderLatest(releases)}\n      `);
   html = fill(html, 'RELEASES', `\n${renderReleases(releases)}\n      `);
@@ -309,5 +285,5 @@ for (const page of ['index.html', 'changelog.html']) {
 
 console.log(
   `build:site — web/dist ready · version ${releases[0]?.version ?? v} · ` +
-    `${String(releases.length)} release(s) · stars ${starCount === null ? 'omitted' : String(starCount)}`,
+    `${String(releases.length)} release(s)`,
 );

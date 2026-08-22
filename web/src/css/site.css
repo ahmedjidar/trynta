@@ -548,8 +548,12 @@ h3 {
   padding-bottom: 80px;
 }
 
+/* The one element HO-003 lets run wider than the content column — but the app
+   window is 1440px and the column is 880, so at that width the screenshot
+   dwarfed everything above it and the page read as two different layouts. Capped
+   to the column instead, which is also where the caption already sat. */
 .shot-frame {
-  max-width: var(--window);
+  max-width: var(--measure);
   margin: 0 auto;
   padding-inline: var(--gutter);
 }
@@ -562,8 +566,7 @@ h3 {
 }
 
 .shot-frame figcaption {
-  max-width: var(--measure);
-  margin: 16px auto 0;
+  margin-top: 16px;
 }
 
 /* ---------------------------------------------------------- SPECIFICATION */

@@ -26,13 +26,12 @@ pnpm build:site         # writes web/dist
 npx serve web/dist      # or open web/dist/index.html directly — no server needed
 ```
 
-The build does two substitutions and nothing else:
+The build does two substitutions and nothing else — no network, at build time or in the browser:
 
 | Marker | Source |
 |---|---|
 | `BUILD:VERSION` | the newest release in `CHANGELOG.md` |
 | `BUILD:LATEST_RELEASE`, `BUILD:RELEASES` | `CHANGELOG.md`, parsed |
-| `BUILD:STARS`, `BUILD:STARS_CTA` | `$TRYNTA_STARS`, or omitted if it is unset |
 
 **`CHANGELOG.md` is the only copy of the release notes.** This site renders it and the GitHub
 release body is pasted from it (see [`docs/RELEASE-NOTES-v0.1.0-alpha.md`](../docs/RELEASE-NOTES-v0.1.0-alpha.md)).
@@ -40,22 +39,12 @@ Add a release there and rebuild; there is nothing to keep in step by hand.
 
 ## Two decisions worth knowing before you change something
 
-**The star count comes in through the environment, and nothing in this repository fetches it.**
-
-```bash
-TRYNTA_STARS=$(gh api repos/ahmedjidar/trynta --jq .stargazers_count) pnpm build:site
-```
-
-Two reasons, and the second is the one that decided it. The page argues that Trynta bundles brand
-icons because requesting them would disclose which services you hold accounts with; a page calling
-`api.github.com` on every visit — handing each visitor's IP to a third party in order to draw a
-number — would fail its own test. That rules out a browser fetch. It does not by itself rule out a
-build-time one, but `check:network` counts the outbound call sites in this repository and the
-answer is exactly two, both in the product, both sanctioned. A third would make a sentence the page
-prints about itself slightly untrue.
-
-With the variable unset the count is omitted and the link renders as plain "Source". The repository
-is private today, so that is what happens.
+**There is no star count, and adding one back is not a small change.** Three ways to produce one
+were tried and all three are gone. A browser fetch hands every visitor's IP to a third party in
+order to draw a number, on a page whose argument is that Trynta bundles brand icons rather than do
+exactly that. A build-time fetch would have made `check:network` count three outbound call sites in
+a repository whose pages claim two. A build variable leaves a slot that is empty whenever nobody
+remembers to set it, which is worse than no slot. The link says Source.
 
 **The palette is copied from the app, and a check enforces it.** `src/theme/tokens.css` is the
 source, but it cannot be imported here: it carries the whole dark theme, the row heights, the
