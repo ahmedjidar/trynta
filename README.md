@@ -44,10 +44,19 @@ disclose which services you have accounts with.
 
 <div align="center">
 
-|                         Dark                          |                          Light                          |
-| :---------------------------------------------------: | :-----------------------------------------------------: |
-|   ![Item list, dark](docs/screenshots/dark-items.png)   |   ![Item list, light](docs/screenshots/light-items.png)   |
-| ![Security report, dark](docs/screenshots/dark-security.png) | ![Security report, light](docs/screenshots/light-security.png) |
+|                                    Dark                                     |                                     Light                                     |
+| :-------------------------------------------------------------------------: | :---------------------------------------------------------------------------: |
+|            ![The vault, dark](docs/screenshots/dark-vault.png)             |            ![The vault, light](docs/screenshots/light-vault.png)             |
+|      ![A login with a one-time code, dark](docs/screenshots/dark-item.png)      |      ![A login with a one-time code, light](docs/screenshots/light-item.png)      |
+|          ![The generator, dark](docs/screenshots/dark-generator.png)           |          ![The generator, light](docs/screenshots/light-generator.png)           |
+|        ![The security report, dark](docs/screenshots/dark-security.png)        |        ![The security report, light](docs/screenshots/light-security.png)        |
+|            ![Settings, dark](docs/screenshots/dark-settings.png)             |            ![Settings, light](docs/screenshots/light-settings.png)             |
+
+Every item on these screens is synthetic. The addresses are on `trynta.example`, which
+[RFC 2606](https://www.rfc-editor.org/rfc/rfc2606) reserves so it can never resolve; the card is
+Stripe's published test number; the one-time code comes from
+[RFC 6238](https://www.rfc-editor.org/rfc/rfc6238)'s own test vector. The brand marks are the
+bundled ones, drawn from the binary — taking these screenshots made no network request.
 
 </div>
 
