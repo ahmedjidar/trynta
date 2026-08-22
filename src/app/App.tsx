@@ -39,6 +39,7 @@ import { WindowFrame } from './WindowFrame';
 import { useDragRegion } from './useDragRegion';
 import { bindZoomShortcuts } from './zoom';
 import { useNavigation } from './navigation';
+import { cn } from '../lib/cn';
 import { Toast } from '../components/Toast';
 import { LockScreen } from '../features/account/LockScreen';
 import { Palette } from '../features/palette/Palette';
@@ -56,6 +57,7 @@ import { Updates } from '../features/settings/Updates';
 import { ItemDetail } from '../features/items/ItemDetail';
 import { ItemList } from '../features/items/ItemList';
 import { GuidedTour } from '../features/tour/GuidedTour';
+import { useStacked } from './useStacked';
 import { useTour } from '../features/tour/store';
 import { NewItemSheet } from '../features/items/NewItemSheet';
 import {
@@ -148,6 +150,9 @@ function Shell() {
   const refreshThemes = useThemeStore((s) => s.refresh);
   const forgetThemes = useThemeStore((s) => s.forget);
   const surface = useNavigation((s) => s.surface);
+  // Read here as well as in `DetailPane`: the stacked layout gives the list the
+  // whole region when nothing is selected, so the shell has to know.
+  const selectedId = useNavigation((s) => s.selectedId);
   const clearCache = useClearCache();
   const loadTour = useTour((s) => s.load);
   const showTour = useTour((s) => s.showApp);
@@ -170,6 +175,9 @@ function Shell() {
   const everything = useAllItems(unlocked);
   const vaults = useVaults(unlocked);
   const report = useCachedSecurityReport();
+  // The region the list and the detail share, measured so the two can stop being
+  // columns when they no longer fit as columns.
+  const [stacked, vaultArea] = useStacked();
 
   useEffect(() => {
     // Callable while locked — that is what it is for. Until it answers, neither the
@@ -416,7 +424,16 @@ function Shell() {
         />
 
         {surface === 'vault' ? (
-          <div className="flex min-w-0 flex-1">
+          /* Below `--width-list` + `--width-detail-min` the two panes stop being
+             columns and become rows: the list on top, the selected item's detail
+             under it. With nothing selected the detail is not rendered at all, so
+             the list has the whole region rather than sharing it with a line of
+             placeholder text. `useStacked` explains why this is measured rather
+             than expressed as a media query. */
+          <div
+            ref={vaultArea}
+            className={cn('flex min-w-0 flex-1', stacked ? 'flex-col' : 'flex-row')}
+          >
             <ItemList
               items={items.data ?? EMPTY_ITEMS}
               risks={risks}
@@ -426,13 +443,18 @@ function Shell() {
                 setSheetOpen(true);
               }}
               modifierKey={platform.modifierKey}
+              stacked={stacked}
+              shared={stacked && selectedId !== null}
             />
-            <DetailPane
-              vaultNames={vaultNames}
-              report={report.data ?? null}
-              onCopied={onCopied}
-              onFailed={onFailed}
-            />
+            {stacked && selectedId === null ? null : (
+              <DetailPane
+                vaultNames={vaultNames}
+                report={report.data ?? null}
+                onCopied={onCopied}
+                onFailed={onFailed}
+                stacked={stacked}
+              />
+            )}
           </div>
         ) : surface === 'generator' ? (
           <Generator onCopied={onCopied} onFailed={onFailed} />
@@ -525,9 +547,11 @@ interface DetailPaneProps {
   report: SecurityReportDto | null;
   onCopied: (what: string) => void;
   onFailed: (message: string) => void;
+  /** The pane is under the list rather than beside it. */
+  stacked: boolean;
 }
 
-function DetailPane({ vaultNames, report, onCopied, onFailed }: DetailPaneProps) {
+function DetailPane({ vaultNames, report, onCopied, onFailed, stacked }: DetailPaneProps) {
   const selectedId = useNavigation((s) => s.selectedId);
   const refresh = useRefresh();
   // Only rendered inside the unlocked branch, so the gate is satisfied by construction.
@@ -570,6 +594,7 @@ function DetailPane({ vaultNames, report, onCopied, onFailed }: DetailPaneProps)
 
   return (
     <ItemDetail
+      stacked={stacked}
       summary={summary}
       detail={detail.data}
       items={items.data ?? EMPTY_ITEMS}

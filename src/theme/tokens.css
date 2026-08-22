@@ -285,6 +285,21 @@
   --width-list:                320px;
   --width-field-label:         96px;
   --width-search:              380px;
+  /* The narrowest the detail pane can be and still show an item's rows in full.
+     Measured in a real window at the shipped zoom, not derived on paper: the
+     widest row in its resting state is a masked secret, which carries a label, a
+     16-bullet mask, and both Reveal and Copy. That row costs 348px before the
+     value gets a pixel, and the mask itself needs 135 — it stops being cut short
+     at a 486px pane and is cut at 478. 348 + 135 = 483.
+
+     This is the point the side-by-side arrangement stops being worth keeping:
+     below it the pane is being asked to truncate its own placeholder. See
+     `useStacked`, which adds `--width-list` to it. */
+  --width-detail-min:          483px;
+  /* What the detail header keeps for the title before its actions wrap to their
+     own line. The actions are a fixed 219px and never shrank, so on a narrow
+     pane the title was squeezed to three pixels while they kept full width. */
+  --width-title-min:           160px;
   --measure-pane:              704px;  /* detail, generator, settings        */
   --measure-pane-wide:         880px;  /* security, people                   */
   --measure-prose:             62ch;

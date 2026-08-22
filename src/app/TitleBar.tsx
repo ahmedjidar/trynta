@@ -120,21 +120,27 @@ export function TitleBar({ onOpenPalette, onLock, modifierKey, os }: TitleBarPro
           under the pointer counts — so without it the middle two-thirds of the title bar
           would be dead to dragging. The search button inside is its own target and
           still receives its click. */}
-      <div data-drag-region className="flex flex-1 justify-center px-5">
+      {/* `min-w-0` so the wrapper may shrink below the button's width, which is
+          what lets the button's own `shrink` do anything at all. */}
+      <div data-drag-region className="flex min-w-0 flex-1 justify-center px-5">
         <button
           type="button"
           data-focus-ring
           onClick={onOpenPalette}
           className={cn(
-            'border-hairline bg-surface-panel flex h-8 w-[380px] cursor-text items-center gap-2 rounded-full border px-3',
+            // `--width-search` is the design's width and stays the width wherever
+            // there is room. `shrink` is the whole narrow-window fix: fixed at
+            // 380px the title bar overflowed the window below ~792px of frame,
+            // pushing the window controls off the right-hand edge.
+            'border-hairline bg-surface-panel flex h-8 w-[var(--width-search)] min-w-0 shrink cursor-text items-center gap-2 rounded-full border px-3',
             'text-caption text-text-muted shadow-inner-top',
             'duration-moderate transition-[box-shadow,border-color]',
             'hover:border-strong hover:shadow-search-hover',
           )}
         >
           <Glyph name="search" size={12} />
-          Search vault, actions, tags
-          <span className="border-strong text-micro ml-auto rounded-xs border px-[5px] leading-4 font-semibold">
+          <span className="truncate">Search vault, actions, tags</span>
+          <span className="border-strong text-micro ml-auto shrink-0 rounded-xs border px-[5px] leading-4 font-semibold">
             {modifierKey}K
           </span>
         </button>

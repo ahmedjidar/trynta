@@ -134,9 +134,16 @@ export interface ItemDetailProps {
   onFailed: (message: string) => void;
   /** Drop the cached list and detail after a successful edit. */
   onEdited: () => void;
+  /**
+   * The pane is under the list rather than beside it, so it carries a way back
+   * up to it. Never rendered in the side-by-side arrangement, where the list is
+   * already on screen and a Back control would be pointing at itself.
+   */
+  stacked?: boolean;
 }
 
 export function ItemDetail({
+  stacked = false,
   summary,
   detail,
   items,
@@ -411,7 +418,36 @@ export function ItemDetail({
         aria-label="Item detail"
       >
         <div className="mx-auto w-full max-w-[var(--measure-pane-wide)] px-8 pt-8 pb-12">
-          <header className="flex items-center gap-4">
+          {/* Only in the stacked arrangement: beside the list this would be a
+              button that scrolls to something already in view. Clearing the
+              selection is what returns the region to the list at full height,
+              which is the same thing Escape does elsewhere in the app. */}
+          {stacked ? (
+            <button
+              type="button"
+              data-focus-ring
+              className="text-control text-text-secondary duration-hover hover:bg-surface-hover hover:text-text-primary -mt-2 mb-3 flex h-7 items-center gap-1.5 rounded-md px-2 transition-colors"
+              onClick={() => {
+                select(null);
+              }}
+            >
+              {/* The design's own chevron, turned to point at the list rather
+                  than a new glyph invented for one button. Up, not left: in this
+                  arrangement the list is above, and a left arrow would be
+                  pointing at the sidebar. */}
+              <span className="flex -rotate-90" aria-hidden="true">
+                <Glyph name="next" size={14} />
+              </span>
+              Back to list
+            </button>
+          ) : null}
+          {/* `flex-wrap` plus a floor on the title block, rather than a
+              breakpoint: the actions are a fixed 219px, so once the title would
+              drop below `--width-title-min` the line no longer fits and they
+              wrap underneath on their own. Measured before this: at a 435px pane
+              the title box was 51px — three characters — while the buttons kept
+              every pixel they started with. */}
+          <header className="flex flex-wrap items-center gap-4 gap-y-3">
             {/* In edit mode the tile *is* the control.
 
               It used to be a "Use my own icon" button under the title, which pushed
@@ -449,7 +485,7 @@ export function ItemDetail({
                 theme={resolvedTheme}
               />
             )}
-            <div className="min-w-0 flex-1">
+            <div className="min-w-[var(--width-title-min)] flex-1">
               {editing ? (
                 <Input
                   aria-label="Title"

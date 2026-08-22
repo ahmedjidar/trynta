@@ -77,9 +77,25 @@ export interface ItemListProps {
   onNew: () => void;
   /** The platform's modifier label, for the keyboard hints. Never hardcoded (§8). */
   modifierKey: string;
+  /**
+   * The region is too narrow for the list and the detail to be columns, so they
+   * are rows instead. See `useStacked` for where the threshold comes from.
+   */
+  stacked?: boolean;
+  /** Stacked *and* sharing the region with an open item, so the list is a band. */
+  shared?: boolean;
 }
 
-export function ItemList({ items, risks, vaultNames, onCopy, onNew, modifierKey }: ItemListProps) {
+export function ItemList({
+  items,
+  risks,
+  vaultNames,
+  onCopy,
+  onNew,
+  modifierKey,
+  stacked = false,
+  shared = false,
+}: ItemListProps) {
   const selectedId = useNavigation((s) => s.selectedId);
   const source = useNavigation((s) => s.source);
   const setFilters = useNavigation((s) => s.setFilters);
@@ -185,7 +201,16 @@ export function ItemList({ items, risks, vaultNames, onCopy, onNew, modifierKey 
       // than its header: ANCHORING.md's rule is that the ring should read as
       // "this thing", and the thing the card describes is the list.
       data-tour="items"
-      className="border-hairline bg-surface-raised flex w-[clamp(var(--width-list),28%,440px)] shrink-0 flex-col border-r"
+      className={cn(
+        'border-hairline bg-surface-raised flex flex-col',
+        stacked
+          ? // Across the top instead of down the side. Two fifths of the height
+            // with an item open, which is four rows at `--row-item` and enough to
+            // keep the neighbours of whatever you opened in view; all of it when
+            // nothing is open, because there is no second pane to make room for.
+            cn('w-full min-w-0 border-b', shared ? 'h-2/5 min-h-0 shrink-0' : 'min-h-0 flex-1')
+          : 'w-[clamp(var(--width-list),28%,440px)] shrink-0 border-r',
+      )}
       aria-label="Items"
     >
       <header className="border-hairline flex h-11 shrink-0 items-center gap-2 border-b pr-3 pl-4">

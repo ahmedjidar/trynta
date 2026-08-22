@@ -100,7 +100,20 @@
         <!-- =========================================================== BODY -->
         <main class="doc">
           <div class="callout is-danger doc-section" id="status">
-            <span class="callout-label">Read this first</span>
+            <div class="callout-head">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7.4v5.4" stroke-linecap="round" />
+                <circle cx="12" cy="16.4" r="1" fill="currentColor" stroke="none" />
+              </svg>
+              <span class="callout-label">Read this first</span>
+            </div>
             <p>
               Trynta is <strong>pre-1.0 and has had no third-party security audit</strong>. Nobody
               outside the project has reviewed the cryptography, the storage format or the platform
@@ -131,7 +144,20 @@
             </p>
 
             <div class="callout is-warn">
-              <span class="callout-label">SmartScreen will warn you</span>
+              <div class="callout-head">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  aria-hidden="true"
+                >
+                  <path d="M12 4.2 2.9 19.4h18.2L12 4.2Z" stroke-linejoin="round" />
+                  <path d="M12 9.6v4.2" stroke-linecap="round" />
+                  <circle cx="12" cy="16.6" r="1" fill="currentColor" stroke="none" />
+                </svg>
+                <span class="callout-label">SmartScreen will warn you</span>
+              </div>
               <p>
                 Both files are unsigned, so Windows shows a blue dialog reading
                 <em>Windows protected your PC</em> with the publisher listed as
@@ -175,7 +201,20 @@
             </p>
 
             <div class="callout is-danger">
-              <span class="callout-label">There is no recovery</span>
+              <div class="callout-head">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7.4v5.4" stroke-linecap="round" />
+                  <circle cx="12" cy="16.4" r="1" fill="currentColor" stroke="none" />
+                </svg>
+                <span class="callout-label">There is no recovery</span>
+              </div>
               <p>
                 Your master password is not stored anywhere, is never sent anywhere, and cannot be
                 looked up or reset — not by you and not by anybody else. If you forget it, the vault
@@ -444,7 +483,20 @@
             </p>
 
             <div class="callout">
-              <span class="callout-label">Worth thinking about</span>
+              <div class="callout-head">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                  <circle cx="12" cy="7.8" r="1" fill="currentColor" stroke="none" />
+                  <path d="M12 11.2V16.6" stroke-linecap="round" />
+                </svg>
+                <span class="callout-label">Worth thinking about</span>
+              </div>
               <p>
                 Keeping a password and its second factor in the same vault means one compromised
                 vault gives up both. That is a real reduction in what two-factor buys you. It is
@@ -583,7 +635,20 @@
             </p>
 
             <div class="callout is-warn">
-              <span class="callout-label">Two limits</span>
+              <div class="callout-head">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  aria-hidden="true"
+                >
+                  <path d="M12 4.2 2.9 19.4h18.2L12 4.2Z" stroke-linejoin="round" />
+                  <path d="M12 9.6v4.2" stroke-linecap="round" />
+                  <circle cx="12" cy="16.6" r="1" fill="currentColor" stroke="none" />
+                </svg>
+                <span class="callout-label">Two limits</span>
+              </div>
               <p>
                 Your <strong>master password is required at least once every 14 days</strong>,
                 whatever the biometric says. A fingerprint cannot carry the vault indefinitely.
@@ -618,7 +683,20 @@
             </p>
 
             <div class="callout is-danger">
-              <span class="callout-label">Both passphrases matter</span>
+              <div class="callout-head">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7.4v5.4" stroke-linecap="round" />
+                  <circle cx="12" cy="16.4" r="1" fill="currentColor" stroke="none" />
+                </svg>
+                <span class="callout-label">Both passphrases matter</span>
+              </div>
               <p>
                 Neither the master password nor the backup passphrase can be recovered. A backup you
                 cannot open is not a backup. Record both.
@@ -664,7 +742,20 @@
             </p>
 
             <div class="callout">
-              <span class="callout-label">A theme is untrusted input</span>
+              <div class="callout-head">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                  <circle cx="12" cy="7.8" r="1" fill="currentColor" stroke="none" />
+                  <path d="M12 11.2V16.6" stroke-linecap="round" />
+                </svg>
+                <span class="callout-label">A theme is untrusted input</span>
+              </div>
               <p>
                 It is validated in Rust before a single value is applied, not in the webview. Only
                 custom-property declarations are accepted, values must match a strict grammar, and
@@ -861,7 +952,20 @@
               by turning biometric unlock off before you uninstall.
             </p>
             <div class="callout is-warn">
-              <span class="callout-label">Back it up like a document</span>
+              <div class="callout-head">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  aria-hidden="true"
+                >
+                  <path d="M12 4.2 2.9 19.4h18.2L12 4.2Z" stroke-linejoin="round" />
+                  <path d="M12 9.6v4.2" stroke-linecap="round" />
+                  <circle cx="12" cy="16.6" r="1" fill="currentColor" stroke="none" />
+                </svg>
+                <span class="callout-label">Back it up like a document</span>
+              </div>
               <p>
                 There is no server holding a copy. If that file is lost with the disk, the vault is
                 lost with it. Export a backup and keep it somewhere else.

@@ -194,7 +194,11 @@ export function Generator({ onCopied, onFailed }: GeneratorProps) {
               Not saved to history — the vault is locked. Select the value above to copy it by hand.
             </p>
           ) : null}
-          <div className="mt-4 flex items-center gap-3">
+          {/* The meter is a fixed 160px and the two buttons do not shrink, so at
+              the window's minimum width this row ran 40px past its card. It
+              wraps now; the spacer still pushes the buttons right when the line
+              has room for them. */}
+          <div className="mt-4 flex flex-wrap items-center gap-3 gap-y-3">
             <StrengthMeter
               score={strength.band}
               label={strength.label}

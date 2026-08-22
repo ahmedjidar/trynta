@@ -1162,9 +1162,15 @@ h3 {
   font-weight: var(--weight-medium);
 }
 
+/* A group label needs to belong to what follows it, not to what precedes it.
+   At 14px above and 4px below — plus the 5px each link carries — the two gaps
+   came out at 25px and 21px, near enough identical, so every label read as a
+   caption on the link above it. The space above is now roughly three times the
+   space below, which is what makes five groups read as five groups. */
 .docs-nav .group-label {
-  margin-top: 14px;
-  padding: 0 10px 4px;
+  display: block;
+  margin-top: 24px;
+  padding: 0 10px 2px;
   font-size: var(--text-badge);
   line-height: var(--leading-caption);
   font-weight: var(--weight-bold);
@@ -1173,6 +1179,7 @@ h3 {
   color: var(--ink-3);
 }
 
+/* Nothing above the first one: it is already against the heading. */
 .docs-nav li:first-child .group-label {
   margin-top: 0;
 }
@@ -1362,19 +1369,31 @@ kbd {
 }
 
 /* --------------------------------------------------------------- CALLOUTS */
-/* `.note` already exists for the landing page's quiet aside. These are the two
-   louder ones a manual needs: a caution, and a plain fact worth pulling out. */
+/* `.note` already exists for the landing page's quiet aside. These are the
+   louder ones a manual needs: a caution, a warning, and a plain fact worth
+   pulling out of the prose.
+
+   Deliberately *not* a coloured stripe down the left edge. That is the
+   generated-documentation house style and it appears nowhere in Trynta: the app
+   boxes things in a full hairline border with a soft lift and generous padding —
+   `GroupedList`, `StatCards` and the settings rows are all the same treatment.
+   So a callout is that card, and the severity is carried by the icon and the
+   label, which is where the app puts a tone as well. HO-003 specifies no
+   callout, so this is derived from the app rather than invented. */
 
 .callout {
-  padding: 14px 16px;
+  padding: 20px;
   border: 1px solid var(--hairline);
-  border-left: 3px solid var(--accent);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   background: var(--panel);
+  /* The app's `shadow-card` is an outline plus this lift. The outline would sit
+     directly on top of the border above and read as two pixels, so the border
+     stands in for it and only the lift is drawn. */
+  box-shadow: var(--shadow-lift);
 }
 
 .callout > p {
-  margin-top: 0;
+  margin-top: 10px;
   max-width: none;
 }
 
@@ -1382,29 +1401,34 @@ kbd {
   margin-top: 8px;
 }
 
+/* The one element carrying the tone, so a variant sets exactly one colour. */
+.callout-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent-text);
+}
+
+.callout-head svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+}
+
 .callout .callout-label {
-  display: block;
   font-size: var(--text-micro);
   line-height: var(--leading-micro);
   font-weight: var(--weight-bold);
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
-  color: var(--accent-text);
+  color: currentColor;
 }
 
-.callout.is-warn {
-  border-left-color: var(--warn);
-}
-
-.callout.is-warn .callout-label {
+.callout.is-warn .callout-head {
   color: var(--warn);
 }
 
-.callout.is-danger {
-  border-left-color: var(--danger);
-}
-
-.callout.is-danger .callout-label {
+.callout.is-danger .callout-head {
   color: var(--danger);
 }
 
