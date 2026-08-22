@@ -19,7 +19,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ItemList } from './ItemList';
 import { useNavigation } from '../../app/navigation';
-import type { ItemSummaryDto } from '../../ipc';
+import type { ItemSummaryDto, RiskKindDto } from '../../ipc';
 
 function item(id: string, title: string, extra: Partial<ItemSummaryDto> = {}): ItemSummaryDto {
   return {
@@ -222,6 +222,65 @@ describe('item list', () => {
     // The design conveys risk with a 6px coloured dot. Colour alone is not an
     // accessible signal, so it carries a name too.
     expect(screen.getByRole('img', { name: /found in a breach/i })).toBeInTheDocument();
+  });
+
+  it('names the finding the dot is actually for', () => {
+    // Every kind used to reach the same two labels: breached, or "Weak password"
+    // for everything else. An item whose only finding is that the service offers
+    // two-factor would then tell a screen-reader user their password was weak,
+    // which is a false statement about a security state — worse than silence.
+    const cases: [RiskKindDto, RegExp][] = [
+      ['breached', /found in a breach/i],
+      ['weak', /^Weak password$/i],
+      ['reused', /reused on another item/i],
+      ['missingTwoFactor', /two-factor available, not set up/i],
+    ];
+
+    for (const [kind, name] of cases) {
+      const view = render(
+        <ItemList
+          items={[item('a', 'Acme')]}
+          risks={{ a: kind }}
+          vaultNames={{}}
+          onCopy={vi.fn()}
+          onNew={vi.fn()}
+          modifierKey="Ctrl"
+        />,
+        wrap,
+      );
+      expect(screen.getByRole('img', { name }), kind).toBeInTheDocument();
+      // `weak` is the only kind that may say "weak".
+      if (kind !== 'weak') {
+        expect(screen.queryByRole('img', { name: /^Weak password$/i }), kind).toBeNull();
+      }
+      view.unmount();
+    }
+  });
+
+  it('keeps the two colours the design drew, whatever the finding', () => {
+    // `theme/dynamic.css` defines `.dot` in danger and warning and nothing else,
+    // so a third tone would be inventing a colour. Amber means "needs attention";
+    // the label says which kind of attention.
+    for (const [kind, tone] of [
+      ['breached', 'danger'],
+      ['weak', 'warning'],
+      ['reused', 'warning'],
+      ['missingTwoFactor', 'warning'],
+    ] as [RiskKindDto, string][]) {
+      const view = render(
+        <ItemList
+          items={[item('a', 'Acme')]}
+          risks={{ a: kind }}
+          vaultNames={{}}
+          onCopy={vi.fn()}
+          onNew={vi.fn()}
+          modifierKey="Ctrl"
+        />,
+        wrap,
+      );
+      expect(screen.getByRole('img'), kind).toHaveAttribute('data-tone', tone);
+      view.unmount();
+    }
   });
 
   it('marks the identity tile decorative when the title is already visible', () => {

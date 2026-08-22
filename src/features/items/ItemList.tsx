@@ -30,7 +30,28 @@ import type { IconSources } from './useItemIcons';
 import { useThemeStore } from '../../theme/store';
 import { Spacer } from '../../components/Spacer';
 import { cn } from '../../lib/cn';
-import type { ItemSummaryDto, SortOrderDto } from '../../ipc';
+import type { ItemSummaryDto, RiskKindDto, SortOrderDto } from '../../ipc';
+
+/**
+ * What the risk dot says, per finding.
+ *
+ * One label per kind, and that is the whole point of the map. The dot used to be
+ * a boolean — breached or not — so everything that was not a breach announced
+ * itself as "Weak password", including an item whose only finding was that the
+ * service offers two-factor and this entry has none. A strong, unique password
+ * read out as weak is a screen reader being told something false about a
+ * security state, which is worse than saying nothing.
+ *
+ * The two *colours* stay as the design drew them: `.dot` in `theme/dynamic.css`
+ * defines danger and warning and nothing else, so a third tone would be inventing
+ * one. Amber therefore means "needs attention", and the label says which.
+ */
+const RISK_LABEL: Record<RiskKindDto, string> = {
+  breached: 'Password found in a breach',
+  weak: 'Weak password',
+  reused: 'Password reused on another item',
+  missingTwoFactor: 'Two-factor available, not set up',
+};
 
 /** Rows rendered beyond the viewport, so a fast scroll does not show gaps. */
 const OVERSCAN = 6;
@@ -46,8 +67,8 @@ const SORTS: readonly { value: SortOrderDto; label: string }[] = [
 export interface ItemListProps {
   /** Rows to show, already filtered, searched and sorted by Rust. */
   items: readonly ItemSummaryDto[];
-  /** Item ids the last security report flagged, for the risk dot. */
-  risks: Readonly<Record<string, 'breached' | 'weak'>>;
+  /** The most severe finding per item id, from the last security report. */
+  risks: Readonly<Record<string, RiskKindDto>>;
   /** Vault names by id, so a vault source can title the column with its own name. */
   vaultNames: Readonly<Record<string, string>>;
   /** Copy the selected item's primary secret, in Rust. */
@@ -294,7 +315,7 @@ export function ItemList({ items, risks, vaultNames, onCopy, onNew, modifierKey 
 
 interface ItemRowProps {
   item: ItemSummaryDto;
-  risk: 'breached' | 'weak' | undefined;
+  risk: RiskKindDto | undefined;
   selected: boolean;
   /** `data:` URIs for the rows whose icon the user supplied. */
   iconSources: IconSources;
@@ -341,14 +362,14 @@ function ItemRow({ item, risk, selected, iconSources, theme, onSelect }: ItemRow
             2FA
           </Badge>
         ) : null}
-        {risk ? (
+        {risk === undefined ? null : (
           <span
             className="dot h-1.5 w-1.5 rounded-full"
             data-tone={risk === 'breached' ? 'danger' : 'warning'}
             role="img"
-            aria-label={risk === 'breached' ? 'Password found in a breach' : 'Weak password'}
+            aria-label={RISK_LABEL[risk]}
           />
-        ) : null}
+        )}
       </div>
     </div>
   );

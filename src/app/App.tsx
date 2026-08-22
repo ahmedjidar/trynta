@@ -77,6 +77,7 @@ import {
 import type {
   AccountStatus,
   ItemSummaryDto,
+  RiskKindDto,
   SecurityReportDto,
   SettingsDto,
   VaultSummaryDto,
@@ -116,6 +117,21 @@ const RISK_BANDS: Record<string, { band: number; label: string }> = {
   breached: { band: 1, label: 'Breached' },
   weak: { band: 1, label: 'Weak' },
   reused: { band: 2, label: 'Reused' },
+};
+
+/**
+ * Which finding a row shows when an item has more than one.
+ *
+ * Higher wins. `missingTwoFactor` sits at the bottom because it is a fact about
+ * the service rather than about the password: an item with a breached password
+ * *and* no second factor has a breach problem, and that is what the dot should
+ * say.
+ */
+const RISK_SEVERITY: Record<RiskKindDto, number> = {
+  breached: 3,
+  weak: 2,
+  reused: 1,
+  missingTwoFactor: 0,
 };
 
 /** The root of the application. */
@@ -305,12 +321,18 @@ function Shell() {
     );
   }, []);
 
-  const risks = useMemo<Record<string, 'breached' | 'weak'>>(() => {
-    const map: Record<string, 'breached' | 'weak'> = {};
+  const risks = useMemo<Record<string, RiskKindDto>>(() => {
+    // One dot per row, so an item with several findings shows its worst — and the
+    // dot's label then names that finding. The previous version collapsed
+    // everything that was not a breach to `weak`, which made a strong unique
+    // password on a service that offers two-factor announce itself to a screen
+    // reader as "Weak password".
+    const map: Record<string, RiskKindDto> = {};
     for (const risk of report.data?.risks ?? []) {
-      // Breached outranks weak outranks reused, and the list has one dot per row.
-      if (risk.kind === 'breached') map[risk.itemId] = 'breached';
-      else map[risk.itemId] ??= 'weak';
+      const current = map[risk.itemId];
+      if (current === undefined || RISK_SEVERITY[risk.kind] > RISK_SEVERITY[current]) {
+        map[risk.itemId] = risk.kind;
+      }
     }
     return map;
   }, [report.data]);
