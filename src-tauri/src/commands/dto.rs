@@ -1492,13 +1492,22 @@ pub struct UpdateCheckDto {
 #[ts(export, export_to = "../../src/ipc/generated/")]
 #[serde(rename_all = "camelCase")]
 pub enum ThemeModeDto {
-    /// Follow the OS. The default, because it is the only one that is never wrong
-    /// on first launch.
-    #[default]
+    /// Follow the OS.
     System,
     /// Always dark — the token layer's base.
     Dark,
-    /// Always light.
+    /// Always light. The default a fresh vault starts on.
+    ///
+    /// `System` was the default until it wasn't: following the OS means a first
+    /// launch looks like whatever the machine happens to be set to, and half of
+    /// those first launches were showing a product nobody had chosen the palette
+    /// for. Light is a decision, it is the same on every machine, and the other
+    /// two are one click away in Settings → Appearance.
+    ///
+    /// `index.html` carries `data-theme="light"` for the same reason: the token
+    /// layer's base is dark, so without it the first paint of every launch would
+    /// be the theme we just stopped defaulting to.
+    #[default]
     Light,
 }
 

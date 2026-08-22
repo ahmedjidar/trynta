@@ -51,8 +51,9 @@ put credentials you actually rely on in it yet.
   password.
 - Fuzzy search over an index built in memory at unlock, measured under 16 ms at the 95th percentile
   on a vault of five thousand items.
-- Dark, light and follow-the-system themes, plus themes you can write yourself as JSON. A theme is
-  validated in Rust before anything is applied: it cannot fetch, and it cannot contain `url()`.
+- Light, dark and follow-the-system themes, starting on light, plus themes you can write yourself
+  as JSON. A theme is validated in Rust before anything is applied: it cannot fetch, and it cannot
+  contain `url()`.
 - A signed update check, which you can switch off.
 - Optional exclusion from screenshots and screen sharing, off by default.
 

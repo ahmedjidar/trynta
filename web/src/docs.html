@@ -1,0 +1,1277 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Documentation — Trynta</title>
+    <meta
+      name="description"
+      content="How to install and use Trynta, and how it works underneath: the key hierarchy, what leaves your machine, every setting and its default."
+    />
+    <link rel="icon" href="assets/brand/mark-accent.svg" />
+    <link rel="stylesheet" href="css/site.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap">
+        <a class="wordmark" href="index.html">
+          <svg viewBox="0 0 122 76" aria-hidden="true">
+            <g fill="none" stroke="currentColor" stroke-width="11">
+              <path d="M 53.38 66.63 A 32.5 32.5 0 1 1 66.63 53.38" />
+              <path d="M 68.62 9.37 A 32.5 32.5 0 1 1 55.37 22.62" />
+            </g>
+          </svg>
+          <span>Trynta</span>
+        </a>
+        <span class="caption">Docs</span>
+        <span class="spacer"></span>
+        <a class="header-link" href="changelog.html">Changelog</a>
+        <a class="header-link" href="index.html#download">Download</a>
+        <a class="gh-pill" href="https://github.com/ahmedjidar/trynta">
+          <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <path
+              d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
+            />
+          </svg>
+          <span>Source</span>
+        </a>
+      </div>
+    </header>
+
+    <section class="hero hero--tight wrap wrap--docs">
+      <h1 class="rise h-page">Documentation</h1>
+      <p class="rise rise-1 lede prose">
+        Everything Trynta does, how to do it, and what happens underneath. The first half assumes
+        you have never used a password manager. The second half assumes you want to know exactly
+        what the cryptography is before you trust it with anything.
+      </p>
+      <p class="rise rise-2 caption mt-4">
+        For version <span class="mono nums"><!--BUILD:VERSION--><!--/BUILD:VERSION--></span>. This
+        page describes the build that is on the <a href="index.html#download">download</a> link
+        right now — nothing here is planned or forthcoming unless it says so.
+      </p>
+    </section>
+
+    <div class="wrap wrap--docs">
+      <div class="docs">
+        <!-- ======================================================= CONTENTS -->
+        <nav class="docs-nav" aria-label="On this page">
+          <h2>On this page</h2>
+          <ol>
+            <li>
+              <span class="group-label">Getting started</span>
+              <a href="#install">Install</a>
+            </li>
+            <li><a href="#first-run">Create your vault</a></li>
+            <li><a href="#tour">The five-minute tour</a></li>
+            <li>
+              <span class="group-label">Using it</span>
+              <a href="#items">Items and vaults</a>
+            </li>
+            <li><a href="#copy-reveal">Copying and revealing</a></li>
+            <li><a href="#generator">The generator</a></li>
+            <li><a href="#totp">One-time codes</a></li>
+            <li><a href="#security-report">The security report</a></li>
+            <li><a href="#hello">Windows Hello</a></li>
+            <li><a href="#backup">Backup and restore</a></li>
+            <li><a href="#themes">Themes</a></li>
+            <li>
+              <span class="group-label">Reference</span>
+              <a href="#settings">Every setting</a>
+            </li>
+            <li><a href="#keyboard">Keyboard</a></li>
+            <li><a href="#files">Files on disk</a></li>
+            <li>
+              <span class="group-label">Under the hood</span>
+              <a href="#architecture">Architecture</a>
+            </li>
+            <li><a href="#cryptography">Cryptography</a></li>
+            <li><a href="#network">What leaves your machine</a></li>
+            <li><a href="#threat-model">What this protects against</a></li>
+            <li>
+              <span class="group-label">The rest</span>
+              <a href="#limits">What is not built</a>
+            </li>
+            <li><a href="#troubleshooting">Troubleshooting</a></li>
+            <li><a href="#help">Getting help</a></li>
+          </ol>
+        </nav>
+
+        <!-- =========================================================== BODY -->
+        <main class="doc">
+          <div class="callout is-danger doc-section" id="status">
+            <span class="callout-label">Read this first</span>
+            <p>
+              Trynta is <strong>pre-1.0 and has had no third-party security audit</strong>. Nobody
+              outside the project has reviewed the cryptography, the storage format or the platform
+              code. <strong>Windows is the only verified platform</strong>, and the feature the
+              project exists for — sharing a credential between two people — is
+              <strong>not built</strong>.
+            </p>
+            <p>
+              Use it on things you can afford to lose access to. Don't put credentials you rely on
+              in it yet.
+            </p>
+          </div>
+
+          <!-- ==================================================== INSTALL -->
+          <section class="doc-section" id="install">
+            <h2>
+              Install<a class="anchor" href="#install" aria-label="Link to this section">#</a>
+            </h2>
+            <p>
+              Windows 10 build 1809 or later, 64-bit. The WebView2 runtime is required; it is
+              already present on current Windows 11, and the installer fetches it if it is missing.
+            </p>
+            <p>
+              Two files are published with each release and either one is fine. The
+              <code>.msi</code> is the standard Windows installer package. The
+              <code>-setup.exe</code> is an NSIS installer, which is smaller and installs per-user
+              without an administrator prompt.
+            </p>
+
+            <div class="callout is-warn">
+              <span class="callout-label">SmartScreen will warn you</span>
+              <p>
+                Both files are unsigned, so Windows shows a blue dialog reading
+                <em>Windows protected your PC</em> with the publisher listed as
+                <em>Unknown publisher</em>. Getting past it is
+                <strong>More info → Run anyway</strong>.
+              </p>
+              <p>
+                That warning is accurate and you should not wave it away because a web page told you
+                to. Every release lists the SHA-256 of both files. Check the one you downloaded
+                first:
+              </p>
+            </div>
+
+            <pre><code>Get-FileHash .\Trynta_0.1.0-alpha_x64-setup.exe -Algorithm SHA256</code></pre>
+
+            <p>
+              Compare the result with the hash in the
+              <a href="https://github.com/ahmedjidar/trynta/releases/latest">release notes</a>. If
+              they differ, delete the file and do not run it.
+            </p>
+
+            <h3>Uninstalling</h3>
+            <p>
+              Uninstall from <strong>Settings → Apps</strong> like any other program. That removes
+              the application. It <strong>does not</strong> remove your vault — see
+              <a href="#files">Files on disk</a> for where it lives and how to delete it
+              deliberately.
+            </p>
+          </section>
+
+          <!-- ================================================== FIRST RUN -->
+          <section class="doc-section" id="first-run">
+            <h2>
+              Create your vault<a class="anchor" href="#first-run" aria-label="Link to this section"
+                >#</a
+              >
+            </h2>
+            <p>
+              On first launch Trynta asks for one thing: a master password. There is no email, no
+              account and nothing to confirm.
+            </p>
+
+            <div class="callout is-danger">
+              <span class="callout-label">There is no recovery</span>
+              <p>
+                Your master password is not stored anywhere, is never sent anywhere, and cannot be
+                looked up or reset — not by you and not by anybody else. If you forget it, the vault
+                is unreadable. That is the property that makes the rest of this worth using, and it
+                has no exceptions.
+              </p>
+              <p>
+                Write it down and put the paper somewhere you would keep a passport. That is better
+                advice than it sounds.
+              </p>
+            </div>
+
+            <h3>Choosing one</h3>
+            <p>
+              Length beats complexity. Four or five unrelated words are stronger than a short string
+              with punctuation in it, and far easier to type correctly every day. If you want Trynta
+              to pick for you, the passphrase mode of the
+              <a href="#generator">generator</a> does exactly this — though you will have to create
+              the vault before you can reach it, so generate it, then change the master password in
+              Settings.
+            </p>
+
+            <h3>What happens when you press the button</h3>
+            <p>
+              Your password goes through <strong>Argon2id</strong>, a key derivation function
+              designed to be slow and to need a lot of memory, so that guessing at it in bulk is
+              expensive rather than free.
+            </p>
+            <p>
+              Trynta calibrates the cost to your machine: it measures a derivation and picks
+              parameters that land near <strong>700&nbsp;ms</strong> on your hardware, so a faster
+              computer automatically gets a harder setting. There is a hard floor it will never go
+              below, so a slow machine cannot calibrate its way down to something weak. The chosen
+              cost is written into the vault header, which is what lets the same file open correctly
+              on a different computer.
+            </p>
+          </section>
+
+          <!-- ======================================================= TOUR -->
+          <section class="doc-section" id="tour">
+            <h2>
+              The five-minute tour<a class="anchor" href="#tour" aria-label="Link to this section"
+                >#</a
+              >
+            </h2>
+            <p>
+              The first time you unlock, Trynta walks you through four cards — the item list, the
+              generator, the security report and backup. Nothing is blocked while it is open; you
+              can use the app underneath it, and <kbd>Esc</kbd> ends it.
+            </p>
+            <p>
+              It runs once. <strong>Settings → Help → Guided tour</strong> plays it again whenever
+              you want it.
+            </p>
+            <p>The window itself is three columns, and it stays that way everywhere:</p>
+            <ul>
+              <li>
+                <strong>Left</strong> — your vaults, then the whole library by type, then the tools.
+              </li>
+              <li><strong>Middle</strong> — the list of whatever you selected on the left.</li>
+              <li><strong>Right</strong> — the item you selected in the middle.</li>
+            </ul>
+          </section>
+
+          <!-- ====================================================== ITEMS -->
+          <section class="doc-section" id="items">
+            <h2>
+              Items and vaults<a class="anchor" href="#items" aria-label="Link to this section"
+                >#</a
+              >
+            </h2>
+            <p>
+              Trynta stores four kinds of thing, and they are genuinely different types rather than
+              one generic entry with optional fields:
+            </p>
+            <ul>
+              <li><strong>Logins</strong> — username, password, website, one-time code, notes.</li>
+              <li><strong>Secure notes</strong> — free text, encrypted like everything else.</li>
+              <li><strong>Cards</strong> — number, expiry, security code, cardholder.</li>
+              <li><strong>Identities</strong> — the personal details forms keep asking for.</li>
+            </ul>
+            <p>
+              <strong>New item</strong> is the button at the top of the middle column. Pick the kind
+              and the vault it belongs to, fill in what you have, save.
+            </p>
+
+            <h3>Vaults</h3>
+            <p>
+              A vault is a group — Personal, Work, Family, whatever suits. There is no limit, each
+              one can be renamed and given its own colour, and every item lives in exactly one of
+              them. Manage them from <strong>Settings → Vaults</strong>.
+            </p>
+            <p>
+              They are an organisational boundary, not a security one: everything is unlocked by the
+              same master password at the same time.
+            </p>
+
+            <h3>Finding things</h3>
+            <p>
+              The list has quick filters across the top — <strong>All</strong>,
+              <strong>Weak</strong> and <strong>Has 2FA</strong> — which combine rather than replace
+              one another. The sort control cycles through <strong>Recent</strong>,
+              <strong>A–Z</strong>, <strong>Updated</strong> and <strong>Created</strong>.
+              <strong>Favourites</strong> in the sidebar collects anything you have starred.
+            </p>
+            <p>
+              For anything faster than that, press <kbd>Ctrl</kbd> <kbd>K</kbd>. That is a fuzzy
+              search across your whole vault and the app's actions at once. The index is built in
+              memory when you unlock and thrown away when you lock — it is never written to disk.
+            </p>
+
+            <h3>Deleting</h3>
+            <p>
+              Deleting an item asks for two things: your master password, and the item's name typed
+              out. Both are checked in Rust, not in the interface.
+            </p>
+            <p>
+              The threat this is built for is an unlocked vault on an unattended desk. A password
+              alone is muscle memory; a password plus a name you have to read off the screen is not
+              something done by accident.
+            </p>
+          </section>
+
+          <!-- =============================================== COPY / REVEAL -->
+          <section class="doc-section" id="copy-reveal">
+            <h2>
+              Copying and revealing<a
+                class="anchor"
+                href="#copy-reveal"
+                aria-label="Link to this section"
+                >#</a
+              >
+            </h2>
+            <p>
+              These are two different operations with two different security stories, and the
+              difference is worth understanding.
+            </p>
+
+            <h3>Copy</h3>
+            <p>
+              The password is decrypted in Rust and written straight to the Windows clipboard. It
+              never enters the webview — the part of the application that draws the interface never
+              receives the value at all. <kbd>Ctrl</kbd> <kbd>C</kbd> copies the password of
+              whatever row is highlighted in the list, without opening it.
+            </p>
+            <p>
+              The clipboard clears itself after <strong>30&nbsp;seconds</strong> by default. It only
+              clears if the clipboard still holds what Trynta put there, so copying something else
+              in the meantime leaves your clipboard alone.
+            </p>
+
+            <h3>Reveal</h3>
+            <p>
+              Revealing is the one sanctioned path a plaintext takes to the screen:
+              <strong>one field, one item, on an explicit click</strong>. It is rate-limited to
+              twenty reveals per rolling minute, and it clears on blur, on navigation and on lock.
+              The interface never stores it, caches it or logs it.
+            </p>
+            <p>
+              <strong>Settings → Security</strong> can require your master password for every
+              reveal. It is off by default: the rate limit already forces re-authentication, and
+              typing a master password dozens of times a day is its own risk.
+            </p>
+          </section>
+
+          <!-- ================================================== GENERATOR -->
+          <section class="doc-section" id="generator">
+            <h2>
+              The generator<a class="anchor" href="#generator" aria-label="Link to this section"
+                >#</a
+              >
+            </h2>
+            <p>Two modes, both drawing from the operating system's cryptographic random source.</p>
+
+            <h3>Passwords</h3>
+            <p>
+              Set the length and choose which character classes to include — uppercase, digits,
+              symbols — and optionally exclude the characters that look like each other
+              (<code>l</code>, <code>1</code>, <code>I</code>, <code>0</code>, <code>O</code>),
+              which matters when a password has to be read aloud or copied by hand.
+            </p>
+            <p>
+              Selection uses rejection sampling. That is the unglamorous detail that keeps every
+              character equally likely instead of quietly favouring the start of the alphabet, which
+              is what a naive modulo does.
+            </p>
+
+            <h3>Passphrases</h3>
+            <p>
+              Words come from the <strong>EFF long word list</strong> — 7,776 words, chosen so that
+              each one contributes exactly 12.9 bits. The list ships inside the application and is
+              verified against its published hash at build time, so it cannot be swapped for a
+              shorter one.
+            </p>
+            <p>
+              Words are separated by spaces. A hyphen makes the boundaries ambiguous when a phrase
+              is read out or retyped, and the separator adds no strength either way.
+            </p>
+
+            <h3>The number underneath</h3>
+            <p>
+              That figure is <strong>entropy in bits</strong>: the real measure of how many guesses
+              an attacker would need, computed from the settings that produced this password rather
+              than from inspecting the result. It is not a bar that turns green when you add a
+              symbol.
+            </p>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Entropy</th>
+                    <th>Band</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="nums">under 40 bits</td>
+                    <td>Weak</td>
+                  </tr>
+                  <tr>
+                    <td class="nums">40 – 64 bits</td>
+                    <td>Fair</td>
+                  </tr>
+                  <tr>
+                    <td class="nums">65 – 89 bits</td>
+                    <td>Strong</td>
+                  </tr>
+                  <tr>
+                    <td class="nums">90 bits and up</td>
+                    <td>Excellent</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>History</h3>
+            <p>
+              The panel below keeps what you generated — but only the <em>kind</em>, the entropy and
+              the timestamp. <strong>Never the value.</strong> A list of your recent passwords
+              sitting in a side panel would be a strange thing for a password manager to keep.
+            </p>
+          </section>
+
+          <!-- ======================================================= TOTP -->
+          <section class="doc-section" id="totp">
+            <h2>
+              One-time codes<a class="anchor" href="#totp" aria-label="Link to this section">#</a>
+            </h2>
+            <p>
+              Trynta generates two-factor codes locally, to
+              <a href="https://www.rfc-editor.org/rfc/rfc6238">RFC 6238</a> — the same standard
+              every authenticator app implements.
+            </p>
+            <p>
+              On a login, paste either the <code>otpauth://</code> link behind the QR code or the
+              bare setup key. Trynta works out the algorithm, digit count and period from the link;
+              a bare key uses the usual defaults.
+            </p>
+            <p>
+              It handles <strong>SHA-1, SHA-256 and SHA-512</strong>, and both
+              <strong>six and eight digit</strong> codes. Plenty of services use something other
+              than the default and most tools quietly assume nobody does.
+            </p>
+            <p>
+              The ring around the code is the countdown to the next one. Click the code to copy.
+            </p>
+
+            <div class="callout">
+              <span class="callout-label">Worth thinking about</span>
+              <p>
+                Keeping a password and its second factor in the same vault means one compromised
+                vault gives up both. That is a real reduction in what two-factor buys you. It is
+                still much better than not using two-factor at all, and for most people the
+                convenience is what makes them turn it on everywhere — but if an account matters
+                enough, keep its second factor somewhere else.
+              </p>
+            </div>
+          </section>
+
+          <!-- ============================================ SECURITY REPORT -->
+          <section class="doc-section" id="security-report">
+            <h2>
+              The security report<a
+                class="anchor"
+                href="#security-report"
+                aria-label="Link to this section"
+                >#</a
+              >
+            </h2>
+            <p>
+              A score for the whole vault, with the arithmetic that produced it printed underneath —
+              you can see exactly why it says what it says. A vault with too little in it to score
+              shows <strong>—</strong> rather than a zero that reads as catastrophic.
+            </p>
+            <p>Five figures, and each one is a list you can click into:</p>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Figure</th>
+                    <th>What it counts</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Breached</td>
+                    <td>Passwords found in a known credential dump.</td>
+                  </tr>
+                  <tr>
+                    <td>Weak</td>
+                    <td>Passwords a determined attacker could guess in under a day.</td>
+                  </tr>
+                  <tr>
+                    <td>Reused</td>
+                    <td>The same password on two or more items.</td>
+                  </tr>
+                  <tr>
+                    <td>No 2FA</td>
+                    <td>The service offers two-factor and this item has no code set up.</td>
+                  </tr>
+                  <tr>
+                    <td>Not checked</td>
+                    <td>
+                      Not compared against the breach corpus.
+                      <strong>Not the same as safe</strong> — and never reported as safe.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>The breach check</h3>
+            <p>
+              Off by default. Turn it on with
+              <strong>Settings → Security → Watch for breaches</strong>.
+            </p>
+            <p>Here is exactly what happens when it runs:</p>
+            <ol>
+              <li>Trynta computes the SHA-1 hash of a password, on your machine.</li>
+              <li>
+                It sends the <strong>first five hexadecimal characters</strong> of that hash — and
+                nothing else — to the Have I Been Pwned range API, with
+                <code>Add-Padding: true</code> so the response size reveals nothing either.
+              </li>
+              <li>
+                The service returns every hash suffix sharing that prefix, typically several
+                hundred.
+              </li>
+              <li>The comparison happens locally. The full hash never leaves the machine.</li>
+            </ol>
+            <p>
+              No password, no username, no site name and no identifier for you is transmitted. The
+              request carries no cookie and nothing that names the user. It runs at most once every
+              24 hours.
+            </p>
+            <p>
+              <strong>Opening the report sends nothing at all.</strong> The report reads a local
+              cache; refreshing that cache is a separate action you press deliberately.
+            </p>
+          </section>
+
+          <!-- ====================================================== HELLO -->
+          <section class="doc-section" id="hello">
+            <h2>
+              Windows Hello<a class="anchor" href="#hello" aria-label="Link to this section">#</a>
+            </h2>
+            <p>
+              Optional, off by default, and available only if your device has Hello set up.
+              <strong>Settings → Security → Unlock with biometrics.</strong>
+            </p>
+            <p>
+              Enabling it asks for your master password once, right there. There is no moment when
+              the running app is holding your password and could enrol silently — it is used once at
+              unlock and dropped — so enrolment has to ask, and it verifies the password before
+              storing anything.
+            </p>
+
+            <h3>How it works</h3>
+            <p>
+              Windows Hello creates an asymmetric key pair that the operating system gates behind
+              your face, fingerprint or PIN, and stores it in the TPM on machines that have one.
+              Trynta never sees the private key.
+            </p>
+            <p>
+              It asks the OS to sign a fixed challenge — that is what makes the Hello prompt appear
+              — and derives a wrapping key from the signature that comes back. Two properties make
+              this sound: the signature is deterministic, so the same challenge always yields the
+              same bytes; and Windows destroys the credential if your Hello enrolment changes, at
+              which point Trynta falls back to the master password rather than trying to track
+              enrolment itself.
+            </p>
+            <p>
+              The wrapping key protects your <strong>master password</strong>, which is handed to
+              Windows' own secure storage (DPAPI plus Credential Manager) and released only after
+              Hello signs.
+            </p>
+
+            <h3>Why it stores the password, not a key</h3>
+            <p>
+              Storing a derived key instead would skip the Argon2id derivation, and that derivation
+              is the thing that makes a stolen vault expensive. Somebody who compromised the secure
+              store would then hold something strictly more useful than your password. Storing the
+              password means an attacker who defeats Hello gets exactly what you have and no more,
+              and every check on the ordinary unlock path still runs.
+            </p>
+
+            <div class="callout is-warn">
+              <span class="callout-label">Two limits</span>
+              <p>
+                Your <strong>master password is required at least once every 14 days</strong>,
+                whatever the biometric says. A fingerprint cannot carry the vault indefinitely.
+              </p>
+              <p>
+                And this is the one feature not covered by the project's automated test gate — the
+                signing path needs real hardware to exercise. Treat it as less proven than the rest.
+              </p>
+            </div>
+          </section>
+
+          <!-- ===================================================== BACKUP -->
+          <section class="doc-section" id="backup">
+            <h2>
+              Backup and restore<a class="anchor" href="#backup" aria-label="Link to this section"
+                >#</a
+              >
+            </h2>
+            <p>
+              <strong>Settings → Backup and restore.</strong> Export writes one encrypted file
+              wherever you choose. Nothing is uploaded.
+            </p>
+            <p>
+              The archive has <strong>its own passphrase</strong>, chosen for the file and
+              independent of your master password. So you can put a backup somewhere you would not
+              put your master password, and you can change your master password without invalidating
+              archives you already made.
+            </p>
+            <p>
+              The file carries its own Argon2id salt and cost, so it stays expensive to attack on
+              its own terms, and it is signed — a restore refuses an archive that has been altered.
+            </p>
+
+            <div class="callout is-danger">
+              <span class="callout-label">Both passphrases matter</span>
+              <p>
+                Neither the master password nor the backup passphrase can be recovered. A backup you
+                cannot open is not a backup. Record both.
+              </p>
+            </div>
+
+            <p>
+              Restoring replaces the current vault with the archive's contents. Take a fresh export
+              before you restore an old one if there is anything in the current vault you want to
+              keep.
+            </p>
+          </section>
+
+          <!-- ===================================================== THEMES -->
+          <section class="doc-section" id="themes">
+            <h2>Themes<a class="anchor" href="#themes" aria-label="Link to this section">#</a></h2>
+            <p>
+              <strong>Settings → Appearance.</strong> Light, dark, or follow the system. A new
+              install starts on <strong>light</strong>. Switching is instant — no reload, no flash —
+              because every colour in the application resolves through a token layer, so changing
+              theme is a change of data rather than a change of stylesheet.
+            </p>
+
+            <h3>Writing your own</h3>
+            <p>
+              A theme is a JSON file: an id, a name, which built-in mode it replaces, and a map of
+              CSS custom properties to values.
+            </p>
+            <pre><code>{
+  "id": "midnight",
+  "name": "Midnight",
+  "mode": "dark",
+  "tokens": {
+    "--surface-app": "#0b0d12",
+    "--surface-panel": "#12151c",
+    "--text-primary": "#e8eaf0",
+    "--accent": "#7c86ff"
+  }
+}</code></pre>
+            <p>
+              Import it from Settings. Anything you do not set keeps the built-in value, so a
+              handful of tokens is a perfectly good theme.
+            </p>
+
+            <div class="callout">
+              <span class="callout-label">A theme is untrusted input</span>
+              <p>
+                It is validated in Rust before a single value is applied, not in the webview. Only
+                custom-property declarations are accepted, values must match a strict grammar, and
+                <code>url()</code> is rejected outright — including through case changes, CSS
+                escapes, comments, and the other functions that can fetch.
+              </p>
+              <p>
+                The reason is specific: <code>background: url(https://…)</code> in a theme would be
+                a beacon that fires on render, telling a third party that you opened Trynta, from
+                which address, and when. The content security policy is the second layer, not the
+                first.
+              </p>
+            </div>
+          </section>
+
+          <!-- =================================================== SETTINGS -->
+          <section class="doc-section" id="settings">
+            <h2>
+              Every setting<a class="anchor" href="#settings" aria-label="Link to this section"
+                >#</a
+              >
+            </h2>
+            <p>
+              The complete list, with defaults. Where a default looks surprising, the reason is in
+              the last column.
+            </p>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Setting</th>
+                    <th>Default</th>
+                    <th>What it does</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Unlock with biometrics</td>
+                    <td>Off</td>
+                    <td>
+                      Windows Hello unlock. Asks for your master password once to enrol. Disabled
+                      when no sensor is enrolled on the device.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Clear clipboard after copying</td>
+                    <td>On, 30&nbsp;s</td>
+                    <td>
+                      5, 15, 30, 60, 120 or 300 seconds. Clears only if the clipboard still holds
+                      what Trynta put there.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Require the master password to reveal</td>
+                    <td>Off</td>
+                    <td>
+                      The 20-per-minute reveal limit already forces re-authentication, and typing a
+                      master password constantly is its own risk.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Watch for breaches</td>
+                    <td>Off</td>
+                    <td>
+                      Turns on the k-anonymous check described
+                      <a href="#security-report">above</a>. At most once a day.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Hide from screen capture</td>
+                    <td>Off</td>
+                    <td>
+                      Excludes the window from screenshots and screen sharing. Off because it
+                      matches the stated threat model, and because turning it on breaks your own
+                      screenshots when you need support.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Theme</td>
+                    <td>Light</td>
+                    <td>Light, dark or follow the system, plus any theme you have imported.</td>
+                  </tr>
+                  <tr>
+                    <td>Autofill</td>
+                    <td>—</td>
+                    <td>
+                      Not in this version, and shown as a stated fact rather than a switch that does
+                      nothing.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Vaults</td>
+                    <td>—</td>
+                    <td>Create, rename, recolour and remove vaults.</td>
+                  </tr>
+                  <tr>
+                    <td>Backup and restore</td>
+                    <td>—</td>
+                    <td>Export an encrypted archive, or restore one.</td>
+                  </tr>
+                  <tr>
+                    <td>Check for updates automatically</td>
+                    <td>On</td>
+                    <td>
+                      A signed manifest, at most once every 24 hours on launch. Works while the
+                      vault is locked.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Guided tour</td>
+                    <td>—</td>
+                    <td>Plays the introduction cards again.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- =================================================== KEYBOARD -->
+          <section class="doc-section" id="keyboard">
+            <h2>
+              Keyboard<a class="anchor" href="#keyboard" aria-label="Link to this section">#</a>
+            </h2>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Keys</th>
+                    <th>Does</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><kbd>Ctrl</kbd> <kbd>K</kbd></td>
+                    <td>Open the command palette — search items and actions together.</td>
+                  </tr>
+                  <tr>
+                    <td><kbd>Ctrl</kbd> <kbd>L</kbd></td>
+                    <td>Lock the vault immediately.</td>
+                  </tr>
+                  <tr>
+                    <td><kbd>Ctrl</kbd> <kbd>C</kbd></td>
+                    <td>Copy the highlighted item's password without opening or revealing it.</td>
+                  </tr>
+                  <tr>
+                    <td><kbd>↑</kbd> <kbd>↓</kbd></td>
+                    <td>Move through the list or the sidebar.</td>
+                  </tr>
+                  <tr>
+                    <td><kbd>Home</kbd> <kbd>End</kbd></td>
+                    <td>Jump to the first or last row.</td>
+                  </tr>
+                  <tr>
+                    <td><kbd>Enter</kbd></td>
+                    <td>Open the highlighted item, or activate the highlighted row.</td>
+                  </tr>
+                  <tr>
+                    <td><kbd>Esc</kbd></td>
+                    <td>Close the palette, a sheet, or the guided tour.</td>
+                  </tr>
+                  <tr>
+                    <td><kbd>Tab</kbd></td>
+                    <td>
+                      Every control is reachable and every one shows a focus ring. Nothing here is
+                      mouse-only.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- ====================================================== FILES -->
+          <section class="doc-section" id="files">
+            <h2>
+              Files on disk<a class="anchor" href="#files" aria-label="Link to this section">#</a>
+            </h2>
+            <p>Everything Trynta stores lives in one directory:</p>
+            <pre><code>%APPDATA%\Trynta\vault.db</code></pre>
+            <p>
+              That is normally <code>C:\Users\&lt;you&gt;\AppData\Roaming\Trynta</code>. One SQLite
+              file, with the secret fields encrypted individually inside it.
+            </p>
+            <p>
+              <strong>Moving to another machine:</strong> copy that file to the same path on the new
+              machine and unlock with the same master password. The derivation cost travels in the
+              file's header, so it opens correctly even on hardware that would have calibrated
+              differently. A <a href="#backup">backup archive</a> is the tidier route and the one to
+              prefer.
+            </p>
+            <p>
+              <strong>Deleting everything:</strong> uninstall, then delete that folder. Nothing is
+              left anywhere else — except the Hello credential if you enrolled one, which is removed
+              by turning biometric unlock off before you uninstall.
+            </p>
+            <div class="callout is-warn">
+              <span class="callout-label">Back it up like a document</span>
+              <p>
+                There is no server holding a copy. If that file is lost with the disk, the vault is
+                lost with it. Export a backup and keep it somewhere else.
+              </p>
+            </div>
+          </section>
+
+          <!-- =============================================== ARCHITECTURE -->
+          <section class="doc-section" id="architecture">
+            <h2>
+              Architecture<a class="anchor" href="#architecture" aria-label="Link to this section"
+                >#</a
+              >
+            </h2>
+            <p>
+              The shell is <strong>Tauri v2</strong> — which matters mostly for what it is not.
+              There is no bundled browser engine and no Node runtime sitting next to your secrets;
+              the interface renders in the WebView2 already on the system.
+            </p>
+            <p>
+              <strong>Everything that touches a secret is Rust.</strong> All key derivation, all
+              encryption and decryption, all storage, all clipboard writes. The interface is React
+              and TypeScript, and it never holds a key — not a master key, not a vault key, not an
+              item key. No key material crosses the IPC boundary in either direction.
+            </p>
+            <pre><code>crates/
+  keyring-crypto/    KDF, AEAD, envelopes, key hierarchy, manifest, backup format
+                     — depends on nothing else in the workspace
+  keyring-store/     SQLite schema, migrations, header, item repository
+                     — depends only on keyring-crypto
+src-tauri/
+  commands/          the IPC surface; orchestration only, no logic
+  platform/          windows/ and macos/ behind traits; the only place `unsafe` is allowed
+  services/          generator, strength, TOTP, breach, icons, report, theme
+src/
+  features/          the interface, in vertical slices
+  ipc/               the only place in the frontend that can call the backend
+  theme/             the token layer and runtime theme loading</code></pre>
+            <p>
+              Item lists carry decrypted <em>metadata</em> only — title, subtitle, icon, badges.
+              Secret fields are fetched one at a time, on demand, by an explicit command. The
+              layering is enforced by build checks rather than by convention, and the crate names
+              are historical: the project was called Keyring before it was called Trynta.
+            </p>
+          </section>
+
+          <!-- =============================================== CRYPTOGRAPHY -->
+          <section class="doc-section" id="cryptography">
+            <h2>
+              Cryptography<a class="anchor" href="#cryptography" aria-label="Link to this section"
+                >#</a
+              >
+            </h2>
+            <p>Standard primitives, used the documented way. Nothing here is novel.</p>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Purpose</th>
+                    <th>Primitive</th>
+                    <th>State</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Key derivation</td>
+                    <td>Argon2id (v0x13)</td>
+                    <td>
+                      Calibrated per machine toward ~700&nbsp;ms; default
+                      m&nbsp;=&nbsp;65,536&nbsp;KiB, t&nbsp;=&nbsp;3, p&nbsp;=&nbsp;4; hard floor
+                      m&nbsp;=&nbsp;19,456&nbsp;KiB, t&nbsp;=&nbsp;2. Cost stored in the vault
+                      header.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Subkeys</td>
+                    <td>HKDF-SHA256</td>
+                    <td>Implemented.</td>
+                  </tr>
+                  <tr>
+                    <td>Encryption</td>
+                    <td>XChaCha20-Poly1305</td>
+                    <td>One authenticated envelope per field.</td>
+                  </tr>
+                  <tr>
+                    <td>Signatures</td>
+                    <td>Ed25519</td>
+                    <td>Vault manifest and backup archives.</td>
+                  </tr>
+                  <tr>
+                    <td>Key agreement</td>
+                    <td>X25519</td>
+                    <td>
+                      <strong>Reserved for sharing.</strong> A keypair is generated and stored; no
+                      agreement is performed anywhere and nothing uses it yet.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Randomness</td>
+                    <td>OS CSPRNG</td>
+                    <td>No userspace PRNG anywhere in the product.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>The key hierarchy</h3>
+            <p>
+              Each item is encrypted under its own key. Item keys are wrapped by a per-vault key,
+              and vault keys are wrapped by keys derived from your master password. Decrypting one
+              item unwraps one item key; it does not hand over the vault.
+            </p>
+
+            <h3>Length hiding</h3>
+            <p>
+              Plaintexts are padded to a 256-byte boundary (ISO/IEC 7816-4) before encryption, so a
+              ciphertext's length cannot distinguish a four-digit PIN from a long note. Padding is
+              always at least one byte, because an exact multiple would otherwise be ambiguous.
+            </p>
+
+            <h3>Memory</h3>
+            <p>
+              Every key and plaintext buffer is zeroized when it drops, and buffers are pre-sized so
+              that growth cannot leave an orphaned copy behind. The three 32-byte keys a live
+              session holds are pinned into RAM with <code>VirtualLock</code>, keeping them out of
+              the page file.
+            </p>
+            <p>
+              The Argon2 derivation buffer is a <strong>documented exception</strong> — it is far
+              larger than the lockable working set and may be paged. Locking pins an address rather
+              than a value, and a hibernation image is a full memory dump whatever is locked.
+              Zeroization is best-effort by nature and the project does not claim otherwise.
+            </p>
+
+            <h3>Dependencies</h3>
+            <p>
+              The crypto crates are pinned to a single RustCrypto generation, and the build fails if
+              a second copy of <code>digest</code>, <code>sha2</code>, <code>rand_core</code>,
+              <code>aead</code> or <code>curve25519-dalek</code> appears in the tree. No release
+              candidates are permitted anywhere in the crypto path.
+            </p>
+          </section>
+
+          <!-- ==================================================== NETWORK -->
+          <section class="doc-section" id="network">
+            <h2>
+              What leaves your machine<a
+                class="anchor"
+                href="#network"
+                aria-label="Link to this section"
+                >#</a
+              >
+            </h2>
+            <p><strong>Two requests exist in the entire application.</strong> Both are optional.</p>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Request</th>
+                    <th>Sends</th>
+                    <th>When</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Breach check</td>
+                    <td>
+                      Five hexadecimal characters of a SHA-1 hash, with
+                      <code>Add-Padding: true</code>. No cookie, no identifier, nothing naming you.
+                    </td>
+                    <td>Only if you switch breach checking on. At most once every 24 hours.</td>
+                  </tr>
+                  <tr>
+                    <td>Update check</td>
+                    <td>
+                      A request for the signed release manifest, carrying the current version and
+                      the platform. Nothing else.
+                    </td>
+                    <td>Only if update checks are on. At most once every 24 hours, on launch.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              No sign-up, no sync, no telemetry, no analytics, no crash reporter. Trynta never
+              probes the sites you keep accounts with — not for icons, not for password-change
+              endpoints, not for anything.
+            </p>
+            <p>
+              The <strong>3,772 brand marks</strong> in the interface are compiled into the binary.
+              They are never fetched, and that is the point: a favicon request per entry would
+              announce, in the clear, a list of every service you hold an account with.
+            </p>
+            <p>
+              A build check counts the outbound call sites and
+              <strong>fails the build if a third one ever appears</strong>. This is enforced, not
+              promised.
+            </p>
+            <p>
+              Update downloads are verified by Tauri's updater against a public key compiled into
+              the binary. There is no code path that can skip that check.
+            </p>
+          </section>
+
+          <!-- =============================================== THREAT MODEL -->
+          <section class="doc-section" id="threat-model">
+            <h2>
+              What this protects against<a
+                class="anchor"
+                href="#threat-model"
+                aria-label="Link to this section"
+                >#</a
+              >
+            </h2>
+            <p><strong>It is designed to survive:</strong></p>
+            <ul>
+              <li>
+                Someone who copies your vault file — a stolen laptop, a backup drive, a disk image.
+              </li>
+              <li>
+                Someone who reads the database directly. The file is not the boundary; the
+                ciphertext is.
+              </li>
+              <li>
+                Someone watching the network. Two requests exist and neither carries a secret or an
+                identifier.
+              </li>
+              <li>A tampered backup or update. Both are signature-checked and both fail closed.</li>
+              <li>
+                A hostile theme file. Validated in Rust before anything is applied, and it cannot
+                reach the network.
+              </li>
+            </ul>
+            <p><strong>It does not protect against:</strong></p>
+            <ul>
+              <li>
+                <strong>Malware running as you, while the vault is unlocked.</strong> At that point
+                the attacker has the same access you do. No password manager solves this.
+              </li>
+              <li><strong>A keylogger</strong> capturing your master password as you type it.</li>
+              <li>
+                <strong>A forgotten master password.</strong> There is no recovery, by design.
+              </li>
+              <li>
+                <strong>Someone at your unlocked machine</strong>, beyond the confirmations on
+                destructive actions.
+              </li>
+              <li>
+                <strong>A hibernation image or crash dump</strong>, which captures memory whatever
+                is locked in it.
+              </li>
+              <li>
+                <strong>Phishing.</strong> There is no autofill yet, so nothing checks the domain
+                for you — you do.
+              </li>
+            </ul>
+            <p>
+              The repository's
+              <a href="https://github.com/ahmedjidar/trynta/blob/main/SECURITY.md">SECURITY.md</a>
+              sets this out in full, including an explicit list of what has not been verified.
+            </p>
+          </section>
+
+          <!-- ===================================================== LIMITS -->
+          <section class="doc-section" id="limits">
+            <h2>
+              What is not built<a class="anchor" href="#limits" aria-label="Link to this section"
+                >#</a
+              >
+            </h2>
+            <ul>
+              <li>
+                <strong>Sharing.</strong> Multi-owner credentials — two people genuinely co-owning
+                one login — are the reason the project exists and they do not exist yet. The key
+                material is generated and reserved; nothing uses it.
+              </li>
+              <li><strong>Sync.</strong> Nothing is synchronised between devices.</li>
+              <li>
+                <strong>Autofill and browser extensions.</strong> When they arrive, matching will be
+                on the registrable domain through the Public Suffix List, never a substring — that
+                difference is what separates a password manager from a phishing accessory.
+              </li>
+              <li><strong>Import from another password manager.</strong></li>
+              <li>
+                <strong>macOS.</strong> The target compiled and passed the full gate once, on
+                17&nbsp;August&nbsp;2026, and nothing macOS has been compiled since. There is no Mac
+                build to download.
+              </li>
+              <li>
+                <strong>Accounts, subscriptions, payment or licence gating.</strong> None of it is
+                in the repository and none of it is stubbed for later.
+              </li>
+            </ul>
+          </section>
+
+          <!-- ============================================ TROUBLESHOOTING -->
+          <section class="doc-section" id="troubleshooting">
+            <h2>
+              Troubleshooting<a
+                class="anchor"
+                href="#troubleshooting"
+                aria-label="Link to this section"
+                >#</a
+              >
+            </h2>
+
+            <h3>I forgot my master password</h3>
+            <p>
+              The vault cannot be opened. There is no recovery mechanism, no backdoor and no support
+              route that changes this — the password is not stored anywhere to be recovered from. If
+              you have a <a href="#backup">backup archive</a> with a passphrase you do remember,
+              restore that.
+            </p>
+
+            <h3>Unlocking is refusing my password after several attempts</h3>
+            <p>
+              That is the backoff. It grows with each failed attempt and it survives restarting the
+              app, so closing the window does not reset it. Wait it out.
+            </p>
+            <p>
+              There is deliberately no wipe-after-N-failures: anyone holding your file could trigger
+              it, which turns a safety feature into a way to destroy your data.
+            </p>
+
+            <h3>Windows Hello stopped offering to unlock</h3>
+            <p>
+              Windows destroys the stored credential whenever Hello enrolment changes — a new
+              fingerprint, a reset PIN, a rebuilt profile. Trynta falls back to the master password.
+              Unlock with it, then turn biometric unlock off and on again to re-enrol.
+            </p>
+            <p>
+              It will also ask for the master password regardless once
+              <strong>14 days</strong> have passed since the last password unlock.
+            </p>
+
+            <h3>Windows says the installer is from an unknown publisher</h3>
+            <p>
+              Expected — the artefacts are unsigned. See <a href="#install">Install</a>, and check
+              the SHA-256 before running it.
+            </p>
+
+            <h3>The window is blank, or will not start</h3>
+            <p>
+              Almost always a missing or broken WebView2 runtime. Install the Evergreen Runtime from
+              Microsoft and start Trynta again. Your vault is untouched by this; it is a separate
+              file.
+            </p>
+
+            <h3>Something I copied is still on the clipboard</h3>
+            <p>
+              Trynta only clears the clipboard if the contents are still what it put there. If you
+              copied anything else in between, it deliberately leaves your clipboard alone rather
+              than wiping something of yours.
+            </p>
+          </section>
+
+          <!-- ======================================================= HELP -->
+          <section class="doc-section" id="help">
+            <h2>
+              Getting help<a class="anchor" href="#help" aria-label="Link to this section">#</a>
+            </h2>
+            <p>
+              <strong>Found a security issue?</strong> Please report it privately through
+              <a href="https://github.com/ahmedjidar/trynta/security/advisories/new"
+                >GitHub's advisory form</a
+              >
+              rather than opening a public issue.
+            </p>
+            <p>
+              <strong>Anything else</strong> — a bug, a question, an idea — is welcome as an
+              <a href="https://github.com/ahmedjidar/trynta/issues">issue</a>.
+            </p>
+            <p>
+              The <a href="changelog.html">changelog</a> records every release and what changed in
+              it. The <a href="https://github.com/ahmedjidar/trynta">source</a> is the whole
+              product: there is no closed component, licensed under
+              <a href="https://github.com/ahmedjidar/trynta/blob/main/LICENSE">AGPL-3.0-or-later</a
+              >.
+            </p>
+            <p class="mt-7">
+              <a class="btn btn-secondary" href="index.html#download">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+                </svg>
+                Download Trynta
+              </a>
+            </p>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <a href="https://github.com/ahmedjidar/trynta/blob/main/LICENSE">AGPL-3.0-or-later</a>
+      <a href="https://github.com/ahmedjidar/trynta">Source</a>
+      <a href="https://github.com/ahmedjidar/trynta/security/advisories/new"
+        >Report a vulnerability</a
+      >
+      <span class="spacer"></span>
+      <span>© 2026 Ahmed Amin</span>
+    </footer>
+
+    <script src="js/docs.js"></script>
+  </body>
+</html>

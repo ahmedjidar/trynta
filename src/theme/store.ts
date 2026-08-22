@@ -109,10 +109,12 @@ function applyImported(imported: readonly ThemeDto[], id: string | null): void {
 }
 
 export const useThemeStore = create<ThemeState>((set, get) => ({
-  // The token layer's base is dark, so that is the pre-hydration value: it is what
-  // renders if the read never completes, and matching it avoids a flash.
-  mode: 'system',
-  resolved: 'dark',
+  // The default a fresh vault starts on, and what renders if the read never
+  // completes. It matches the `data-theme="light"` in `index.html`, which is what
+  // actually keeps the first paint from flashing: the token layer's base is dark,
+  // so an unset attribute is a dark document.
+  mode: 'light',
+  resolved: 'light',
   imported: [],
   activeId: null,
   locked: true,

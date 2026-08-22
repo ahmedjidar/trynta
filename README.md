@@ -73,7 +73,7 @@ bundled ones, drawn from the binary — taking these screenshots made no network
 | Security report     | Weak, reused and breached passwords, plus accounts that support 2FA and do not have it enabled.      |
 | Breach check        | HIBP range API, k-anonymous: a 5-character hash prefix with `Add-Padding`, at most once a day.       |
 | Backup and restore  | Encrypted export under its own passphrase, independent of the master password.                       |
-| Themes              | Dark, light and follow-the-system. Import your own as JSON, validated in Rust.                       |
+| Themes              | Light by default; dark and follow-the-system too. Import your own as JSON, validated in Rust.        |
 | Updates             | Signed manifest check, opt-out.                                                                      |
 | Screen capture      | Optional exclusion from screenshots and screen sharing, off by default.                              |
 

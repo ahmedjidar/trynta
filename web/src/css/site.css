@@ -1083,4 +1083,349 @@ h3 {
   .site-footer {
     margin-top: 48px;
   }
+
+  /* The header carries the wordmark, the page it is on, up to three links and
+     the source pill. That is one item too many below 720px, so two go: the
+     page caption is already the <h1> two lines down, and Download is the hero's
+     own button on every page that has one. */
+  .site-header .caption {
+    display: none;
+  }
+
+  .header-link[href$='#download'] {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------------- DOCS */
+/* The documentation page. A two-column reading layout — a sticky contents rail
+   and a prose column — using the same tokens as everything above it. No new
+   colours, no new scales; the only additions are the shapes long-form technical
+   text needs and the landing page never did: real list markers, tables, code
+   blocks, keycaps and callouts.
+   `ul` is list-style: none globally, which is right for the nav lists on the
+   landing page and wrong inside prose, so `.doc` puts the markers back. */
+
+.wrap--docs {
+  max-width: 1140px;
+}
+
+.docs {
+  display: block;
+  padding-top: 40px;
+}
+
+/* --------------------------------------------------------- CONTENTS RAIL */
+
+.docs-nav {
+  border-bottom: 1px solid var(--hairline);
+  padding-bottom: 20px;
+  margin-bottom: 8px;
+}
+
+.docs-nav h2 {
+  font-size: var(--text-micro);
+  line-height: var(--leading-micro);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.docs-nav ol {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: none;
+}
+
+.docs-nav a {
+  display: block;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-control);
+  line-height: var(--leading-caption);
+  color: var(--ink-2);
+  transition:
+    color var(--duration-instant) var(--ease-standard),
+    background var(--duration-instant) var(--ease-standard);
+}
+
+.docs-nav a:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+.docs-nav a[aria-current='true'] {
+  background: var(--accent-subtle);
+  color: var(--accent-text);
+  font-weight: var(--weight-medium);
+}
+
+.docs-nav .group-label {
+  margin-top: 14px;
+  padding: 0 10px 4px;
+  font-size: var(--text-badge);
+  line-height: var(--leading-caption);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.docs-nav li:first-child .group-label {
+  margin-top: 0;
+}
+
+/* ------------------------------------------------------------ PROSE COLUMN */
+
+.doc {
+  min-width: 0;
+}
+
+.doc-section {
+  padding-top: 44px;
+  scroll-margin-top: calc(var(--row-header) + 24px);
+}
+
+.doc-section:first-child {
+  padding-top: 8px;
+}
+
+.doc h2 {
+  font-size: var(--text-title);
+  line-height: var(--leading-title);
+  letter-spacing: var(--tracking-title);
+}
+
+.doc h3 {
+  margin-top: 28px;
+  font-size: var(--text-lead);
+  line-height: var(--leading-lead);
+  letter-spacing: var(--tracking-tight);
+  font-weight: var(--weight-bold);
+}
+
+.doc p,
+.doc ul,
+.doc ol,
+.doc table,
+.doc pre,
+.doc .note,
+.doc figure {
+  margin-top: 14px;
+}
+
+.doc p,
+.doc li {
+  max-width: var(--prose);
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+.doc strong {
+  color: var(--ink);
+  font-weight: var(--weight-bold);
+}
+
+.doc ul,
+.doc ol {
+  padding-left: 22px;
+}
+
+.doc ul {
+  list-style: disc;
+}
+
+.doc ol {
+  list-style: decimal;
+}
+
+.doc li {
+  margin-top: 6px;
+}
+
+.doc li::marker {
+  color: var(--ink-3);
+}
+
+/* A heading you can link to. The mark only appears on hover or focus, so the
+   page reads as prose and still gives every section a shareable address. */
+.doc h2 a.anchor,
+.doc h3 a.anchor {
+  margin-left: 8px;
+  color: var(--ink-3);
+  opacity: 0;
+  font-weight: var(--weight-regular);
+  transition: opacity var(--duration-instant) var(--ease-standard);
+}
+
+.doc h2:hover a.anchor,
+.doc h3:hover a.anchor,
+.doc a.anchor:focus-visible {
+  opacity: 1;
+}
+
+/* ----------------------------------------------------------------- TABLES */
+
+.doc .table-scroll {
+  margin-top: 14px;
+  overflow-x: auto;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--panel);
+}
+
+.doc table {
+  margin: 0;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-control);
+  line-height: var(--leading-caption);
+}
+
+.doc th,
+.doc td {
+  padding: 11px 14px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.doc thead th {
+  font-size: var(--text-micro);
+  line-height: var(--leading-caption);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-3);
+  background: var(--raised);
+  white-space: nowrap;
+}
+
+.doc td {
+  color: var(--ink-2);
+}
+
+.doc td:first-child {
+  color: var(--ink);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+}
+
+.doc tbody tr:last-child th,
+.doc tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* ------------------------------------------------------------------- CODE */
+
+.doc pre {
+  overflow-x: auto;
+  padding: 14px 16px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--raised);
+}
+
+.doc pre code {
+  display: block;
+  color: var(--ink-2);
+  font-size: var(--text-caption);
+  line-height: var(--leading-body);
+  white-space: pre;
+}
+
+.doc :not(pre) > code {
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  background: var(--hover);
+  color: var(--ink);
+}
+
+kbd {
+  display: inline-block;
+  min-width: 20px;
+  padding: 1px 6px;
+  border: 1px solid var(--strong);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-xs);
+  background: var(--panel);
+  box-shadow: var(--shadow-lift);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-medium);
+  line-height: 18px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------- CALLOUTS */
+/* `.note` already exists for the landing page's quiet aside. These are the two
+   louder ones a manual needs: a caution, and a plain fact worth pulling out. */
+
+.callout {
+  padding: 14px 16px;
+  border: 1px solid var(--hairline);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+}
+
+.callout > p {
+  margin-top: 0;
+  max-width: none;
+}
+
+.callout > p + p {
+  margin-top: 8px;
+}
+
+.callout .callout-label {
+  display: block;
+  font-size: var(--text-micro);
+  line-height: var(--leading-micro);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--accent-text);
+}
+
+.callout.is-warn {
+  border-left-color: var(--warn);
+}
+
+.callout.is-warn .callout-label {
+  color: var(--warn);
+}
+
+.callout.is-danger {
+  border-left-color: var(--danger);
+}
+
+.callout.is-danger .callout-label {
+  color: var(--danger);
+}
+
+/* --------------------------------------------------------------- 900+ ONLY */
+/* The rail only earns its column when there is room for the prose beside it. */
+
+@media (min-width: 900px) {
+  .docs {
+    display: grid;
+    grid-template-columns: 232px minmax(0, 1fr);
+    gap: 48px;
+    align-items: start;
+  }
+
+  .docs-nav {
+    position: sticky;
+    top: calc(var(--row-header) + 20px);
+    max-height: calc(100vh - var(--row-header) - 48px);
+    overflow-y: auto;
+    border-bottom: 0;
+    padding-bottom: 0;
+    margin-bottom: 0;
+  }
 }

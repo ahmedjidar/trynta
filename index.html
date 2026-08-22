@@ -1,5 +1,12 @@
 <!doctype html>
-<html lang="en">
+<!--
+  `data-theme="light"` is here rather than only in the store because it has to be
+  true before any script runs. The token layer's base is dark and light is an
+  attribute override, so a document that starts without the attribute paints dark
+  for the frame or two it takes `hydrate` to read the stored mode over IPC. A user
+  who has chosen dark loses the attribute on that same read.
+-->
+<html lang="en" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

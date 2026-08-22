@@ -275,7 +275,9 @@ await cp(join(SRC, 'assets'), join(OUT, 'assets'), { recursive: true });
 await cp(join(SRC, 'css'), join(OUT, 'css'), { recursive: true });
 await cp(join(SRC, 'js'), join(OUT, 'js'), { recursive: true });
 
-for (const page of ['index.html', 'changelog.html']) {
+// `docs.html` uses only BUILD:VERSION; the changelog markers simply find no
+// match there, which is what the index-scanning `fill` above is built to do.
+for (const page of ['index.html', 'changelog.html', 'docs.html']) {
   let html = await readFile(join(SRC, page), 'utf8');
   html = fill(html, 'VERSION', releases[0]?.version ?? v);
   html = fill(html, 'LATEST_RELEASE', `\n${renderLatest(releases)}\n      `);
