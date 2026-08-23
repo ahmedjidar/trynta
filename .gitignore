@@ -103,3 +103,4 @@ yarn-error.log*
 # The marketing site's build output. Assembled by `pnpm build:site` from
 # `web/src` plus CHANGELOG.md; nothing in it is written by hand.
 web/dist/
+WALKTHROUGH.md
