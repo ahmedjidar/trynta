@@ -306,6 +306,73 @@ for (const [name, [w, h]] of Object.entries(BITMAPS)) {
   console.log(`  ${name.padEnd(20)} ${gw}x${gh} ${bpp}bpp  ${String(b.length).padStart(7)}B`);
 }
 
+// ── 7: the wizard can be read ───────────────────────────────────────────────
+//
+// WixUI draws its own title and description as black text straight onto these two
+// bitmaps, and there is no way to recolour that text short of replacing the whole
+// WixUI theme. Both bitmaps were the app's dark surface end to end, which made every
+// word of the MSI wizard invisible — so the regions the text lands in are checked
+// rather than trusted to whoever next regenerates the art.
+//
+// The rectangles come from WixUI's own control geometry, converted at the 1.3324
+// px-per-dialog-unit the bitmaps are stretched by: WelcomeDlg and ExitDlg write from
+// X=135 DTU, and the interior dialogs write from X=15 to about X=305.
+
+console.log('\nwizard text legibility');
+
+/** WCAG relative luminance of an 8-bit channel triple. */
+function luminance([r, g, b]) {
+  const lin = (v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+
+/** Contrast of pure black text against a background colour. */
+const againstBlack = (rgb) => (luminance(rgb) + 0.05) / 0.05;
+
+/** WCAG AA for the large text a wizard title is; the body text clears it too. */
+const MIN_CONTRAST = 4.5;
+
+const TEXT_AREAS = {
+  // name: [x0, y0, x1, y1] in bitmap pixels.
+  'wix-dialog.bmp': ['welcome title and description', 180, 20, 493, 200],
+  'wix-banner.bmp': ['interior title and description', 20, 6, 406, 50],
+};
+
+for (const [name, [what, x0, y0, x1, y1]] of Object.entries(TEXT_AREAS)) {
+  const p = `${ROOT}/src-tauri/installer/${name}`;
+  if (!existsSync(p)) continue;
+  const b = readFileSync(p);
+  const offset = b.readUInt32LE(10);
+  const w = b.readInt32LE(18);
+  const h = b.readInt32LE(22);
+  const stride = Math.ceil((w * 3) / 4) * 4;
+
+  let worst = Infinity;
+  let at = null;
+  for (let y = y0; y < Math.min(y1, h); y += 1) {
+    for (let x = x0; x < Math.min(x1, w); x += 1) {
+      // BMPs are bottom-up and BGR.
+      const i = offset + (h - 1 - y) * stride + x * 3;
+      const contrast = againstBlack([b[i + 2], b[i + 1], b[i]]);
+      if (contrast < worst) {
+        worst = contrast;
+        at = [x, y];
+      }
+    }
+  }
+  if (worst < MIN_CONTRAST) {
+    note(
+      `${name}: the wizard's ${what} would sit on ${worst.toFixed(1)}:1 at ${at?.join(',')} — ` +
+        `WixUI writes that text in black and cannot be told otherwise, so this region must ` +
+        `stay at ${String(MIN_CONTRAST)}:1 or better`,
+    );
+  }
+  console.log(`  ${name.padEnd(20)} ${what.padEnd(31)} worst ${worst.toFixed(1)}:1`);
+}
+
 // ── verdict ─────────────────────────────────────────────────────────────────
 console.log('');
 if (problems.length) {

@@ -137,10 +137,11 @@
               already present on current Windows 11, and the installer fetches it if it is missing.
             </p>
             <p>
-              Two files are published with each release and either one is fine. The
-              <code>.msi</code> is the standard Windows installer package. The
-              <code>-setup.exe</code> is an NSIS installer, which is smaller and installs per-user
-              without an administrator prompt.
+              Two files are published with each release.
+              <strong>Take the <code>-setup.exe</code></strong> unless you have a reason not to: it
+              is smaller and it installs for you alone, with no administrator prompt. The
+              <code>.msi</code> is the standard Windows installer package, for deploying Trynta
+              across machines.
             </p>
 
             <div class="callout is-warn">
@@ -1250,9 +1251,14 @@ src/
               </li>
               <li><strong>Import from another password manager.</strong></li>
               <li>
-                <strong>macOS.</strong> The target compiled and passed the full gate once, on
-                17&nbsp;August&nbsp;2026, and nothing macOS has been compiled since. There is no Mac
-                build to download.
+                <strong>Linux.</strong> Not started. The per-platform pieces — secret storage,
+                biometric unlock, the clipboard — would all need writing, and we would rather say so
+                than list it as coming.
+              </li>
+              <li>
+                <strong>macOS — next up.</strong> The macOS code is written and it built and passed
+                the full gate once, on 17&nbsp;August&nbsp;2026. Verifying it needs a Mac to run it
+                on, so there is no build to download yet. It is the next platform.
               </li>
               <li>
                 <strong>Accounts, subscriptions, payment or licence gating.</strong> None of it is

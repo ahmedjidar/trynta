@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Trynta — a local-first password manager for Windows</title>
+    <title>Trynta — a local-first password manager for your desktop</title>
     <meta
       name="description"
-      content="Local-first, end-to-end encrypted password manager for Windows. Pre-1.0, never audited, open source under AGPL-3.0."
+      content="Local-first, end-to-end encrypted password manager for the desktop. Windows today, macOS next. Pre-1.0, not yet audited, open source under AGPL-3.0."
     />
     <link rel="icon" href="assets/brand/mark-accent.svg" />
     <link rel="stylesheet" href="css/site.css" />
@@ -50,8 +50,9 @@
       </div>
       <h1 class="rise rise-1">Trynta</h1>
       <p class="rise rise-2 lede prose">
-        A local-first, end-to-end encrypted password manager for Windows. The vault is one file on
-        your disk, and the key that opens it is derived on your machine and held nowhere else.
+        A local-first, end-to-end encrypted password manager for the desktop. Your vault is one file
+        on your own disk, and the key that opens it is derived on your machine and kept nowhere else
+        — not on a server, because there isn't one.
       </p>
 
       <div class="rise rise-3 cta-row">
@@ -538,31 +539,53 @@
               <span class="name">Windows</span>
               <span class="badge badge-accent">Available</span>
             </div>
-            <div class="req">Windows 10 build 1809 or later · x64 · WebView2 runtime</div>
+            <div class="req">
+              Windows 10 build 1809 or later · x64 · WebView2 runtime. The
+              <span class="mono">.exe</span> installs for you alone and asks for no administrator
+              prompt; the <span class="mono">.msi</span> is there if you are deploying it.
+            </div>
           </div>
           <div class="actions">
             <a class="header-link" href="https://github.com/ahmedjidar/trynta/releases/latest"
-              >.exe installer</a
+              >.msi for deployment</a
             >
             <a
               class="btn btn-primary btn-small"
               href="https://github.com/ahmedjidar/trynta/releases/latest"
-              >Download .msi</a
+              >Download .exe</a
             >
           </div>
         </div>
         <div class="group-row">
           <div class="body">
             <div class="head">
-              <span class="name muted">macOS</span>
-              <span class="badge badge-quiet">Unverified</span>
+              <span class="name">macOS</span>
+              <span class="badge badge-quiet">Next up</span>
             </div>
             <div class="req">
-              The target compiled once, in August. Nothing macOS has been built since, so there is
-              no artefact to hand you.
+              Being worked on. The macOS code is written — Touch ID, the Keychain, the window chrome
+              — and it built and passed the full test gate once, back in August. Proving it still
+              does needs a Mac to run it on, and until there is one we would rather hand you nothing
+              than hand you a build nobody has opened. It is the next platform, not an afterthought.
             </div>
           </div>
-          <div class="actions muted">Not available</div>
+          <div class="actions muted">Not yet</div>
+        </div>
+        <div class="group-row">
+          <div class="body">
+            <div class="head">
+              <span class="name">Linux</span>
+              <span class="badge badge-quiet">Not started</span>
+            </div>
+            <div class="req">
+              Honestly: not started. Rust and Tauri both run there, so the ground is not hostile,
+              but the parts that matter are per-platform — the secret store, the biometric unlock,
+              the clipboard — and none of that is written. We would like to. If you want it, an
+              <a href="https://github.com/ahmedjidar/trynta/issues">issue saying so</a> is the thing
+              that moves it up the list.
+            </div>
+          </div>
+          <div class="actions muted">Not yet</div>
         </div>
       </div>
 

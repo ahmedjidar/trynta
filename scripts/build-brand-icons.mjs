@@ -412,32 +412,86 @@ console.log(`\n  public/favicon.ico`);
 //
 // NSIS and WiX both want opaque BMPs at exact sizes; neither scales gracefully, which
 // is why each is composed at its final dimensions rather than resized from one master.
-// The ground is the app's own dark surface token so the violet mark sits on the same
-// colour it does in the product.
+//
+// ## These have to be light where the wizard writes on them
+//
+// Every one of these was the app's dark surface end to end, and it made the MSI
+// wizard unreadable: WixUI draws its own title and description as **black** text
+// directly over the banner and the dialog bitmap, with no way to recolour it short
+// of replacing the whole WixUI theme. Black on `#080a0f` is nothing at all.
+//
+// So each bitmap is composed around where its wizard puts text, and the geometry is
+// not guesswork — WixUI positions controls in dialog units, and the bitmaps are
+// stretched from 493px to 370 DTU, a factor of 1.3324:
+//
+//   * WelcomeDlg / ExitDlg put their title at X=135 DTU and their description at the
+//     same, which is 180px into a 493px-wide dialog bitmap. Everything from there
+//     rightwards is paper; the brand band gets the 164px to its left, with 16px of
+//     margin before the first glyph.
+//   * The interior dialogs put their title at X=15 DTU and description at X=25, both
+//     running to about X=305 — 20px to 406px across the banner. So the banner is
+//     paper with the mark in the right-hand margin, which is also where every
+//     Windows installer has always put it.
+//
+// NSIS needs none of that: MUI2 draws its header text beside the header bitmap
+// rather than on top of it, and nothing at all is drawn over the welcome sidebar.
+// The sidebar therefore keeps the dark ground — it is the one panel in either wizard
+// that can carry the brand at full strength, and it matches the MSI's left band.
 const SURFACE = [0x08, 0x0a, 0x0f];
+/** `--surface-panel` in the light theme: what the wizard's black text has to sit on. */
+const PAPER = [0xff, 0xff, 0xff];
+/** `--border-hairline` composited over paper, for the one rule that separates them. */
+const HAIRLINE = [0xee, 0xee, 0xef];
+
+/** Where the MSI's welcome text starts, in pixels of a 493px-wide dialog bitmap. */
+const WIX_DIALOG_TEXT_X = 180;
+/** Paper between the brand band and that first glyph. */
+const WIX_DIALOG_MARGIN = 16;
+/** The brand band's width, stated as the thing it must not reach. */
+const WIX_DIALOG_BAND = WIX_DIALOG_TEXT_X - WIX_DIALOG_MARGIN;
+/** Where the MSI's interior-dialog text ends. The mark goes to the right of it. */
+const WIX_BANNER_TEXT_END = 406;
+
 const brandDir = `${ROOT}/src-tauri/installer`;
 mkdirSync(brandDir, { recursive: true });
 
-/** Centre the mark in a banner-shaped bitmap, sized to the shorter edge. */
-function banner(width, height, fraction, align = 'centre') {
-  const edge = Math.round(Math.min(width, height) * fraction);
-  const mark = render(edge);
-  return flatten(
-    width,
-    height,
-    (dst) => {
-      const ox = align === 'left' ? Math.round(height * 0.28) : Math.round((width - edge) / 2);
-      const oy = Math.round((height - edge) / 2);
-      blit(dst, width, mark.px, edge, ox, oy);
-    },
-    SURFACE,
-  );
+/** Paint an axis-aligned rectangle of one opaque colour. */
+function fill(dst, dw, colour, x0, y0, w, h) {
+  for (let y = y0; y < y0 + h; y += 1) {
+    for (let x = x0; x < x0 + w; x += 1) {
+      const i = (y * dw + x) * 4;
+      dst[i] = colour[0];
+      dst[i + 1] = colour[1];
+      dst[i + 2] = colour[2];
+      dst[i + 3] = 255;
+    }
+  }
 }
 
 const branding = {
-  // MUI_HEADERIMAGE_BITMAP — 150x57, shown top-right on every page after the welcome.
-  'nsis-header.bmp': () => bmpFile(150, 57, banner(150, 57, 0.72, 'left')),
-  // MUI_WELCOMEFINISHPAGE_BITMAP — 164x314, the welcome and finish sidebar.
+  // MUI_HEADERIMAGE_BITMAP — 150x57, beside the page title on every page after the
+  // welcome. Paper, because the header it sits in is white and a dark tile in the
+  // corner of a white strip reads as a rendering fault rather than as a logo.
+  'nsis-header.bmp': () => {
+    const edge = 38;
+    const mark = render(edge);
+    return bmpFile(
+      150,
+      57,
+      flatten(
+        150,
+        57,
+        (dst) => {
+          blit(dst, 150, mark.px, edge, 16, Math.round((57 - edge) / 2));
+          fill(dst, 150, HAIRLINE, 0, 56, 150, 1);
+        },
+        PAPER,
+      ),
+    );
+  },
+
+  // MUI_WELCOMEFINISHPAGE_BITMAP — 164x314, the welcome and finish sidebar. Nothing
+  // is drawn over it, so this is the one panel that keeps the dark ground.
   'nsis-sidebar.bmp': () => {
     const edge = 96;
     const mark = render(edge);
@@ -452,9 +506,32 @@ const branding = {
       ),
     );
   },
-  // WiX banner — 493x58, top of every dialog after the welcome.
-  'wix-banner.bmp': () => bmpFile(493, 58, banner(493, 58, 0.76, 'left')),
-  // WiX dialog — 493x312, the welcome and completion background.
+
+  // WiX banner — 493x58, above the title and description of every interior dialog.
+  // Paper under the text, mark in the right-hand margin, hairline along the bottom
+  // so the banner reads as a band rather than as an area that failed to paint.
+  'wix-banner.bmp': () => {
+    const edge = 40;
+    const mark = render(edge);
+    return bmpFile(
+      493,
+      58,
+      flatten(
+        493,
+        58,
+        (dst) => {
+          const ox = WIX_BANNER_TEXT_END + Math.round((493 - WIX_BANNER_TEXT_END - edge) / 2);
+          blit(dst, 493, mark.px, edge, ox, Math.round((58 - edge) / 2));
+          fill(dst, 493, HAIRLINE, 0, 57, 493, 1);
+        },
+        PAPER,
+      ),
+    );
+  },
+
+  // WiX dialog — 493x312, the whole background of the welcome and completion pages.
+  // A branded band down the left, paper from there so the black title and the black
+  // description both have something to be read against.
   'wix-dialog.bmp': () => {
     const edge = 110;
     const mark = render(edge);
@@ -464,8 +541,19 @@ const branding = {
       flatten(
         493,
         312,
-        (dst) => blit(dst, 493, mark.px, edge, 46, Math.round((312 - edge) / 2)),
-        SURFACE,
+        (dst) => {
+          fill(dst, 493, SURFACE, 0, 0, WIX_DIALOG_BAND, 312);
+          fill(dst, 493, HAIRLINE, WIX_DIALOG_BAND, 0, 1, 312);
+          blit(
+            dst,
+            493,
+            mark.px,
+            edge,
+            Math.round((WIX_DIALOG_BAND - edge) / 2),
+            Math.round((312 - edge) / 2),
+          );
+        },
+        PAPER,
       ),
     );
   },
