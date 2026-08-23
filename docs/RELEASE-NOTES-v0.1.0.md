@@ -1,17 +1,17 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 
-# Draft release notes — v0.1.0-alpha
+# Draft release notes — v0.1.0
 
-Paste the block below the rule into the GitHub release body for `v0.1.0-alpha`. It is the same
+Paste the block below the rule into the GitHub release body for `v0.1.0`. It is the same
 copy as [`CHANGELOG.md`](../CHANGELOG.md), which is where `web/` also gets its changelog from, so
 the three stay in step. **If you edit one, edit `CHANGELOG.md` and regenerate the other two** —
 `pnpm build:site` for the site, copy-paste for the release.
 
 Before publishing, check:
 
-- [ ] The tag is `v0.1.0-alpha` on the commit CI built the artefacts from.
+- [ ] The tag is `v0.1.0` on the commit CI built the artefacts from.
 - [ ] Both artefacts are attached: the `.msi` and the NSIS `.exe`.
-- [ ] The SHA-256 of each is in the body — fill in the two placeholders below.
+- [ ] The SHA-256 of each below still matches the artefacts you are attaching.
 - [ ] "Set as a pre-release" is ticked. This is alpha and the page says so.
 - [ ] The site is rebuilt and redeployed, so its changelog shows this release.
 
@@ -93,8 +93,8 @@ warning is accurate and you should not wave it away on our say-so — compare th
 against the file you downloaded first.
 
 ```
-<SHA-256>  Trynta_0.1.0_x64_en-US.msi
-<SHA-256>  Trynta_0.1.0_x64-setup.exe
+9884ECF57F9DB666503A85982C51A65B07697326185E2B1DCE693B7A581BDA60  Trynta_0.1.0_x64_en-US.msi
+26CCCCAF955B7EDFE99128171D1569E4DD380C6110BE93348EB8672147E6B06E  Trynta_0.1.0_x64-setup.exe
 ```
 
 ## Reporting a problem

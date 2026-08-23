@@ -49,22 +49,18 @@ const OUT = join(ROOT, 'web', 'dist');
 /** The shipped version, from the one file that already holds it. */
 async function version() {
   const pkg = JSON.parse(await readFile(join(ROOT, 'package.json'), 'utf8'));
-  // Two version strings, on purpose, and this is the one place to read about it.
-  //
-  // The *build* is `0.1.0` — `package.json`, `tauri.conf.json` and the workspace
-  // `Cargo.toml`, and therefore the artefact filenames. The *release* is
-  // `v0.1.0-alpha` — the tag, CHANGELOG.md, and what these pages show.
-  //
-  // They cannot be the same string. Windows Installer requires a ProductVersion of
-  // `major.minor.build` with every field numeric, so the Tauri CLI refuses a
-  // pre-release that is not: "optional pre-release identifier in app version must be
-  // numeric-only and cannot be greater than 65535 for msi target". Setting
-  // `0.1.0-alpha` in `tauri.conf.json` does not rename the artefacts, it fails the
-  // msi bundle outright. (An earlier version of this comment blamed Cargo and npm.
-  // Both accept `0.1.0-alpha` perfectly well; the MSI is the constraint.)
-  //
-  // So the pages take the version from CHANGELOG.md, and fall back to this only when
+  // One version string everywhere: `0.1.0` in `package.json`, `tauri.conf.json` and
+  // the workspace `Cargo.toml`, `v0.1.0` as the tag, and `Trynta_0.1.0_…` on the
+  // artefacts. The pages read it from CHANGELOG.md and fall back to this only when
   // the changelog has no releases in it yet.
+  //
+  // Worth knowing before anyone reaches for `0.2.0-beta`: a pre-release suffix cannot
+  // go in the app version while the msi target is on. Windows Installer requires a
+  // ProductVersion of `major.minor.build` with every field numeric, and the Tauri CLI
+  // refuses anything else — "optional pre-release identifier in app version must be
+  // numeric-only and cannot be greater than 65535 for msi target". It does not rename
+  // the artefacts, it fails the bundle. Maturity belongs in the prose and in GitHub's
+  // own pre-release flag, not in the version string.
   return pkg.version;
 }
 

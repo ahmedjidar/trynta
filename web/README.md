@@ -42,7 +42,7 @@ A page that carries none of a marker's pairs simply gets no substitution for it 
 only `BUILD:VERSION`.
 
 **`CHANGELOG.md` is the only copy of the release notes.** This site renders it and the GitHub
-release body is pasted from it (see [`docs/RELEASE-NOTES-v0.1.0-alpha.md`](../docs/RELEASE-NOTES-v0.1.0-alpha.md)).
+release body is pasted from it (see [`docs/RELEASE-NOTES-v0.1.0.md`](../docs/RELEASE-NOTES-v0.1.0.md)).
 Add a release there and rebuild; there is nothing to keep in step by hand.
 
 ## Two decisions worth knowing before you change something

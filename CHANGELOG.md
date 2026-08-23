@@ -18,7 +18,7 @@ and the GitHub release body is pasted from it, so the three cannot drift apart.
 
 Nothing yet.
 
-## [0.1.0-alpha] — 2026-08-22
+## [0.1.0] — 2026-08-22
 
 The first public build. It is a working local password manager and it is not finished: read the
 notes at the bottom before you install it.
@@ -80,5 +80,5 @@ notes at the bottom before you install it.
   unknown. That warning is accurate — compare the SHA-256 on the release page before running
   anything.
 
-[unreleased]: https://github.com/ahmedjidar/trynta/compare/v0.1.0-alpha...HEAD
-[0.1.0-alpha]: https://github.com/ahmedjidar/trynta/releases/tag/v0.1.0-alpha
+[unreleased]: https://github.com/ahmedjidar/trynta/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/ahmedjidar/trynta/releases/tag/v0.1.0
