@@ -56,7 +56,10 @@
       </p>
 
       <div class="rise rise-3 cta-row">
-        <a class="btn btn-primary" href="https://github.com/ahmedjidar/trynta/releases/latest">
+        <a
+          class="btn btn-primary"
+          href="https://github.com/ahmedjidar/trynta/releases/latest/download/Trynta_{{VERSION}}_x64-setup.exe"
+        >
           <svg
             viewBox="0 0 24 24"
             fill="none"
@@ -546,12 +549,14 @@
             </div>
           </div>
           <div class="actions">
-            <a class="header-link" href="https://github.com/ahmedjidar/trynta/releases/latest"
+            <a
+              class="header-link"
+              href="https://github.com/ahmedjidar/trynta/releases/latest/download/Trynta_{{VERSION}}_x64_en-US.msi"
               >.msi for deployment</a
             >
             <a
               class="btn btn-primary btn-small"
-              href="https://github.com/ahmedjidar/trynta/releases/latest"
+              href="https://github.com/ahmedjidar/trynta/releases/latest/download/Trynta_{{VERSION}}_x64-setup.exe"
               >Download .exe</a
             >
           </div>
@@ -589,6 +594,11 @@
         </div>
       </div>
 
+      <p class="caption mt-4">
+        <a href="https://github.com/ahmedjidar/trynta/releases">All releases</a> — older versions,
+        the full notes, and source archives.
+      </p>
+
       <div class="note">
         <div class="eyebrow">What Windows will say</div>
         <p class="prose">
@@ -598,8 +608,11 @@
           <span class="mono">More info → Run anyway</span>.
         </p>
         <p class="prose">
-          That warning is accurate and you should not wave it away on our say-so. Compare the
-          SHA-256 on the release page against the file you downloaded first. A certificate is on the
+          That warning is accurate and you should not wave it away on our say-so. Run
+          <span class="mono">Get-FileHash</span> over what you downloaded and compare it with the
+          SHA-256 on the
+          <a href="https://github.com/ahmedjidar/trynta/releases/latest">release page</a> — the
+          button above hands you the file without taking you past them. A certificate is on the
           list, behind things that matter more.
         </p>
       </div>

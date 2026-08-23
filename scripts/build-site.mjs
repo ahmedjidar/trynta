@@ -288,6 +288,19 @@ await cp(join(SRC, 'js'), join(OUT, 'js'), { recursive: true });
 // match there, which is what the index-scanning `fill` above is built to do.
 for (const page of ['index.html', 'changelog.html', 'docs.html']) {
   let html = await readFile(join(SRC, page), 'utf8');
+  // `{{VERSION}}` inside an href, which a comment marker cannot reach.
+  //
+  // A release asset is addressed by its exact filename — GitHub's
+  // `/releases/latest/download/<name>` is not a search, and a name from the wrong
+  // version is a 404, checked against the live release rather than assumed. Since
+  // the bundler puts the version in the filename, a hand-written download URL stops
+  // working the day the version changes and nothing says so. So the pages carry the
+  // token and the build resolves it.
+  //
+  // From `package.json` rather than the changelog: this is the *artefact* version,
+  // the one the bundler names files with, and it is the same string in
+  // `tauri.conf.json` and the workspace `Cargo.toml`.
+  html = html.replaceAll('{{VERSION}}', v);
   html = fill(html, 'VERSION', releases[0]?.version ?? v);
   html = fill(html, 'LATEST_RELEASE', `\n${renderLatest(releases)}\n      `);
   html = fill(html, 'RELEASES', `\n${renderReleases(releases)}\n      `);
