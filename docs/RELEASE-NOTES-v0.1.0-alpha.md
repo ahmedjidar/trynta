@@ -93,8 +93,8 @@ warning is accurate and you should not wave it away on our say-so — compare th
 against the file you downloaded first.
 
 ```
-<SHA-256>  Trynta_0.1.0-alpha_x64_en-US.msi
-<SHA-256>  Trynta_0.1.0-alpha_x64-setup.exe
+<SHA-256>  Trynta_0.1.0_x64_en-US.msi
+<SHA-256>  Trynta_0.1.0_x64-setup.exe
 ```
 
 ## Reporting a problem

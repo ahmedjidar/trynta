@@ -49,9 +49,22 @@ const OUT = join(ROOT, 'web', 'dist');
 /** The shipped version, from the one file that already holds it. */
 async function version() {
   const pkg = JSON.parse(await readFile(join(ROOT, 'package.json'), 'utf8'));
-  // Pre-1.0 releases are tagged `-alpha`; `package.json` carries the bare number
-  // because Cargo and npm both reject some pre-release spellings the other
-  // accepts. The suffix lives in CHANGELOG.md, which is what the pages show.
+  // Two version strings, on purpose, and this is the one place to read about it.
+  //
+  // The *build* is `0.1.0` — `package.json`, `tauri.conf.json` and the workspace
+  // `Cargo.toml`, and therefore the artefact filenames. The *release* is
+  // `v0.1.0-alpha` — the tag, CHANGELOG.md, and what these pages show.
+  //
+  // They cannot be the same string. Windows Installer requires a ProductVersion of
+  // `major.minor.build` with every field numeric, so the Tauri CLI refuses a
+  // pre-release that is not: "optional pre-release identifier in app version must be
+  // numeric-only and cannot be greater than 65535 for msi target". Setting
+  // `0.1.0-alpha` in `tauri.conf.json` does not rename the artefacts, it fails the
+  // msi bundle outright. (An earlier version of this comment blamed Cargo and npm.
+  // Both accept `0.1.0-alpha` perfectly well; the MSI is the constraint.)
+  //
+  // So the pages take the version from CHANGELOG.md, and fall back to this only when
+  // the changelog has no releases in it yet.
   return pkg.version;
 }
 
