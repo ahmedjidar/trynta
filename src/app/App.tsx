@@ -57,6 +57,7 @@ import { Updates } from '../features/settings/Updates';
 import { ItemDetail } from '../features/items/ItemDetail';
 import { ItemList } from '../features/items/ItemList';
 import { GuidedTour } from '../features/tour/GuidedTour';
+import { DemoWalkthrough } from '../features/dev/DemoWalkthrough';
 import { useStacked } from './useStacked';
 import { useTour } from '../features/tour/store';
 import { NewItemSheet } from '../features/items/NewItemSheet';
@@ -510,6 +511,11 @@ function Shell() {
           modifierKey={platform.modifierKey}
         />
       ) : null}
+
+      {/* Debug builds only — `replay` is `cfg!(debug_assertions)` crossing IPC, so
+          this cannot render in a release artefact. It removes itself while it runs,
+          because the whole point is to record what is behind it. */}
+      <DemoWalkthrough items={items.data ?? EMPTY_ITEMS} />
 
       <Toast
         message={toast}

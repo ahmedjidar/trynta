@@ -84,7 +84,7 @@
       "../NOTICE": "NOTICE",
       "../THIRD-PARTY-NOTICES.md": "THIRD-PARTY-NOTICES.md"
     },
-    "createUpdaterArtifacts": false,
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -122,8 +122,8 @@
   },
   "plugins": {
     "updater": {
-      "endpoints": [],
-      "pubkey": "",
+      "endpoints": ["https://github.com/ahmedjidar/trynta/releases/latest/download/latest.json"],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQ1RDkyM0IxQkI1NzIzOTQKUldTVUkxZTdzU1BaUlZlZ0RGaWFNbEhmRDJKTy9tU0lDbWFreHdITTVMVXAzOTNYR3pYSjhWNDMK",
       "windows": {
         "installMode": "passive"
       }
