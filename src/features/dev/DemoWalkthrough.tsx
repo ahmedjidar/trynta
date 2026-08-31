@@ -49,6 +49,46 @@ const BEAT = {
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /**
+ * Wait for a surface to actually be on screen before doing anything to it.
+ *
+ * Panes render an empty section while their data is in flight, and the security
+ * report is not a formality: it decrypts and scores every stored password, which
+ * on a 560-item vault measured **15 seconds** the first time. Cached afterwards,
+ * so a warm run never waits — but a cold one would otherwise scroll a blank pane
+ * for the whole beat, on camera.
+ */
+/** The accent as the document currently resolves it — the cheapest proof a theme landed. */
+const accentNow = () =>
+  getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+
+/**
+ * Wait until the accent actually changes, so a beat is spent on the new theme
+ * rather than on the old one.
+ *
+ * Applying a theme is 5ms of IPC, but on a 560-item vault the first change after
+ * arriving at Settings was measured stalling roughly nine seconds before it showed
+ * — long enough that a fixed beat spent the whole showcase on the previous theme.
+ * Whatever the work is, it is not the command, and waiting for the result is
+ * correct regardless of what it turns out to be.
+ */
+async function themeLanded(before: string, timeoutMs = 15_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (accentNow() !== before) return;
+    await sleep(80);
+  }
+}
+
+async function settled(selector: string, timeoutMs = 20_000): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (document.querySelector(selector)) return true;
+    await sleep(120);
+  }
+  return false;
+}
+
+/**
  * Scroll a pane from wherever it is to `to`, in one smooth movement.
  *
  * `scrollTo` rather than a per-frame loop: the app's panes already carry
@@ -124,6 +164,7 @@ export function DemoWalkthrough({ items }: DemoWalkthroughProps) {
       const withTotp = latest.current.items.find((i) => i.hasTotp) ?? latest.current.items[0];
       if (withTotp) {
         select(withTotp.id);
+        await settled('[aria-label="Item detail"] h1');
         if (!(await beat(BEAT.linger))) return;
         glide(pane('Item detail'), 420);
         if (!(await beat(BEAT.read))) return;
@@ -133,6 +174,7 @@ export function DemoWalkthrough({ items }: DemoWalkthroughProps) {
 
       // ── what the vault is worth ──
       go('security');
+      await settled('[aria-label="Security report"] h1');
       if (!(await beat(BEAT.linger))) return;
       glide(pane('Security report'), 460);
       if (!(await beat(BEAT.read))) return;
@@ -143,6 +185,7 @@ export function DemoWalkthrough({ items }: DemoWalkthroughProps) {
 
       // ── where new ones come from ──
       go('generator');
+      await settled('[aria-label="Generator"] h1');
       if (!(await beat(BEAT.linger))) return;
       glide(pane('Generator'), 380);
       if (!(await beat(BEAT.read))) return;
@@ -151,6 +194,7 @@ export function DemoWalkthrough({ items }: DemoWalkthroughProps) {
 
       // ── the same screen, however many ways are installed ──
       go('settings');
+      await settled('[aria-label="Settings"] h1');
       if (!(await beat(BEAT.settle))) return;
       for (const theme of latest.current.imported) {
         // The mode first, and it is not decoration: `theme/loader.ts` scopes a
@@ -158,14 +202,20 @@ export function DemoWalkthrough({ items }: DemoWalkthroughProps) {
         // by its own `mode`, so activating a dark theme while the app is in light
         // mode installs a rule that matches nothing. Two of the three themes
         // changed nothing on screen until this line existed.
+        const before = accentNow();
         await setMode(theme.mode);
         await setTheme(theme.id);
+        await themeLanded(before);
         if (!(await beat(BEAT.theme))) return;
       }
+      let before = accentNow();
       await setTheme(null);
       await setMode('dark');
+      await themeLanded(before);
       if (!(await beat(BEAT.theme))) return;
+      before = accentNow();
       await setMode('light');
+      await themeLanded(before);
       if (!(await beat(BEAT.settle))) return;
 
       // ── back where it started, list and all ──
