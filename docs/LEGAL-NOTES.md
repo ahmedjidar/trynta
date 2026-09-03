@@ -115,7 +115,14 @@ This is the clause that distinguishes the AGPL from the GPL, and the reason the 
 
 **Today it binds nobody.** Trynta is a desktop application. It talks to two hosts — the HIBP range
 API and the update manifest — and neither is ours. No one interacts with Trynta over a network, so
-§13 is dormant.
+§13 is dormant. There is consequently no §13 offer to make and no address that fulfils one; when a
+relay exists, this section gets rewritten rather than amended.
+
+**§6 is not dormant, and it is the one that applies now.** Shipping the installers is conveying a
+binary, which obliges offering the corresponding source. That is satisfied the ordinary way — the
+complete source of every release sits in the public repository the release is cut from, tagged at
+the same commit. If you would rather be handed it directly, or you are looking at a build you
+cannot match to a tag, ask at **contact@trynta.dev** and you will get the tree that produced it.
 
 **What changes with V3.** A sync relay is server software. Three cases, and they are genuinely
 different:

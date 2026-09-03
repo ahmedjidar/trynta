@@ -100,7 +100,10 @@ against the file you downloaded first.
 ## Reporting a problem
 
 Security issues go to the private advisory form, not a public issue:
-<https://github.com/ahmedjidar/trynta/security/advisories/new>. Everything else is welcome as an
-issue.
+<https://github.com/ahmedjidar/trynta/security/advisories/new>. It is preferred over email because
+it is private from the moment you press send; `security@trynta.dev` reaches the same person if you
+would rather not use GitHub. Everything else is welcome as an issue, or at contact@trynta.dev.
+
+Documentation is at <https://www.trynta.dev/docs.html>.
 
 Licensed under AGPL-3.0-or-later. The source is the whole product; there is no closed component.

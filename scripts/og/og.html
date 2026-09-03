@@ -1,0 +1,182 @@
+<!doctype html>
+<!--
+  The Open Graph card, composed at its final size and photographed by
+  `scripts/og/build-og.mjs`.
+
+  Built as a page rather than drawn in code so it uses the real Manrope and the
+  real tokens from `web/src/css/site.css` — the same values the site renders with,
+  rather than a second set of numbers that drift. Regenerating it needs a browser
+  and nothing else, which also means it works on any platform.
+
+  `?theme=light` renders the light variant. Both are produced; see the note in
+  build-og.mjs about which one ships and why there is only one.
+-->
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../../web/src/css/site.css" />
+    <style>
+      /* Every class is `og-` prefixed. site.css is loaded for its tokens and its
+         webfont, and it already owns `.wordmark` — which sets `color: var(--ink)`
+         and painted the title near-black on a near-black card. Namespacing is the
+         fix that also survives whatever site.css gains next. */
+
+      /* The card is a fixed canvas, not a responsive page. */
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 1200px;
+        height: 630px;
+        overflow: hidden;
+      }
+
+      .og-card {
+        position: relative;
+        width: 1200px;
+        height: 630px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 0 88px;
+        box-sizing: border-box;
+        background: var(--ink);
+        color: #ffffff;
+        overflow: hidden;
+      }
+
+      /* A single soft accent bloom off the right edge. No gradient across the
+         card itself — HO-003 does not use them, and a flat ground reproduces
+         predictably wherever a chat client re-encodes it. */
+      .og-bloom {
+        position: absolute;
+        right: -220px;
+        top: -180px;
+        width: 760px;
+        height: 760px;
+        border-radius: 50%;
+        background: var(--accent);
+        opacity: 0.16;
+        filter: blur(90px);
+      }
+
+      .og-mark {
+        position: relative;
+        width: 132px;
+        color: var(--accent);
+      }
+
+      .og-mark svg {
+        width: 132px;
+        height: auto;
+        display: block;
+      }
+
+      .og-wordmark {
+        position: relative;
+        margin-top: 34px;
+        font-family: var(--font-sans);
+        font-size: 86px;
+        line-height: 1;
+        font-weight: 800;
+        letter-spacing: -0.035em;
+      }
+
+      .og-tagline {
+        position: relative;
+        margin-top: 22px;
+        max-width: 760px;
+        font-family: var(--font-sans);
+        font-size: 30px;
+        line-height: 42px;
+        font-weight: 500;
+        letter-spacing: -0.012em;
+        color: rgba(255, 255, 255, 0.72);
+      }
+
+      .og-rule {
+        position: relative;
+        margin-top: 44px;
+        width: 76px;
+        height: 3px;
+        border-radius: 2px;
+        background: var(--accent);
+      }
+
+      .og-foot {
+        position: absolute;
+        left: 88px;
+        bottom: 56px;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        font-family: var(--font-sans);
+        font-size: 21px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .og-foot .og-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.28);
+      }
+
+      /* The light variant, for the record. Same composition, inverted ground. */
+      body[data-variant='light'] .og-card {
+        background: #ffffff;
+        color: var(--ink);
+      }
+      body[data-variant='light'] .og-tagline {
+        color: var(--ink-2);
+      }
+      body[data-variant='light'] .og-foot {
+        color: var(--ink-3);
+      }
+      body[data-variant='light'] .og-foot .og-dot {
+        background: var(--strong);
+      }
+      body[data-variant='light'] .og-bloom {
+        opacity: 0.1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="og-card">
+      <div class="og-bloom"></div>
+
+      <div class="og-mark">
+        <svg viewBox="0 0 122 76" aria-hidden="true">
+          <g fill="none" stroke="currentColor" stroke-width="11">
+            <path d="M 53.38 66.63 A 32.5 32.5 0 1 1 66.63 53.38" />
+            <path d="M 68.62 9.37 A 32.5 32.5 0 1 1 55.37 22.62" />
+          </g>
+        </svg>
+      </div>
+
+      <div class="og-wordmark">Trynta</div>
+      <div class="og-tagline">
+        A local-first, end-to-end encrypted password manager. Your vault is one file on your own
+        disk — and the key is derived on your machine.
+      </div>
+      <div class="og-rule"></div>
+
+      <div class="og-foot">
+        <span>www.trynta.dev</span>
+        <span class="og-dot"></span>
+        <span>Open source · AGPL-3.0</span>
+        <span class="og-dot"></span>
+        <span>Windows today, macOS next</span>
+      </div>
+    </div>
+
+    <script>
+      // `?theme=light` flips the variant. Kept in the page rather than as a second
+      // file so the two cannot drift apart.
+      const wanted = new URLSearchParams(location.search).get('theme');
+      if (wanted === 'light') document.body.dataset.variant = 'light';
+    </script>
+  </body>
+</html>

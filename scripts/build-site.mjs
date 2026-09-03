@@ -280,6 +280,10 @@ if (releases.length === 0) {
 
 await rm(OUT, { recursive: true, force: true });
 await mkdir(OUT, { recursive: true });
+// `web/public` is copied to the *root* of dist, not under assets: `/favicon.ico`
+// and `/apple-touch-icon.png` are probed at the document root by browsers and by
+// the crawlers behind link previews, tag or no tag.
+await cp(join(ROOT, 'web', 'public'), OUT, { recursive: true });
 await cp(join(SRC, 'assets'), join(OUT, 'assets'), { recursive: true });
 await cp(join(SRC, 'css'), join(OUT, 'css'), { recursive: true });
 await cp(join(SRC, 'js'), join(OUT, 'js'), { recursive: true });

@@ -6,8 +6,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Pre-1.0 means the on-disk
 format may still change; when it does, a migration ships with it and no vault is left behind.
 
-**This file is the only copy of the release notes.** `web/` generates its changelog page from it,
-and the GitHub release body is pasted from it, so the three cannot drift apart.
+**This file is the only copy of the release notes.** `web/` generates its changelog page from it —
+published at <https://www.trynta.dev/changelog.html> — and the GitHub release body is pasted from
+it, so the three cannot drift apart.
 
 <!-- Entry types, in the order they are listed under a release:
      Security · Added · Changed · Fixed · Removed · Note

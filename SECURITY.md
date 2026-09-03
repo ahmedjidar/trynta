@@ -42,14 +42,18 @@ Not nothing, and not much. Everything added since has had none of even that.
 Report privately. Do not open a public issue, and do not disclose before we have had a chance to
 ship a fix.
 
-- **Use GitHub's private vulnerability reporting** on this repository (Security → Report a
-  vulnerability). That is the channel that is live today; it is private to the maintainers and it
-  does not require an address to be published for scrapers to harvest.
+- **Preferred — GitHub's private vulnerability reporting** on this repository (Security → Report
+  a vulnerability). It is private to the maintainers by construction, it keeps the report and the
+  fix in one place, and nothing about it travels as plaintext.
+- **Or email `security@trynta.dev`**, which forwards to the maintainer. Use it if you would rather
+  not have a GitHub account in the loop, or if the issue is with the repository itself.
 - Include a proof of concept if you have one, and say which platform and build you saw it on.
 
-A dedicated security address will be published here alongside the first tagged release. Until
-then the reporting form above is the whole channel, and pointing at an address that does not
-receive mail would be worse than saying so.
+**The form is preferred, and the reason is not preference.** Email between servers is opportunistic
+about TLS and plaintext at rest on both ends; the advisory form is private from the moment you
+press send. If you email, send enough to establish that something is wrong and let us move the
+detail somewhere better — do not put a working exploit in the first message. We do not publish a
+PGP key, so do not encrypt to one and assume it arrived.
 
 We will acknowledge within 3 working days and keep you updated as we work. If you would like
 credit in the release notes, say so and tell us how you would like to be named.

@@ -31,6 +31,7 @@
 
 import { deflateSync } from 'node:zlib';
 import { writeFileSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
 
@@ -407,6 +408,47 @@ for (const [name, size] of Object.entries(TILES)) {
 // ── favicon ─────────────────────────────────────────────────────────────────
 writeFileSync(`${ROOT}/public/favicon.ico`, ico([16, 20, 24, 32, 48], frames));
 console.log(`\n  public/favicon.ico`);
+
+// ── the website's own icons ─────────────────────────────────────────────────
+//
+// An SVG favicon is the better one and the site links it first, but it cannot be
+// the only one. Anything that probes `/favicon.ico` at the document root — older
+// browsers, and the crawlers behind link previews on YouTube and elsewhere — gets
+// a 404 and falls back to a generic globe. That is what was happening.
+//
+// `web/public` is copied to the root of `web/dist` by `build-site.mjs`, so these
+// land at `/favicon.ico` and `/apple-touch-icon.png`, which is where they are
+// looked for whether or not a tag points at them.
+const webPublic = `${ROOT}/web/public`;
+mkdirSync(webPublic, { recursive: true });
+
+// `join`, not a template literal, and not only for tidiness: an interpolation
+// followed directly by `/favicon.ico` is the shape of a real favicon probe, and
+// `check:network` flags it on sight. It is right to — that pattern is how a
+// tracker gets written — so the path is built rather than the rule loosened.
+writeFileSync(join(webPublic, 'favicon.ico'), ico([16, 32, 48], frames));
+console.log(`  web/public/favicon.ico`);
+
+// Opaque, and deliberately so: iOS composites a transparent touch icon onto
+// black, and it applies its own rounded-corner mask — so a square of paper with
+// the mark on it is what survives that treatment. 180px is the size iOS asks for.
+const TOUCH = 180;
+const touch = flatten(
+  TOUCH,
+  TOUCH,
+  (dst) =>
+    blit(
+      dst,
+      TOUCH,
+      render(Math.round(TOUCH * 0.82)).px,
+      Math.round(TOUCH * 0.82),
+      Math.round(TOUCH * 0.09),
+      Math.round(TOUCH * 0.09),
+    ),
+  [0xff, 0xff, 0xff],
+);
+writeFileSync(join(webPublic, 'apple-touch-icon.png'), png({ size: TOUCH, px: touch }));
+console.log(`  web/public/apple-touch-icon.png`);
 
 // ── Installer branding ──────────────────────────────────────────────────────
 //

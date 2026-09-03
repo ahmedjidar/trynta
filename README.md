@@ -8,6 +8,8 @@
 
 Tauri&nbsp;v2 · Rust · React · SQLite &nbsp;·&nbsp; AGPL-3.0-or-later
 
+**[www.trynta.dev](https://www.trynta.dev/)**
+
 <!-- The asset name carries the version, and GitHub's /releases/latest/download/ needs it
      exactly, so this link has to be bumped with each release. The website does not: its
      copy is generated from package.json by scripts/build-site.mjs. -->
@@ -15,6 +17,7 @@ Tauri&nbsp;v2 · Rust · React · SQLite &nbsp;·&nbsp; AGPL-3.0-or-later
 **[Download for Windows](https://github.com/ahmedjidar/trynta/releases/latest/download/Trynta_0.1.0_x64-setup.exe)**
 &nbsp;·&nbsp; [All releases](https://github.com/ahmedjidar/trynta/releases)
 &nbsp;·&nbsp; [Release notes](https://github.com/ahmedjidar/trynta/releases/latest)
+&nbsp;·&nbsp; [Documentation](https://www.trynta.dev/docs.html)
 
 </div>
 

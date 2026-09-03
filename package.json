@@ -2,6 +2,18 @@
   "name": "trynta",
   "private": true,
   "version": "0.1.0",
+  "description": "A local-first, end-to-end encrypted password manager for the desktop.",
+  "homepage": "https://www.trynta.dev/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ahmedjidar/trynta.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ahmedjidar/trynta/issues",
+    "email": "contact@trynta.dev"
+  },
+  "author": "Ahmed Amin <contact@trynta.dev>",
+  "license": "AGPL-3.0-or-later",
   "type": "module",
   "packageManager": "pnpm@10.25.0",
   "engines": {

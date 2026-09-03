@@ -3,12 +3,49 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Documentation — Trynta</title>
+    <title>Documentation - Trynta</title>
     <meta
       name="description"
       content="How to install and use Trynta, and how it works underneath: the key hierarchy, what leaves your machine, every setting and its default."
     />
-    <link rel="icon" href="assets/brand/mark-accent.svg" />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="assets/brand/mark-accent.svg" type="image/svg+xml" />
+    <link
+      rel="icon"
+      href="assets/brand/mark-white.svg"
+      type="image/svg+xml"
+      media="(prefers-color-scheme: dark)"
+    />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="canonical" href="https://www.trynta.dev/docs.html" />
+
+    <!-- What a crawler keeps. The image is absolute because Open Graph requires
+         it: a relative path resolves against the crawler, not against us. -->
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="Trynta" />
+    <meta property="og:url" content="https://www.trynta.dev/docs.html" />
+    <meta property="og:title" content="Trynta documentation" />
+    <meta
+      property="og:description"
+      content="How to install and use Trynta, and how it works underneath: the key hierarchy, what leaves your machine, every setting and its default."
+    />
+    <meta property="og:image" content="https://www.trynta.dev/assets/brand/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Trynta - a local-first, end-to-end encrypted password manager."
+    />
+    <meta property="og:locale" content="en_GB" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Trynta documentation" />
+    <meta
+      name="twitter:description"
+      content="How to install and use Trynta, and how it works underneath: the key hierarchy, what leaves your machine, every setting and its default."
+    />
+    <meta name="twitter:image" content="https://www.trynta.dev/assets/brand/og.png" />
+    <meta name="theme-color" content="#f6f7fa" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#111318" media="(prefers-color-scheme: dark)" />
     <link rel="stylesheet" href="css/site.css" />
   </head>
   <body>
@@ -1357,7 +1394,9 @@ src/
             </p>
             <p>
               <strong>Anything else</strong> — a bug, a question, an idea — is welcome as an
-              <a href="https://github.com/ahmedjidar/trynta/issues">issue</a>.
+              <a href="https://github.com/ahmedjidar/trynta/issues">issue</a>. If you would rather
+              not open one in public, <a href="mailto:contact@trynta.dev">contact@trynta.dev</a>
+              reaches the same person.
             </p>
             <p>
               The <a href="changelog.html">changelog</a> records every release and what changed in
@@ -1393,6 +1432,7 @@ src/
       <a href="https://github.com/ahmedjidar/trynta/security/advisories/new"
         >Report a vulnerability</a
       >
+      <a href="mailto:contact@trynta.dev">contact@trynta.dev</a>
       <span class="spacer"></span>
       <span>© 2026 Ahmed Amin</span>
     </footer>
