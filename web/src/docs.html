@@ -755,6 +755,66 @@
               before you restore an old one if there is anything in the current vault you want to
               keep.
             </p>
+
+            <h3>Moving to a new machine</h3>
+            <p>
+              A backup is also how you move a vault between computers. Export on the old machine,
+              copy the file across, restore on the new one. The archive carries every vault and
+              every item, one-time-code secrets included, along with your activity history.
+            </p>
+            <p>There is one step people miss, because restore lives behind an unlock:</p>
+            <ol>
+              <li>On the old machine, export a backup and keep its passphrase.</li>
+              <li>
+                Install Trynta on the new machine and <strong>create a vault</strong> with any
+                master password. This one is temporary.
+              </li>
+              <li>
+                Unlock it, then go to <strong>Settings → Backup and restore</strong> and choose your
+                file.
+              </li>
+              <li>
+                Trynta sees the archive belongs to a different vault and asks you to confirm a
+                <strong>replace</strong>. Confirm it — discarding that temporary vault is the point.
+              </li>
+              <li>
+                Trynta locks itself. Unlock with the
+                <strong>old machine's master password</strong>, not the temporary one.
+              </li>
+            </ol>
+
+            <div class="callout is-warn">
+              <div class="callout-head">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7.4v5.4" stroke-linecap="round" />
+                  <circle cx="12" cy="16.4" r="1" fill="currentColor" stroke="none" />
+                </svg>
+                <span class="callout-label">You need both secrets</span>
+              </div>
+              <p>
+                The passphrase opens the file. The old machine's master password opens what comes
+                out of it. Arriving with only one of them leaves you at a lock screen you cannot
+                pass.
+              </p>
+            </div>
+
+            <p>
+              Settings do not travel. Theme, auto-lock, clipboard timeout and the rest start at
+              their defaults on the new machine, and generator history and the breach cache are not
+              exported. Windows Hello has to be set up again: its key is held by that computer's TPM
+              and cannot leave it.
+            </p>
+            <p>
+              Restoring copies a vault, it does not move one. The old machine keeps working, and the
+              two stop matching the moment either changes. Trynta has no sync.
+            </p>
           </section>
 
           <!-- ===================================================== THEMES -->
